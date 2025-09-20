@@ -29,7 +29,6 @@ pub async fn stripe_webhook(
     payload: String,
 ) -> Result<StatusCode, (StatusCode, String)> {
     info!("Webhook called with payload length: {}", payload.len());
-    info!("Raw payload: {}", payload);
 
     let signature = headers
         .get("stripe-signature")
@@ -44,23 +43,13 @@ pub async fn stripe_webhook(
                 "Invalid stripe-signature header".to_string(),
             )
         })?;
-
-    info!("signature: {:?}", signature);
-
+    
     let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET").map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "STRIPE_WEBHOOK_SECRET not set".to_string(),
         )
     })?;
-
-    info!("Webhook secret: {:?}", webhook_secret);
-
-    // Construct and verify the event
-    debug!(
-        "Attempting to construct event with payload: {}, signature: {}",
-        payload, signature
-    );
 
     let sent_event: Event = Webhook::construct_event(&payload, signature, &webhook_secret)
         .map_err(|e| {
@@ -77,11 +66,12 @@ pub async fn stripe_webhook(
         .db
         .get()
         .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
-    info!("Event object: {:?}", sent_event.data.object);
 
     match sent_event.data.object {
         EventObject::PaymentIntent(payment_intent) => {
-            let transaction_id_str = payment_intent.metadata.get("transaction_id").ok_or((
+            let transaction_id_str = payment_intent.metadata
+                .get("transaction_id")
+                .ok_or((
                 StatusCode::BAD_REQUEST,
                 "Missing transaction_id in metadata".to_string(),
             ))?;

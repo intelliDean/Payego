@@ -2,14 +2,14 @@ use crate::schema::*;
 use crate::utility::validate_password;
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
-use diesel::r2d2;
 use diesel::r2d2::ConnectionManager;
+use diesel::r2d2;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use std::sync::Arc;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
+use crate::schema::transactions;
 
 #[derive(Queryable, Insertable, Selectable, Identifiable)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -23,17 +23,20 @@ pub struct User {
     pub updated_at: DateTime<Utc>,
 }
 
-// #[derive(Queryable, Selectable, Serialize, Deserialize)]
-// #[diesel(table_name = crate::schema::users)]
-// #[diesel(check_for_backend(diesel::pg::Pg))]
-// pub struct User {
-//     pub id: Uuid,
-//     pub email: String,
-//     pub password_hash: String,
-//     pub username: Option<String>,
-//     pub created_at: chrono::DateTime<chrono::Utc>,
-//     pub updated_at: chrono::DateTime<chrono::Utc>,
-// }
+
+#[derive(Queryable, Insertable, Serialize, Deserialize, Debug, ToSchema)]
+#[diesel(table_name = crate::schema::banks)]
+pub struct Bank {
+    pub id: i64,
+    pub name: String,
+    pub code: String,
+    pub currency: String,
+    pub country: String,
+    pub gateway: Option<String>,
+    pub pay_with_bank: Option<bool>,
+    pub is_active: Option<bool>,
+}
+
 
 #[derive(Insertable, Deserialize, Serialize)]
 #[diesel(table_name = crate::schema::users)]
@@ -99,7 +102,7 @@ pub struct NewTransaction {
     pub provider: Option<String>,
     pub description: Option<String>,
     pub reference: Uuid,
-    // pub metadata: Option<JsonValue>,
+    // pub metadata: Option<serde_json::Value>,
 }
 
 // Bank Accounts table

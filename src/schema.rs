@@ -19,6 +19,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    banks (id) {
+        id -> Int8,
+        name -> Varchar,
+        code -> Varchar,
+        currency -> Varchar,
+        country -> Varchar,
+        gateway -> Nullable<Varchar>,
+        pay_with_bank -> Nullable<Bool>,
+        is_active -> Nullable<Bool>,
+    }
+}
+
+diesel::table! {
     transactions (id) {
         id -> Uuid,
         user_id -> Uuid,
@@ -68,6 +81,7 @@ diesel::joinable!(wallets -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     bank_accounts,
+    banks,
     transactions,
     users,
     wallets,

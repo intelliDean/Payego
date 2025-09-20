@@ -1,10 +1,12 @@
 pub mod register;
 pub mod login;
 pub mod top_up;
-pub mod transfer;
+pub mod transfer_internal;
 pub mod bank;
-pub mod pay_out;
-pub mod webhook;
+pub mod transfer_external;
+pub mod paystack_webhook;
 pub mod current_user;
 pub mod paypal_capture;
 pub mod stripe_webhook;
+pub mod withdraw;
+pub mod all_banks;

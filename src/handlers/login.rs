@@ -72,21 +72,6 @@ pub async fn login(
     info!("User {} logged in successfully", user.id);
 
 
-
-    // let response = Json(LoginResponse {
-    //     token,
-    //     user_email: user.email,
-    // });
-    //
-    // (
-    //     StatusCode::OK,
-    //     [(
-    //         header::SET_COOKIE,
-    //         format!("jwt_token={}; HttpOnly; Path=/", token),
-    //     )],
-    //     response,
-    // ))
-
     Ok(Json(LoginResponse {
         token,
         user_email: user.email,

@@ -101,7 +101,7 @@ function StripePayment({ clientSecret, transactionId }) {
                 payment_method: {
                     card: cardElement,
                     billing_details: {
-                        name: 'Test User',
+                        name: 'Test User', //todo: will add the username here
                     },
                 },
             });

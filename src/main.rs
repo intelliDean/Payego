@@ -4,6 +4,8 @@ mod config;
 mod handlers;
 mod utility;
 mod error;
+mod initialize_banks;
+
 
 use axum::{middleware, response::IntoResponse, Router};
 // use configs::security_config::auth_middleware;
@@ -21,8 +23,10 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use axum::routing::{get, post};
 use http::HeaderValue;
+// use stripe::ApiErrorsType::ApiError;
+use error::ApiError;
 use tokio::net::TcpListener;
-use tracing::log::info;
+use tracing::log::{error, info};
 use utoipa::{OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 use crate::config::security_config::{auth_middleware, JWTSecret};
@@ -35,7 +39,14 @@ use crate::handlers::stripe_webhook::stripe_webhook;
 use crate::handlers::top_up::top_up;
 use crate::models::user_models::AppState;
 use tracing_subscriber;
-
+use crate::handlers::all_banks::all_banks;
+use crate::handlers::bank::add_bank_account;
+use crate::handlers::paystack_webhook::paystack_webhook;
+use crate::handlers::transfer_external::external_transfer;
+use crate::handlers::transfer_internal::internal_transfer;
+use crate::handlers::withdraw::withdraw;
+use crate::initialize_banks::initialize_banks;
+use crate::schema::banks::dsl::banks;
 // Database setup
 
 #[tokio::main]
@@ -51,7 +62,6 @@ async fn main() -> Result<(), eyre::Error> {
 
     dotenvy::dotenv().ok();
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    // let db_url = "postgres://postgres:%40Tiptop2059!@localhost:5432/todo";
 
     let manager = ConnectionManager::<PgConnection>::new(db_url);
     let pool = Pool::builder()
@@ -65,12 +75,17 @@ async fn main() -> Result<(), eyre::Error> {
         jwt_secret: JWTSecret::new().jwt_secret
     });
 
+
+    //initialize banks
+    initialize_banks(state.clone()).await.unwrap();
     // Router setup
     // Public routes (no auth middleware)
     let public_router = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/api/register", post(register))
         .route("/api/webhook/stripe", post(stripe_webhook))
+        .route("/webhooks/paystack", post(paystack_webhook))
+        .route("/api/banks", get(all_banks))
         .route("/api/login", post(login));
 
     // Protected routes (with auth middleware)
@@ -78,9 +93,10 @@ async fn main() -> Result<(), eyre::Error> {
         .route("/current_user", get(get_current_user))
         .route("/api/top_up", post(top_up))
         .route("/api/paypal/capture", post(paypal_capture))
-    //     .route("/create_todo", post(create_todo))
-    //     .route("/todos/get", post(get_todo))
-    //     .route("/delete/{title}", post(delete_todo))
+        .route("/api/transfer/internal", post(internal_transfer))
+        .route("/api/transfer/external", post(external_transfer))
+        .route("/api/add_bank", post(add_bank_account))
+        .route("/api/withdraw", post(withdraw))
     //     .route("/todos/{title}", put(update_todo))
         .layer(middleware::from_fn_with_state(
             state.clone(),
