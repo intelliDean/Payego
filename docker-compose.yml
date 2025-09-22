@@ -81,7 +81,7 @@ services:
     image: postgres:15
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=@Tiptop2059!
+      - POSTGRES_PASSWORD=RRXvbF1i8QKvvxIrVNfvzPzVDy7UNJgd
       - POSTGRES_DB=payego
     ports:
       - "5434:5432"

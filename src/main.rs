@@ -180,7 +180,9 @@ async fn main() -> Result<(), eyre::Error> {
 
     // Load environment variables
     dotenv().ok();
-    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    // let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let db_url = "postgresql://payego_user:RRXvbF1i8QKvvxIrVNfvzPzVDy7UNJgd@dpg-d388q2ggjchc73cs1pm0-a.oregon-postgres.render.com/payego";
+
     let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
 
