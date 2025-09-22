@@ -1,23 +1,16 @@
 // use http_body_util::BodyExt;
 use crate::error::ApiError;
-use crate::models::user_models::{AppState, ErrorResponse};
+use crate::models::user_models::AppState;
 use axum::http::Request;
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
-use axum::{Json, extract::State, http::StatusCode};
+use axum::{extract::State, http::StatusCode};
 use chrono::{Duration, Utc};
-use headers::HeaderMapExt;
-use headers::{Authorization, authorization::Bearer};
 use http::HeaderMap;
-use jsonwebtoken::{
-    Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode,
-    errors::Error as JwtError,
-};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use std::env;
-use std::os::linux::raw::stat;
 use std::sync::Arc;
-use tower::ServiceExt;
 use tracing::error;
 use tracing::log::warn;
 
@@ -77,7 +70,6 @@ pub fn create_token(state: &AppState, user_id: &str) -> Result<String, ApiError>
     })
 }
 
-
 #[derive(Debug)]
 pub enum AuthError {
     MissingHeader,
@@ -110,10 +102,9 @@ impl Into<(StatusCode, String)> for AuthError {
                 StatusCode::BAD_REQUEST,
                 "Invalid Authorization format".to_string(),
             ),
-            AuthError::InvalidToken(msg) => (
-                StatusCode::UNAUTHORIZED,
-                format!("Invalid token: {}", msg),
-            ),
+            AuthError::InvalidToken(msg) => {
+                (StatusCode::UNAUTHORIZED, format!("Invalid token: {}", msg))
+            }
             AuthError::InternalError(msg) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Internal server error: {}", msg),
@@ -121,7 +112,6 @@ impl Into<(StatusCode, String)> for AuthError {
         }
     }
 }
-
 
 fn extract_bearer_token(headers: &HeaderMap) -> Result<String, AuthError> {
     let auth_header = headers
@@ -145,7 +135,6 @@ fn extract_bearer_token(headers: &HeaderMap) -> Result<String, AuthError> {
 
 // Enhanced verify_token function
 pub fn verify_token(state: &AppState, token: &str) -> Result<Claims, String> {
-
     let validation = Validation::new(Algorithm::HS256);
 
     decode::<Claims>(
@@ -153,16 +142,16 @@ pub fn verify_token(state: &AppState, token: &str) -> Result<Claims, String> {
         &DecodingKey::from_secret(state.jwt_secret.as_bytes()),
         &validation,
     )
-        .map(|data| data.claims)
-        .map_err(|e| format!("JWT verification error: {}", e))
+    .map(|data| data.claims)
+    .map_err(|e| format!("JWT verification error: {}", e))
 }
-
 
 pub async fn auth_middleware(
     State(state): State<Arc<AppState>>,
     mut req: Request<axum::body::Body>,
     next: Next,
-) -> Result<Response, Response> {  // Change return type to Result<Response, Response>
+) -> Result<Response, Response> {
+    // Change return type to Result<Response, Response>
     // Extract token from headers
     let token = match extract_bearer_token(req.headers()) {
         Ok(token) => token,

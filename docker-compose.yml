@@ -1,4 +1,55 @@
+#version: '3.8'
+#services:
+#  app:
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+#    ports:
+#      - "8081:8080"
+#    environment:
+#      - DATABASE_URL=postgres://postgres:%40Tiptop2059!@db:5432/payego
+#      - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
+#      - JWT_SECRET=${JWT_SECRET}
+#      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+#      - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID}
+#      - PAYPAL_SECRET=${PAYPAL_SECRET}
+#      - HOST=0.0.0.0
+#      - PORT=8080
+#      - CORS_ORIGINS=${CORS_ORIGINS}
+#      - JWT_EXPIRATION_HOURS=72
+#      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+#      - PAYSTACK_WEBHOOK_SECRET=${PAYSTACK_WEBHOOK_SECRET}
+#      - RUST_LOG=info
+#    depends_on:
+#      - db
+#
+#  db:
+#    image: postgres:15-alpine  # Use alpine version for consistency
+#    environment:
+#      - POSTGRES_USER=postgres
+#      - POSTGRES_PASSWORD=%40Tiptop2059!
+#      - POSTGRES_DB=payego
+#    ports:
+#      - "5434:5432"
+#    volumes:
+#      - postgres_data:/var/lib/postgresql/data
+#
+#volumes:
+#  postgres_data:
+#
+#
+#
+#
+## postgresql://payego_user:RRXvbF1i8QKvvxIrVNfvzPzVDy7UNJgd@dpg-d388q2ggjchc73cs1pm0-a.oregon-postgres.render.com/payego
+
+
+
+
+
+
+
 version: '3.8'
+
 services:
   app:
     build:
@@ -7,37 +58,40 @@ services:
     ports:
       - "8081:8080"
     environment:
-      - DATABASE_URL=postgres://postgres:%40Tiptop2059!@db:5432/payego
-      - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
-      - JWT_SECRET=${JWT_SECRET}
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-      - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID}
-      - PAYPAL_SECRET=${PAYPAL_SECRET}
+      - DATABASE_URL=postgres://postgres:%40Tiptop2059!@db:5432/payego?sslmode=disable
+      - PAYSTACK_SECRET_KEY=sk_test_94204df9b0f6207ab992848f233e62da9ebe34fd
+      - PAYSTACK_WEBHOOK_SECRET=sk_test_ebcc6429475f413bed7f180e5c579e0302801c15
+      - JWT_SECRET=X7pL9qW3zT2rY8mF6vN4kJ2hB5cD8tR1xZ0wP3eQ9aU6yI5oM
+      - STRIPE_SECRET_KEY=sk_test_51S7z2xIUFcwo1INbD2MYH3gPFR5FfObdm6PBSz5yB8GZx11ktEuC0ONPz8SXKKAzQuhZ4yL5idqgd66vMwhZtDrX00KRjKo7VS
+      - STRIPE_WEBHOOK_SECRET=whsec_WVCbV5XCk3vrDUvKiYZ23Gm5qYHXv9iB
+      - PAYPAL_CLIENT_ID=AffSgVyxJzWpC9t32iXb900ClKBIcv9ysKOfIhnuBH09PIUlbeApmXKGMYGiBs50C0EK4Iuozmvsdo7n
+      - PAYPAL_SECRET=EKaoQe-vZ_yMVTQ7KLiHV9Dot-BpujBMKtxIUMYwtEXaQcj7TYj9F44Z8ItFESgRBQj3N3jb-Day1wMw
+      - JWT_EXPIRATION_HOURS=72
+      - RUST_LOG=info
       - HOST=0.0.0.0
       - PORT=8080
-      - CORS_ORIGINS=${CORS_ORIGINS}
-      - JWT_EXPIRATION_HOURS=72
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-      - PAYSTACK_WEBHOOK_SECRET=${PAYSTACK_WEBHOOK_SECRET}
-      - RUST_LOG=info
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
     depends_on:
       - db
+    networks:
+      - payego_default
 
   db:
-    image: postgres:15-alpine  # Use alpine version for consistency
+    image: postgres:15
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=%40Tiptop2059!
+      - POSTGRES_PASSWORD=@Tiptop2059!
       - POSTGRES_DB=payego
     ports:
       - "5434:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - payego_default
+
+networks:
+  payego_default:
+    driver: bridge
 
 volumes:
-  postgres_data:
-
-
-
-
-# postgresql://payego_user:RRXvbF1i8QKvvxIrVNfvzPzVDy7UNJgd@dpg-d388q2ggjchc73cs1pm0-a.oregon-postgres.render.com/payego
+  db_data:
