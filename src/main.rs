@@ -134,7 +134,7 @@
 //
 
 use crate::config::{
-    security_config::{JWTSecret, auth_middleware},
+    security_config::{auth_middleware, JWTSecret},
     swagger_config::ApiDoc,
 };
 use crate::handlers::{
@@ -143,9 +143,9 @@ use crate::handlers::{
     stripe_webhook::stripe_webhook, top_up::top_up, transfer_external::external_transfer,
     transfer_internal::internal_transfer, withdraw::withdraw,
 };
-use crate::initialize_banks::initialize_banks;
+use handlers::initialize_banks::initialize_banks;
 use crate::models::user_models::AppState;
-use axum::{Router, middleware};
+use axum::{middleware, Router};
 use diesel::{
     prelude::*,
     r2d2::{ConnectionManager, Pool},
@@ -165,7 +165,6 @@ use crate::logging::setup_logging;
 mod config;
 mod error;
 mod handlers;
-mod initialize_banks;
 mod models;
 mod schema;
 mod utility;
@@ -208,7 +207,7 @@ async fn main() -> Result<(), eyre::Error> {
     });
 
     // Initialize banks (non-fatal failure)
-    initialize_banks(state.clone()).await.unwrap();
+    // initialize_banks(state.clone()).await.unwrap();
 
     // Setup CORS
     let cors = CorsLayer::new()
@@ -228,6 +227,7 @@ async fn main() -> Result<(), eyre::Error> {
         .route("/api/login", axum::routing::post(login))
         .route("/api/webhook/stripe", axum::routing::post(stripe_webhook))
         .route("/webhooks/paystack", axum::routing::post(paystack_webhook))
+        .route("/api/bank/init", axum::routing::post(initialize_banks))
         .route("/api/banks", axum::routing::get(all_banks));
 
     // Protected routes (require JWT authentication)

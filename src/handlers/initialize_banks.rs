@@ -2,13 +2,27 @@ use diesel::prelude::*;
 use reqwest::Client;
 use serde_json::Value;
 use std::sync::Arc;
+use axum::extract::State;
+use http::StatusCode;
 use tracing::{debug, error, info};
 use crate::error::ApiError;
 use crate::models::user_models::Bank;
 use crate::schema::banks;
 use crate::AppState;
 
-pub async fn initialize_banks(state: Arc<AppState>) -> Result<(), ApiError> {
+#[utoipa::path(
+    post,
+    path = "/api/bank/init",
+    responses(
+        (status = 201, description = "Banks initialized successfully",),
+        (status = 400, description = "Bank initialization failed"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "Auth"
+)]
+pub async fn initialize_banks(
+    State(state): State<Arc<AppState>>,
+) -> Result<StatusCode, (StatusCode, String)>  {
     let mut conn = state
         .db
         .get()
@@ -30,7 +44,7 @@ pub async fn initialize_banks(state: Arc<AppState>) -> Result<(), ApiError> {
     const MIN_BANKS: i64 = 10;
     if bank_count >= MIN_BANKS {
         info!("Banks table already populated with {} banks, skipping Paystack fetch", bank_count);
-        return Ok(());
+        return Ok(StatusCode::OK);
     }
 
     // Fetch from Paystack
@@ -62,7 +76,7 @@ pub async fn initialize_banks(state: Arc<AppState>) -> Result<(), ApiError> {
             .unwrap_or("Unknown Paystack error")
             .to_string();
         error!("Paystack banks fetch failed: {}", message);
-        return Err(ApiError::Payment(format!("Paystack banks fetch failed: {}", message)));
+        return Err(ApiError::Payment(format!("Paystack banks fetch failed: {}", message)).into());
     }
 
     let banks_data = body["data"].as_array().ok_or_else(|| {
@@ -104,7 +118,7 @@ pub async fn initialize_banks(state: Arc<AppState>) -> Result<(), ApiError> {
 
     if banks.is_empty() {
         error!("No valid banks fetched from Paystack");
-        return Err(ApiError::Payment("No valid banks fetched from Paystack".to_string()));
+        return Err(ApiError::Payment("No valid banks fetched from Paystack".to_string()).into());
     }
 
     // Insert banks into database with ON CONFLICT DO NOTHING
@@ -125,5 +139,5 @@ pub async fn initialize_banks(state: Arc<AppState>) -> Result<(), ApiError> {
         skipped,
         banks.len() - inserted_count
     );
-    Ok(())
+    Ok(StatusCode::OK)
 }

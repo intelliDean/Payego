@@ -10,3 +10,4 @@ pub mod paypal_capture;
 pub mod stripe_webhook;
 pub mod withdraw;
 pub mod all_banks;
+pub mod initialize_banks;
