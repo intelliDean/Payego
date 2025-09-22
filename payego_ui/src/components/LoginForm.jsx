@@ -13,9 +13,6 @@ function LoginForm() {
         setError(null);
         try {
 
-            // console.log("email: ", email);
-            // console.log("password: ", password);
-
             const response = await axios.post(
                 `${import.meta.env.VITE_API_URL}/api/login`,
                 { email, password },

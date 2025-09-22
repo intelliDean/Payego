@@ -58,7 +58,8 @@ services:
     ports:
       - "8081:8080"
     environment:
-      - DATABASE_URL=postgres://postgres:%40Tiptop2059!@db:5432/payego?sslmode=disable
+      - DATABASE_URL=postgresql://payego_user:RRXvbF1i8QKvvxIrVNfvzPzVDy7UNJgd@dpg-d388q2ggjchc73cs1pm0-a.oregon-postgres.render.com/payego?sslmode=disable
+      - DB_PASSWORD=RRXvbF1i8QKvvxIrVNfvzPzVDy7UNJgd
       - PAYSTACK_SECRET_KEY=sk_test_94204df9b0f6207ab992848f233e62da9ebe34fd
       - PAYSTACK_WEBHOOK_SECRET=sk_test_ebcc6429475f413bed7f180e5c579e0302801c15
       - JWT_SECRET=X7pL9qW3zT2rY8mF6vN4kJ2hB5cD8tR1xZ0wP3eQ9aU6yI5oM
@@ -68,7 +69,7 @@ services:
       - PAYPAL_SECRET=EKaoQe-vZ_yMVTQ7KLiHV9Dot-BpujBMKtxIUMYwtEXaQcj7TYj9F44Z8ItFESgRBQj3N3jb-Day1wMw
       - JWT_EXPIRATION_HOURS=72
       - RUST_LOG=info
-      - HOST=0.0.0.0
+      - HOST=https://payego.onrender.com
       - PORT=8080
       - CORS_ORIGINS=https://localhost:5173,https://localhost:3000
     depends_on:
