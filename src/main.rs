@@ -200,6 +200,8 @@ async fn main() -> Result<(), eyre::Error> {
         eyre::eyre!("Failed to create database pool: {}", e)
     })?;
 
+    info!("database pool: {:?}", pool);
+
     // Initialize AppState
     let state = Arc::new(AppState {
         db: pool,
@@ -259,6 +261,8 @@ async fn main() -> Result<(), eyre::Error> {
 
     // Start the server
     // let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
+
+    info!("About to run app");
 
     let addr = format!("{}:{}", host, port).parse::<SocketAddr>()?;
     let listener = TcpListener::bind(&addr).await?;
