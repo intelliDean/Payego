@@ -2,7 +2,7 @@ use axum::{extract::{State, Path}, Json, http::StatusCode};
 use serde::Serialize;
 use std::sync::Arc;
 use utoipa::ToSchema;
-use crate::models::user_models::AppState;
+use crate::models::models::AppState;
 use crate::error::ApiError;
 
 #[derive(Serialize, ToSchema)]

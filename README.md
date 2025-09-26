@@ -173,7 +173,7 @@ For support, please open an issue in the GitHub repository.
 
 - Rust Community
 - React Team
-- All contributors to this project
+- All future contributors to this project
 
 ## Built with love by: 
 Michael Dean

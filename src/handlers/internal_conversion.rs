@@ -16,7 +16,7 @@ use crate::{AppState, error::ApiError};
 use crate::config::security_config::Claims;
 use crate::handlers::user_wallets::Wallet;
 use crate::schema::{wallets, transactions};
-use crate::models::user_models::NewTransaction;
+use crate::models::models::NewTransaction;
 
 static SUPPORTED_CURRENCIES: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(

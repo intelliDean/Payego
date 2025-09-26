@@ -1,6 +1,6 @@
 use crate::config::security_config::create_token;
 use crate::error::ApiError;
-use crate::models::user_models::{AppState, LoginRequest, LoginResponse, User};
+use crate::models::models::{AppState, LoginRequest, LoginResponse, User};
 use axum::{Json, extract::State, http::StatusCode};
 use bcrypt::verify;
 use diesel::prelude::*;

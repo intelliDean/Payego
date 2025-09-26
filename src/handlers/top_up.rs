@@ -1,6 +1,6 @@
 use crate::config::security_config::Claims;
 use crate::error::ApiError;
-use crate::models::user_models::{AppState, NewTransaction, Wallet};
+use crate::models::models::{AppState, NewTransaction, Wallet};
 use axum::{Extension, Json, extract::State, http::StatusCode};
 use base64::{
     Engine as _, alphabet,

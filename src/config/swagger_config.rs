@@ -12,7 +12,7 @@ use crate::handlers::{
     internal_conversion::__path_convert_currency,
     resolve_account::__path_resolve_account
 };
-use crate::models::user_models::*;
+use crate::models::models::*;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 

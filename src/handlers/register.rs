@@ -1,5 +1,5 @@
 use crate::error::ApiError;
-use crate::models::user_models::{AppState, NewUser, NewWallet, RegisterRequest, RegisterResponse};
+use crate::models::models::{AppState, NewUser, NewWallet, RegisterRequest, RegisterResponse};
 use axum::response::IntoResponse;
 use axum::{Json, extract::State, http::StatusCode};
 use bcrypt::hash;

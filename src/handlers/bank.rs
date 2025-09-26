@@ -1,5 +1,5 @@
 use crate::config::security_config::Claims;
-use crate::models::user_models::NewBankAccount;
+use crate::models::models::NewBankAccount;
 use crate::schema::{bank_accounts, wallets};
 use crate::{error::ApiError, AppState};
 use axum::{

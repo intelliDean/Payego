@@ -1,5 +1,3 @@
-//
-//
 import React, { useState } from 'react';
 import { PayPalButtons } from '@paypal/react-paypal-js';
 import axios from 'axios';

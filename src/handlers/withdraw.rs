@@ -14,7 +14,7 @@ use utoipa::ToSchema;
 use crate::{AppState, error::ApiError};
 use crate::config::security_config::Claims;
 use crate::schema::{bank_accounts, transactions, wallets};
-use crate::models::user_models::{BankAccount, NewTransaction, Wallet};
+use crate::models::models::{BankAccount, NewTransaction, Wallet};
 
 #[derive(Deserialize, ToSchema)]
 pub struct WithdrawRequest {

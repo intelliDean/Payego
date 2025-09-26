@@ -1,5 +1,5 @@
 use crate::error::ApiError;
-use crate::models::user_models::{AppState};
+use crate::models::models::{AppState};
 use axum::{Json, extract::State, http::StatusCode};
 use diesel::prelude::*;
 use diesel::sql_types::Jsonb;

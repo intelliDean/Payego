@@ -11,7 +11,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 use crate::{AppState, error::ApiError};
 use crate::config::security_config::Claims;
-use crate::models::user_models::Bank;
+use crate::models::models::Bank;
 use crate::schema::banks;
 
 #[derive(Serialize, Deserialize, ToSchema)]

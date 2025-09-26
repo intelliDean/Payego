@@ -6,7 +6,7 @@ use axum::extract::State;
 use http::StatusCode;
 use tracing::{debug, error, info};
 use crate::error::ApiError;
-use crate::models::user_models::Bank;
+use crate::models::models::Bank;
 use crate::schema::banks;
 use crate::AppState;
 
