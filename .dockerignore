@@ -30,3 +30,5 @@
 /target
 LICENSE
 README.md
+
+docker-compose.yml
