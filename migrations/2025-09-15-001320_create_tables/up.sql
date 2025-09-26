@@ -33,7 +33,11 @@ CREATE TABLE transactions
     amount           BIGINT                   NOT NULL,
     transaction_type VARCHAR(50)              NOT NULL CHECK (transaction_type IN
                                                               ('topup_stripe', 'topup_paypal', 'internal_transfer_send',
-                                                               'internal_transfer_receive', 'paystack_payout')),
+                                                               'internal_transfer_receive', 'paystack_payout', 'currency_conversion')),
+    currency   VARCHAR(3)               NOT NULL CHECK (currency IN
+                                                        ('USD', 'NGN', 'GBP', 'EUR', 'CAD', 'AUD', 'JPY', 'CHF', 'CNY',
+                                                         'SEK', 'NZD', 'MXN', 'SGD', 'HKD', 'NOK', 'KRW', 'TRY', 'INR',
+                                                         'BRL', 'ZAR')),
     status           VARCHAR(50)              NOT NULL CHECK (status IN ('pending', 'completed', 'failed')),
     provider         VARCHAR(50) CHECK (provider IN ('stripe', 'paypal', 'paystack', 'internal', NULL)),
     description      TEXT,
@@ -51,6 +55,7 @@ CREATE TABLE bank_accounts
     bank_code               VARCHAR(10)              NOT NULL,
     account_number          VARCHAR(20)              NOT NULL,
     account_name            VARCHAR(255),
+    bank_name               VARCHAR(255),
     paystack_recipient_code VARCHAR(50),
     is_verified             BOOLEAN                  NOT NULL DEFAULT FALSE,
     created_at              TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,

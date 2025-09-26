@@ -138,10 +138,10 @@ use crate::config::{
     swagger_config::ApiDoc,
 };
 use crate::handlers::{
-    all_banks::all_banks, bank::add_bank_account, current_user::get_current_user, login::login,
-    paypal_capture::paypal_capture, paystack_webhook::paystack_webhook, register::register,
-    stripe_webhook::stripe_webhook, top_up::top_up, transfer_external::external_transfer,
-    transfer_internal::internal_transfer, withdraw::withdraw,
+    all_banks::all_banks, bank::add_bank_account, current_user::current_user_details, login::login,
+    paypal_capture::paypal_capture, paypal_order::get_paypal_order, paystack_webhook::paystack_webhook,
+    register::register, stripe_webhook::stripe_webhook, top_up::top_up,
+    transfer_external::external_transfer, transfer_internal::internal_transfer, withdraw::withdraw
 };
 use handlers::initialize_banks::initialize_banks;
 use crate::models::user_models::AppState;
@@ -153,6 +153,7 @@ use diesel::{
 use dotenvy::dotenv;
 use http::HeaderValue;
 use std::{env, net::SocketAddr, sync::Arc};
+use axum::extract::State;
 use error::ApiError;
 use tokio::{net::TcpListener, signal};
 use tower_http::cors::{Any, CorsLayer};
@@ -160,6 +161,10 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
+use crate::handlers::internal_conversion::convert_currency;
+use crate::handlers::resolve_account::resolve_account;
+use crate::handlers::user_bank_accounts::user_bank_accounts;
+use crate::handlers::user_wallets::get_wallets;
 use crate::logging::setup_logging;
 
 mod config;
@@ -180,8 +185,8 @@ async fn main() -> Result<(), eyre::Error> {
 
     // Load environment variables
     dotenv().ok();
-    // let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let db_url = "postgresql://payego_user:RRXvbF1i8QKvvxIrVNfvzPzVDy7UNJgd@dpg-d388q2ggjchc73cs1pm0-a.oregon-postgres.render.com/payego";
+    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    // let db_url = "postgresql://payego_user:RRXvbF1i8QKvvxIrVNfvzPzVDy7UNJgd@dpg-d388q2ggjchc73cs1pm0-a.oregon-postgres.render.com/payego";
 
     let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
@@ -211,7 +216,7 @@ async fn main() -> Result<(), eyre::Error> {
     });
 
     // Initialize banks (non-fatal failure)
-    // initialize_banks(state.clone()).await.unwrap();
+    initialize_banks(State(state.clone())).await.unwrap();
 
     // Setup CORS
     let cors = CorsLayer::new()
@@ -232,13 +237,19 @@ async fn main() -> Result<(), eyre::Error> {
         .route("/api/webhook/stripe", axum::routing::post(stripe_webhook))
         .route("/webhooks/paystack", axum::routing::post(paystack_webhook))
         .route("/api/bank/init", axum::routing::post(initialize_banks))
-        .route("/api/banks", axum::routing::get(all_banks));
+        .route("/api/banks", axum::routing::get(all_banks))
+        .route("/api/resolve_account", axum::routing::get(resolve_account))
+        ;
 
     // Protected routes (require JWT authentication)
     let protected_router = Router::new()
-        .route("/current_user", axum::routing::get(get_current_user))
+        .route("/api/current_user", axum::routing::get(current_user_details))
+        .route("/api/bank_accounts", axum::routing::get(user_bank_accounts))
+        .route("/api/wallets", axum::routing::get(get_wallets))
         .route("/api/top_up", axum::routing::post(top_up))
+        .route("/api/convert_currency", axum::routing::post(convert_currency))
         .route("/api/paypal/capture", axum::routing::post(paypal_capture))
+        // .route("/api/paypal/order/{order_id}", axum::routing::get(get_paypal_order))
         .route(
             "/api/transfer/internal",
             axum::routing::post(internal_transfer),

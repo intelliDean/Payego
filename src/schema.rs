@@ -10,6 +10,8 @@ diesel::table! {
         account_number -> Varchar,
         #[max_length = 255]
         account_name -> Nullable<Varchar>,
+        #[max_length = 255]
+        bank_name -> Nullable<Varchar>,
         #[max_length = 50]
         paystack_recipient_code -> Nullable<Varchar>,
         is_verified -> Bool,
@@ -39,6 +41,8 @@ diesel::table! {
         amount -> Int8,
         #[max_length = 50]
         transaction_type -> Varchar,
+        #[max_length = 3]
+        currency -> Varchar,
         #[max_length = 50]
         status -> Varchar,
         #[max_length = 50]

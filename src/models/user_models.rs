@@ -82,6 +82,7 @@ pub struct Transaction {
     pub recipient_id: Option<Uuid>,
     pub amount: i64, // BIGINT for cents, can be negative for debits
     pub transaction_type: String,
+    pub currency: String,
     pub status: String,
     pub provider: Option<String>,
     pub description: Option<String>,
@@ -98,6 +99,7 @@ pub struct NewTransaction {
     pub recipient_id: Option<Uuid>,
     pub amount: i64,
     pub transaction_type: String,
+    pub currency: String,
     pub status: String,
     pub provider: Option<String>,
     pub description: Option<String>,
@@ -115,6 +117,7 @@ pub struct BankAccount {
     pub bank_code: String,
     pub account_number: String,
     pub account_name: Option<String>,
+    pub bank_name: Option<String>,
     pub paystack_recipient_code: Option<String>,
     pub is_verified: bool,
     pub created_at: DateTime<Utc>,
@@ -129,6 +132,7 @@ pub struct NewBankAccount {
     pub bank_code: String,
     pub account_number: String,
     pub account_name: Option<String>,
+    pub bank_name: Option<String>,
     pub paystack_recipient_code: Option<String>,
     pub is_verified: bool,
 }

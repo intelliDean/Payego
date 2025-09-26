@@ -1,82 +1,7 @@
-// import React, { useState } from 'react';
-// import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-//
-// function StripePayment({ clientSecret, transactionId }) {
-//     const stripe = useStripe();
-//     const elements = useElements();
-//     const [error, setError] = useState(null);
-//     const [processing, setProcessing] = useState(false);
-//
-//     console.log('StripePayment clientSecret:', clientSecret);
-//     console.log('StripePayment transactionId:', transactionId);
-//
-//     const handleSubmit = async (event) => {
-//         event.preventDefault();
-//         setProcessing(true);
-//         setError(null);
-//
-//         if (!stripe || !elements) {
-//             setError('Stripe.js has not loaded');
-//             setProcessing(false);
-//             return;
-//         }
-//
-//         const result = await stripe.confirmCardPayment(clientSecret, {
-//             payment_method: {
-//                 card: elements.getElement(CardElement),
-//                 billing_details: {
-//                     name: 'Test User', // Replace with user data if available
-//                 },
-//             },
-//         });
-//
-//         console.log('confirmCardPayment result:', result);
-//
-//         if (result.error) {
-//             setError(result.error.message);
-//             setProcessing(false);
-//         } else if (result.paymentIntent.status === 'succeeded') {
-//             window.location.href = `/success?transaction_id=${transactionId}`;
-//         } else {
-//             setError(`Unexpected payment intent status: ${result.paymentIntent.status}`);
-//             setProcessing(false);
-//         }
-//     };
-//
-//     return (
-//         <form onSubmit={handleSubmit} style={{ marginTop: '20px' }}>
-//             <CardElement
-//                 options={{
-//                     style: {
-//                         base: {
-//                             fontSize: '16px',
-//                             color: '#424770',
-//                             '::placeholder': { color: '#aab7c4' },
-//                         },
-//                         invalid: { color: '#9e2146' },
-//                     },
-//                 }}
-//             />
-//             <button
-//                 type="submit"
-//                 disabled={processing || !stripe || !elements}
-//                 style={{ margin: '10px 0', padding: '10px', width: '100%' }}
-//             >
-//                 {processing ? 'Processing...' : 'Pay with Stripe'}
-//             </button>
-//             {error && <p style={{ color: 'red' }}>{error}</p>}
-//         </form>
-//     );
-// }
-//
-// export default StripePayment;
-
-
-
 import React, { useState } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
-function StripePayment({ clientSecret, transactionId }) {
+function StripePayment({ clientSecret, transactionId, currency }) {
     const stripe = useStripe();
     const elements = useElements();
     const [error, setError] = useState(null);
@@ -101,16 +26,16 @@ function StripePayment({ clientSecret, transactionId }) {
                 payment_method: {
                     card: cardElement,
                     billing_details: {
-                        name: 'Test User', //todo: will add the username here
+                        name: 'Test User', // TODO: Replace with actual user name from /current_user
                     },
                 },
+                // Removed currency parameter
             });
 
             if (result.error) {
                 setError(result.error.message);
             } else if (result.paymentIntent.status === 'succeeded') {
                 setSuccess(true);
-                // Redirect after a short delay to allow webhook to process
                 setTimeout(() => {
                     window.location.href = `/success?transaction_id=${transactionId}`;
                 }, 1000);
@@ -126,29 +51,35 @@ function StripePayment({ clientSecret, transactionId }) {
     };
 
     return (
-        <form onSubmit={handleSubmit} style={{ marginTop: '20px' }}>
-            <CardElement
-                options={{
-                    style: {
-                        base: {
-                            fontSize: '16px',
-                            color: '#424770',
-                            '::placeholder': { color: '#aab7c4' },
-                        },
-                        invalid: { color: '#9e2146' },
-                    },
-                }}
-            />
-            <button
-                type="submit"
-                disabled={!stripe || loading}
-                style={{ margin: '10px', padding: '10px', width: '100%' }}
-            >
-                {loading ? 'Processing...' : 'Pay with Stripe'}
-            </button>
-            {error && <p style={{ color: 'red' }}>{error}</p>}
-            {success && <p style={{ color: 'green' }}>Payment initiated, processing...</p>}
-        </form>
+        <div className="max-w-md mx-auto mt-6 p-6 bg-white rounded-lg shadow-md">
+            <h3 className="text-xl font-bold mb-4 text-center">Pay with Stripe ({currency})</h3>
+            <form onSubmit={handleSubmit}>
+                <div className="mb-4">
+                    <CardElement
+                        options={{
+                            style: {
+                                base: {
+                                    fontSize: '16px',
+                                    color: '#424770',
+                                    '::placeholder': { color: '#aab7c4' },
+                                },
+                                invalid: { color: '#9e2146' },
+                            },
+                        }}
+                        className="p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+                <button
+                    type="submit"
+                    disabled={!stripe || loading}
+                    className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 disabled:bg-blue-300"
+                >
+                    {loading ? 'Processing...' : `Pay with Stripe (${currency})`}
+                </button>
+                {error && <p className="text-red-500 mt-4 text-center">{error}</p>}
+                {success && <p className="text-green-500 mt-4 text-center">Payment initiated, processing...</p>}
+            </form>
+        </div>
     );
 }
 

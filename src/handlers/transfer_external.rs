@@ -47,13 +47,8 @@ pub async fn external_transfer(
         claims.sub, req.account_number, req.amount, req.currency
     );
 
-    // Validate input (account_number, bank_code)
-    let bank_code_re = Regex::new(r"^\d{3,5}$").unwrap();
+    // Validate input (account_number, bank_code)    
     let account_number_re = Regex::new(r"^\d{10}$").unwrap();
-    if !bank_code_re.is_match(&req.bank_code) {
-        error!("Invalid bank code: {}", req.bank_code);
-        return Err(ApiError::Payment("Bank code must be 3-5 digits".to_string()).into());
-    }
     if !account_number_re.is_match(&req.account_number) {
         error!("Invalid account number: {}", req.account_number);
         return Err(ApiError::Payment("Account number must be 10 digits".to_string()).into());
@@ -226,9 +221,10 @@ pub async fn external_transfer(
                 recipient_id: None,
                 amount: -amount_to_deduct,
                 transaction_type: "paystack_payout".to_string(),
+                currency: req.currency.to_uppercase(),
                 status: "pending".to_string(),
                 provider: Some("paystack".to_string()),
-                description: Some(format!("External transfer in {} to bank", req.currency)),
+                description: Some(format!("External transfer in {} to bank", &req.currency)),
                 reference,
                 // metadata: Some(Jsonb(json!({ "transfer_code": transfer_code, "exchange_rate": exchange_rate }))),
             })

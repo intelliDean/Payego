@@ -91,6 +91,8 @@ pub async fn top_up(
     let transaction_reference = Uuid::new_v4();
     let amount_cents = (req.amount * 100.0).round() as i64;
 
+    info!("Currency: {}", req.currency.to_uppercase());
+
     conn.transaction(|conn| {
         diesel::insert_into(crate::schema::transactions::table)
             .values(NewTransaction {
@@ -98,9 +100,10 @@ pub async fn top_up(
                 recipient_id: None,
                 amount: amount_cents,
                 transaction_type: format!("topup_{}", req.provider),
+                currency: req.currency.to_uppercase(),
                 status: "pending".to_string(),
                 provider: Some(req.provider.clone()),
-                description: Some(format!("{} top-up in {}", req.provider, req.currency)),
+                description: Some(format!("{} top-up in {}", req.provider, &req.currency)),
                 reference: transaction_reference,
             })
             .execute(conn)?;
@@ -115,6 +118,8 @@ pub async fn top_up(
     let client = Client::new();
     let payment_id = match req.provider.as_str() {
         "stripe" => {
+            info!("Initiating {} top up with {}{}", req.provider, &req.currency, req.amount);
+
             let stripe_key = env::var("STRIPE_SECRET_KEY").map_err(|e| {
                 error!("Stripe key not set: {}", e);
                 ApiError::Payment("Stripe key not set".to_string())
@@ -158,6 +163,8 @@ pub async fn top_up(
                 .to_string()
         }
         "paypal" => {
+            info!("Initiating {} top up with {}{}", req.provider, req.currency, req.amount);
+
             let paypal_client_id = std::env::var("PAYPAL_CLIENT_ID").map_err(|e| {
                 error!("PayPal client ID not set: {}", e);
                 ApiError::Payment("PayPal client ID not set".to_string())

@@ -28,18 +28,11 @@ pub struct BankListResponse {
         (status = 401, description = "Unauthorized"),
         (status = 500, description = "Internal server error")
     ),
-    // security(("bearerAuth" = [])),
     tag = "Banks"
 )]
 pub async fn all_banks(
-    State(state): State<Arc<AppState>>,
-    Extension(claims): Extension<Claims>,
+    State(state): State<Arc<AppState>>
 ) -> Result<Json<BankListResponse>, (StatusCode, String)> {
-    let user_id = Uuid::parse_str(&claims.sub).map_err(|e| {
-        error!("Invalid user ID: {}", e);
-        ApiError::Auth("Invalid user ID".to_string())
-    })?;
-    info!("Fetching banks for user_id={}", user_id);
 
     let mut conn = state.db.get().map_err(|e| {
         error!("Database connection failed: {}", e);
@@ -48,7 +41,7 @@ pub async fn all_banks(
 
     // Fetch banks from database
     let banks: Vec<Bank> = banks::table
-        .filter(banks::is_active.eq(true)) // Only active banks
+        .filter(banks::country.eq("Nigeria")) // For now, we are only dealing with Nigerian Banks
         .load::<Bank>(&mut conn)
         .map_err(|e| {
             error!("Failed to load banks from database: {}", e);
@@ -60,6 +53,6 @@ pub async fn all_banks(
         return Err(ApiError::Auth("No banks found in database".to_string()).into());
     }
 
-    info!("Returning {} banks from database for user_id={}", banks.len(), user_id);
+    info!("Returning {} banks from database", banks.len());
     Ok(Json(BankListResponse { banks }))
 }

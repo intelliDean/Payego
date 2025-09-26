@@ -1,8 +1,6 @@
 use crate::AppState;
 use crate::error::ApiError;
-// use crate::models::user_models::Transaction;
-use crate::schema::transactions;
-use crate::schema::wallets;
+use crate::schema::{transactions, wallets};
 use axum::{
     extract::{Json, State},
     http::{HeaderMap, StatusCode},
@@ -11,11 +9,10 @@ use diesel::prelude::*;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tracing::error;
+use tracing::{error, info};
 use utoipa::ToSchema;
 use uuid::Uuid;
-use crate::schema::transactions::{amount, description, reference, status};
-use crate::schema::wallets::user_id;
+
 
 #[derive(Queryable, Selectable, Debug)]
 #[diesel(table_name = transactions)]
@@ -23,6 +20,7 @@ pub struct Transaction {
     pub reference: uuid::Uuid,
     pub user_id: uuid::Uuid,
     pub amount: i64,
+    pub currency: String,
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -57,8 +55,21 @@ pub async fn paypal_capture(
     Json(payload): Json<CaptureRequest>,
 ) -> Result<Json<CaptureResponse>, (StatusCode, String)> {
     let client = Client::new();
-    let paypal_client_id = std::env::var("PAYPAL_CLIENT_ID").expect("PAYPAL_CLIENT_ID must be set");
-    let paypal_secret = std::env::var("PAYPAL_SECRET").expect("PAYPAL_SECRET must be set");
+    let paypal_client_id = std::env::var("PAYPAL_CLIENT_ID")
+        .map_err(|e| {
+            error!("PayPal client ID not set: {}", e);
+            ApiError::Payment("PAYPAL_CLIENT_ID not set".to_string())
+        })?;
+    let paypal_secret = std::env::var("PAYPAL_SECRET")
+        .map_err(|e| {
+            error!("PayPal secret not set: {}", e);
+            ApiError::Payment("PAYPAL_SECRET not set".to_string())
+        })?;
+
+    info!(
+        "PayPal Capture initiation with ORDER ID: {}, TRANSACTION ID: {}",
+        &payload.order_id, &payload.transaction_id
+    );
 
     // Get PayPal access token
     let token_response = client
@@ -67,15 +78,26 @@ pub async fn paypal_capture(
         .form(&[("grant_type", "client_credentials")])
         .send()
         .await
-        .map_err(|e| ApiError::Payment(format!("Failed to get PayPal token: {}", e)))?;
+        .map_err(|e| {
+            error!("Failed to get PayPal token: {}", e);
+            ApiError::Payment(format!("Failed to get PayPal token: {}", e))
+        })?;
+
+    info!("Token response status: {}", token_response.status());
 
     let token: serde_json::Value = token_response
         .json()
         .await
-        .map_err(|e| ApiError::Payment(format!("Failed to parse PayPal token: {}", e)))?;
+        .map_err(|e| {
+            error!("Failed to parse PayPal token: {}", e);
+            ApiError::Payment(format!("Failed to parse PayPal token: {}", e))
+        })?;
     let access_token = token["access_token"]
         .as_str()
-        .ok_or(ApiError::Payment("Missing access_token".to_string()))?;
+        .ok_or_else(|| {
+            error!("Missing access_token in PayPal response");
+            ApiError::Payment("Missing access_token".to_string())
+        })?;
 
     // Capture the order
     let capture_response = client
@@ -87,21 +109,65 @@ pub async fn paypal_capture(
         .header("Content-Type", "application/json")
         .send()
         .await
-        .map_err(|e| ApiError::Payment(format!("PayPal capture failed: {}", e)))?;
+        .map_err(|e| {
+            error!("PayPal capture failed: {}", e);
+            ApiError::Payment(format!("PayPal capture failed: {}", e))
+        })?;
+
+    info!("Capture response status: {}", capture_response.status());
 
     let capture_result: serde_json::Value = capture_response
         .json()
         .await
-        .map_err(|e| ApiError::Payment(format!("Failed to parse capture response: {}", e)))?;
+        .map_err(|e| {
+            error!("Failed to parse capture response: {}", e);
+            ApiError::Payment(format!("Failed to parse capture response: {}", e))
+        })?;
+
+    info!("Capture result: {}", capture_result);
 
     let conn = &mut state
         .db
         .get()
-        .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
+        .map_err(|e| {
+            error!("Database connection error: {}", e);
+            ApiError::DatabaseConnection(e.to_string())
+        })?;
+
     let trans_id = Uuid::parse_str(&payload.transaction_id).map_err(|e| {
         error!("Invalid transaction ID: {}", e);
         ApiError::Auth("Invalid transaction ID".to_string())
     })?;
+
+    // Fetch transaction to validate currency and get details
+    let transaction = transactions::table
+        .filter(transactions::reference.eq(trans_id))
+        .select(Transaction::as_select())
+        .first(conn)
+        .map_err(|e| {
+            error!("Failed to fetch transaction: {}", e);
+            ApiError::Payment("Transaction not found".to_string())
+        })?;
+
+    // Validate currency
+    let paypal_currency = capture_result["purchase_units"][0]["payments"]["captures"][0]["amount"]["currency_code"]
+        .as_str()
+        .ok_or_else(|| {
+            error!("Missing currency in PayPal capture response");
+            ApiError::Payment("Missing currency in capture response".to_string())
+        })?
+        .to_uppercase();
+
+    if transaction.currency != paypal_currency {
+        error!(
+            "Currency mismatch: transaction currency {}, PayPal currency {}",
+            transaction.currency, paypal_currency
+        );
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Currency mismatch".to_string(),
+        ));
+    }
 
     let capture_status = capture_result["status"]
         .as_str()
@@ -110,37 +176,41 @@ pub async fn paypal_capture(
 
     match capture_status.as_str() {
         "COMPLETED" => {
-            // Update transactions table
-            let transaction = diesel::update(transactions::table)
-                .filter(transactions::reference.eq(trans_id))
-                .set((
-                    transactions::status.eq("completed"),
-                    transactions::description.eq("PayPal top-up completed"),
-                ))
-                .returning(Transaction::as_select())
-                .get_result(conn)
-                .map_err(|e| {
-                    error!("Transaction update failed: {}", e);
-                    if e.to_string().contains("not found") {
+            info!("Initiating Complete Transaction");
+            // Update transactions and wallets atomically
+            conn.transaction(|conn| {
+                // Update transactions table
+                let updated_transaction = diesel::update(transactions::table)
+                    .filter(transactions::reference.eq(trans_id))
+                    .set((
+                        transactions::status.eq("completed"),
+                        transactions::description.eq("PayPal top-up completed"),
+                    ))
+                    .returning(Transaction::as_select())
+                    .get_result(conn)
+                    .map_err(|e| {
+                        error!("Transaction update failed: {}", e);
                         ApiError::Payment("Transaction not found".to_string())
-                    } else {
+                    })?;
+
+                // Update wallets table
+                diesel::insert_into(wallets::table)
+                    .values((
+                        wallets::user_id.eq(updated_transaction.user_id),
+                        wallets::balance.eq(updated_transaction.amount),
+                        wallets::currency.eq(updated_transaction.currency),
+                    ))
+                    .on_conflict((wallets::user_id, wallets::currency)) // Fixed to match schema
+                    .do_update()
+                    .set(wallets::balance.eq(wallets::balance + updated_transaction.amount))
+                    .execute(conn)
+                    .map_err(|e| {
+                        error!("Wallet update failed: {}", e);
                         ApiError::Database(e)
-                    }
-                })?;
+                    })?;
 
-
-            // Update wallets table
-            diesel::insert_into(wallets::table)
-                .values((
-                    wallets::user_id.eq(transaction.user_id),
-                    wallets::balance.eq(transaction.amount),
-                    wallets::currency.eq("USD"),
-                ))
-                .on_conflict(wallets::user_id)
-                .do_update()
-                .set(wallets::balance.eq(wallets::balance + transaction.amount))
-                .execute(conn)
-                .map_err(|e| ApiError::Database(e))?;
+                Ok::<(), ApiError>(())
+            })?;
 
             Ok(Json(CaptureResponse {
                 status: "completed".to_string(),
@@ -160,11 +230,13 @@ pub async fn paypal_capture(
                 .filter(transactions::reference.eq(trans_id))
                 .set((
                     transactions::status.eq("failed"),
-                    transactions::description
-                        .eq(format!("PayPal top-up failed: {}", error_message)),
+                    transactions::description.eq(format!("PayPal top-up failed: {}", error_message)),
                 ))
                 .execute(conn)
-                .map_err(|e| ApiError::Database(e))?;
+                .map_err(|e| {
+                    error!("Transaction update failed: {}", e);
+                    ApiError::Database(e)
+                })?;
 
             Ok(Json(CaptureResponse {
                 status: "failed".to_string(),
@@ -181,7 +253,10 @@ pub async fn paypal_capture(
                     transactions::description.eq("PayPal top-up pending"),
                 ))
                 .execute(conn)
-                .map_err(|e| ApiError::Database(e))?;
+                .map_err(|e| {
+                    error!("Transaction update failed: {}", e);
+                    ApiError::Database(e)
+                })?;
 
             Ok(Json(CaptureResponse {
                 status: "pending".to_string(),
@@ -195,11 +270,13 @@ pub async fn paypal_capture(
                 .filter(transactions::reference.eq(trans_id))
                 .set((
                     transactions::status.eq("failed"),
-                    transactions::description
-                        .eq(format!("PayPal top-up failed: {}", error_message)),
+                    transactions::description.eq(format!("PayPal top-up failed: {}", error_message)),
                 ))
                 .execute(conn)
-                .map_err(|e| ApiError::Database(e))?;
+                .map_err(|e| {
+                    error!("Transaction update failed: {}", e);
+                    ApiError::Database(e)
+                })?;
 
             Err(ApiError::Payment(error_message).into())
         }
