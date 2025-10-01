@@ -36,3 +36,6 @@ base64ct = "1.8.0"
 openssl = { version = "0.10", features = ["vendored"] }  # For static linking
 
 reqwest = { version = "0.12.23", features = ["json", "rustls-tls"] }
+rand = "0.7.3"
+lettre = "0.11.18"
+url = "2.5.7"

@@ -7,3 +7,7 @@ export default defineConfig({
     port: 5173, // Default Vite port, change if needed
   },
 });
+
+
+
+// git push --set-upstream origin main   

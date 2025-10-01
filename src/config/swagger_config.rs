@@ -10,7 +10,9 @@ use crate::handlers::{
     user_wallets::__path_get_wallets,
     user_bank_accounts::__path_user_bank_accounts,
     internal_conversion::__path_convert_currency,
-    resolve_account::__path_resolve_account
+    resolve_account::__path_resolve_account,
+    get_transaction::__path_get_transactions,
+    transaction::__path_get_user_transaction
 };
 use crate::models::models::*;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
@@ -23,7 +25,8 @@ use utoipa::{Modify, OpenApi};
         stripe_webhook, internal_transfer, external_transfer, 
         add_bank_account, withdraw, all_banks, paystack_webhook,
         initialize_banks, get_paypal_order, get_wallets,
-        user_bank_accounts, convert_currency, resolve_account
+        user_bank_accounts, convert_currency, resolve_account,
+        get_transactions, get_user_transaction
     ),
     components(schemas(RegisterRequest)),
     modifiers(&SecurityAddon),

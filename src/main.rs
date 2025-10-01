@@ -2,43 +2,46 @@ use crate::config::{
     security_config::{auth_middleware, JWTSecret},
     swagger_config::ApiDoc,
 };
+use crate::handlers::internal_conversion::convert_currency;
+use crate::handlers::resolve_account::resolve_account;
+use crate::handlers::user_bank_accounts::user_bank_accounts;
+use crate::handlers::user_wallets::get_wallets;
 use crate::handlers::{
-    all_banks::all_banks, bank::add_bank_account, current_user::current_user_details, login::login,
-    paypal_capture::paypal_capture, paypal_order::get_paypal_order, paystack_webhook::paystack_webhook,
-    register::register, stripe_webhook::stripe_webhook, top_up::top_up,
-    transfer_external::external_transfer, transfer_internal::internal_transfer, withdraw::withdraw
+    all_banks::all_banks, bank::add_bank_account, current_user::current_user_details,
+    get_transaction::get_transactions, login::login, paypal_capture::paypal_capture,
+    paypal_order::get_paypal_order, paystack_webhook::paystack_webhook, register::register,
+    stripe_webhook::stripe_webhook, top_up::top_up, transfer_external::external_transfer,
+    transfer_internal::internal_transfer, withdraw::withdraw,
 };
-use handlers::initialize_banks::initialize_banks;
+use crate::logging::setup_logging;
 use crate::models::models::AppState;
+use axum::extract::State;
 use axum::{middleware, Router};
 use diesel::{
     prelude::*,
     r2d2::{ConnectionManager, Pool},
 };
 use dotenvy::dotenv;
+use error::ApiError;
+use handlers::initialize_banks::initialize_banks;
 use http::HeaderValue;
 use std::{env, net::SocketAddr, sync::Arc};
-use axum::extract::State;
-use error::ApiError;
 use tokio::{net::TcpListener, signal};
 use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
+use url::Url;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-use crate::handlers::internal_conversion::convert_currency;
-use crate::handlers::resolve_account::resolve_account;
-use crate::handlers::user_bank_accounts::user_bank_accounts;
-use crate::handlers::user_wallets::get_wallets;
-use crate::logging::setup_logging;
+use crate::handlers::transaction::get_user_transaction;
 
 mod config;
 mod error;
 mod handlers;
+mod logging;
 mod models;
 mod schema;
 mod utility;
-mod logging;
 
 // Application entry point
 #[tokio::main]
@@ -72,12 +75,20 @@ async fn main() -> Result<(), eyre::Error> {
         eyre::eyre!("Failed to create database pool: {}", e)
     })?;
 
-    info!("database pool: {:?}", pool);
+    // info!("database pool: {:?}", pool);
+
 
     // Initialize AppState
     let state = Arc::new(AppState {
         db: pool,
         jwt_secret: JWTSecret::new().jwt_secret,
+        stripe_secret_key: env::var("STRIPE_SECRET_KEY")
+            .map_err(|e| {
+                error!("Stripe key not set: {}", e);
+                ApiError::Payment("Stripe key not set".to_string())
+            })
+            .unwrap(),
+        app_url: env::var("HOST").unwrap_or_else(|_| "http://localhost:8080".to_string())
     });
 
     // Initialize banks (non-fatal failure)
@@ -103,16 +114,23 @@ async fn main() -> Result<(), eyre::Error> {
         .route("/webhooks/paystack", axum::routing::post(paystack_webhook))
         .route("/api/bank/init", axum::routing::post(initialize_banks))
         .route("/api/banks", axum::routing::get(all_banks))
-        .route("/api/resolve_account", axum::routing::get(resolve_account))
-        ;
+        .route("/api/resolve_account", axum::routing::get(resolve_account));
 
     // Protected routes (require JWT authentication)
     let protected_router = Router::new()
-        .route("/api/current_user", axum::routing::get(current_user_details))
+        .route(
+            "/api/current_user",
+            axum::routing::get(current_user_details),
+        )
         .route("/api/bank_accounts", axum::routing::get(user_bank_accounts))
         .route("/api/wallets", axum::routing::get(get_wallets))
+        .route("/api/transactions", axum::routing::get(get_transactions))
+        .route("/api/get_transactions", axum::routing::get(get_user_transaction))
         .route("/api/top_up", axum::routing::post(top_up))
-        .route("/api/convert_currency", axum::routing::post(convert_currency))
+        .route(
+            "/api/convert_currency",
+            axum::routing::post(convert_currency),
+        )
         .route("/api/paypal/capture", axum::routing::post(paypal_capture))
         .route(
             "/api/transfer/internal",
@@ -140,7 +158,8 @@ async fn main() -> Result<(), eyre::Error> {
     // let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
 
     info!("About to run app");
-
+    
+    //
     let addr = format!("{}:{}", host, port).parse::<SocketAddr>()?;
     let listener = TcpListener::bind(&addr).await?;
     info!("Server running on http://{}", addr);
@@ -182,4 +201,3 @@ async fn shutdown_signal() {
         _ = terminate => info!("Received SIGTERM, shutting down"),
     }
 }
-

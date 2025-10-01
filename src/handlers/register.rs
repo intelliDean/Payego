@@ -9,6 +9,7 @@ use std::sync::Arc;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
+use crate::config::security_config::create_token;
 use crate::error::ApiError::Bcrypt;
 
 #[utoipa::path(
@@ -62,6 +63,20 @@ pub async fn register(
                 return Err(DieselError::RollbackTransaction);
             }
 
+            if let Some(ref username) = username {
+                let username_exists: bool = crate::schema::users::table
+                    .filter(crate::schema::users::username.eq(username))
+                    .select(diesel::dsl::count_star())
+                    .first::<i64>(conn)
+                    .map(|count| count > 0)
+                    .map_err(ApiError::Database)
+                    .unwrap_or(false);
+
+                if username_exists {
+                    return Err(DieselError::RollbackTransaction);
+                }
+            }
+
             // Insert user and return the generated ID
             let usr_id: Uuid = diesel::insert_into(crate::schema::users::table)
                 .values(NewUser {
@@ -84,21 +99,41 @@ pub async fn register(
             Ok::<Uuid, DieselError>(usr_id)
         })
         .map_err(|e| match e {
-            DieselError::RollbackTransaction => (
-                StatusCode::BAD_REQUEST,
-                "Email or username already exists".to_string(),
-            ),
+            DieselError::RollbackTransaction => {
+                let email_exists: bool = crate::schema::users::table
+                    .filter(crate::schema::users::email.eq(&email))
+                    .select(diesel::dsl::count_star())
+                    .first::<i64>(conn)
+                    .map(|count| count > 0)
+                    .unwrap_or(false);
+
+                if email_exists {
+                    (StatusCode::BAD_REQUEST, "Email already exists".to_string())
+                } else {
+                    (StatusCode::BAD_REQUEST, "Username already exists".to_string())
+                }
+            }
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Database error: {}", e),
             ),
         })?;
 
+    // Generate JWT token with proper error handling
+    let token = create_token(&state, &user_id.to_string())?;
+
+    tracing::info!("User registered: email={}", email);
+
     Ok((
         StatusCode::CREATED,
         Json(RegisterResponse {
-            message: "User registered successfully".to_string(),
-            username,
+            token,
+            user_email: email
         }),
     ))
 }
+
+//============
+
+
+

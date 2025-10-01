@@ -10,8 +10,14 @@ function PayPalPayment({ paymentId, transactionId, currency }) {
     console.log('PayPal transactionId:', transactionId);
 
     return (
-        <div style={{ marginTop: '20px' }}>
-            <h3 className="text-xl font-bold mb-4 text-center">Pay with PayPal ({currency})</h3>
+        <div className="mt-6">
+            <div className="text-center mb-6">
+                <div className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <span className="text-white font-bold">PP</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Pay with PayPal</h3>
+                <p className="text-gray-600">Secure payment processing • {currency}</p>
+            </div>
             <PayPalButtons
                 createOrder={() => paymentId}
                 onApprove={async (data, actions) => {
@@ -54,8 +60,16 @@ function PayPalPayment({ paymentId, transactionId, currency }) {
                 style={{ layout: 'vertical' }}
                 disabled={loading}
             />
-            {error && <p style={{ color: 'red' }}>{error}</p>}
-            {loading && <p>Processing PayPal payment...</p>}
+            {error && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-red-600 text-center text-sm">{error}</p>
+                </div>
+            )}
+            {loading && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-blue-600 text-center text-sm">Processing PayPal payment...</p>
+                </div>
+            )}
         </div>
     );
 }

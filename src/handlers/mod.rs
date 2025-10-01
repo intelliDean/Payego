@@ -16,3 +16,7 @@ pub mod user_wallets;
 pub mod user_bank_accounts;
 pub mod internal_conversion;
 pub mod resolve_account;
+pub mod send_verification;
+pub mod social_login;
+pub mod get_transaction;
+pub mod transaction;

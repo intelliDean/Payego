@@ -142,6 +142,8 @@ type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 pub struct AppState {
     pub db: DbPool,
     pub jwt_secret: String,
+    pub stripe_secret_key: String,
+    pub app_url: String
 }
 
 #[derive(Serialize, ToSchema, Debug)]
@@ -166,8 +168,8 @@ pub struct RegisterRequest {
 
 #[derive(Serialize, ToSchema)]
 pub struct RegisterResponse {
-    pub message: String,
-    pub username: Option<String>,
+    pub(crate) token: String,
+    pub(crate) user_email: String,
 }
 
 #[derive(Deserialize, ToSchema, Validate)]

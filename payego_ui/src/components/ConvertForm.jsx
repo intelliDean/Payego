@@ -95,18 +95,27 @@ function ConvertForm() {
     };
 
     return (
-        <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
-            <h2 className="text-2xl font-bold mb-6 text-center">Convert Currency</h2>
+        <div className="max-w-md mx-auto mt-10 p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+            <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <span className="text-white text-2xl">🔄</span>
+                </div>
+                <h2 className="text-3xl font-bold text-gray-800 mb-2">Convert Currency</h2>
+                <p className="text-gray-600">Exchange between different currencies</p>
+            </div>
+            
             {fetching ? (
-                <p className="text-center">Loading...</p>
+                <div className="flex justify-center items-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+                </div>
             ) : (
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">
-                        <label className="block text-gray-700">From Currency</label>
+                        <label className="block text-gray-700 font-medium mb-2">From Currency</label>
                         <select
                             value={fromCurrency}
                             onChange={(e) => setFromCurrency(e.target.value)}
-                            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
                             required
                         >
                             <option value="" disabled>Select from currency</option>
@@ -118,11 +127,11 @@ function ConvertForm() {
                         </select>
                     </div>
                     <div className="mb-4">
-                        <label className="block text-gray-700">To Currency</label>
+                        <label className="block text-gray-700 font-medium mb-2">To Currency</label>
                         <select
                             value={toCurrency}
                             onChange={(e) => setToCurrency(e.target.value)}
-                            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
                             required
                         >
                             <option value="" disabled>Select to currency</option>
@@ -134,7 +143,7 @@ function ConvertForm() {
                         </select>
                     </div>
                     <div className="mb-4">
-                        <label className="block text-gray-700">Amount</label>
+                        <label className="block text-gray-700 font-medium mb-2">Amount</label>
                         <input
                             type="number"
                             value={amount}
@@ -142,18 +151,23 @@ function ConvertForm() {
                             min="1"
                             max="10000"
                             step="0.01"
-                            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
+                            placeholder="Enter amount to convert"
                             required
                         />
                     </div>
                     <button
                         type="submit"
                         disabled={loading || fetching || wallets.length === 0}
-                        className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 disabled:bg-blue-300"
+                        className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white p-3 rounded-lg hover:from-orange-600 hover:to-red-600 disabled:from-gray-400 disabled:to-gray-400 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                     >
                         {loading ? 'Processing...' : 'Convert'}
                     </button>
-                    {error && <p className="text-red-500 mt-4 text-center">{error}</p>}
+                    {error && (
+                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="text-red-600 text-center text-sm">{error}</p>
+                        </div>
+                    )}
                 </form>
             )}
         </div>

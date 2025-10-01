@@ -51,33 +51,49 @@ function StripePayment({ clientSecret, transactionId, currency }) {
     };
 
     return (
-        <div className="max-w-md mx-auto mt-6 p-6 bg-white rounded-lg shadow-md">
-            <h3 className="text-xl font-bold mb-4 text-center">Pay with Stripe ({currency})</h3>
+        <div className="mt-6">
+            <div className="text-center mb-6">
+                <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <span className="text-white font-bold">💳</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Pay with Stripe</h3>
+                <p className="text-gray-600">Secure payment processing • {currency}</p>
+            </div>
             <form onSubmit={handleSubmit}>
-                <div className="mb-4">
+                <div className="mb-6">
                     <CardElement
                         options={{
                             style: {
                                 base: {
-                                    fontSize: '16px',
+                                    fontSize: '18px',
                                     color: '#424770',
+                                    fontFamily: 'system-ui, sans-serif',
                                     '::placeholder': { color: '#aab7c4' },
+                                    padding: '12px',
                                 },
                                 invalid: { color: '#9e2146' },
                             },
                         }}
-                        className="p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                     />
                 </div>
                 <button
                     type="submit"
                     disabled={!stripe || loading}
-                    className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 disabled:bg-blue-300"
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
                     {loading ? 'Processing...' : `Pay with Stripe (${currency})`}
                 </button>
-                {error && <p className="text-red-500 mt-4 text-center">{error}</p>}
-                {success && <p className="text-green-500 mt-4 text-center">Payment initiated, processing...</p>}
+                {error && (
+                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-red-600 text-center text-sm">{error}</p>
+                    </div>
+                )}
+                {success && (
+                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-green-600 text-center text-sm">Payment initiated, processing...</p>
+                    </div>
+                )}
             </form>
         </div>
     );
