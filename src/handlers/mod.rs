@@ -20,3 +20,4 @@ pub mod send_verification;
 pub mod social_login;
 pub mod get_transaction;
 pub mod transaction;
+pub mod logout;

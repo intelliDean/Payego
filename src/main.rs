@@ -33,7 +33,12 @@ use tracing_subscriber::EnvFilter;
 use url::Url;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
+use crate::handlers::logout::logout;
 use crate::handlers::transaction::get_user_transaction;
+use chrono::Utc;
+use diesel::prelude::*;
+use tokio::time::{interval, Duration};
+
 
 mod config;
 mod error;
@@ -88,11 +93,13 @@ async fn main() -> Result<(), eyre::Error> {
                 ApiError::Payment("Stripe key not set".to_string())
             })
             .unwrap(),
-        app_url: env::var("HOST").unwrap_or_else(|_| "http://localhost:8080".to_string())
+        app_url: env::var("APP_URL").unwrap_or_else(|_| "http://localhost:8080".to_string())
     });
 
     // Initialize banks (non-fatal failure)
     initialize_banks(State(state.clone())).await.unwrap();
+
+    tokio::spawn(cleanup_expired_tokens(state.clone()));
 
     // Setup CORS
     let cors = CorsLayer::new()
@@ -125,8 +132,9 @@ async fn main() -> Result<(), eyre::Error> {
         .route("/api/bank_accounts", axum::routing::get(user_bank_accounts))
         .route("/api/wallets", axum::routing::get(get_wallets))
         .route("/api/transactions", axum::routing::get(get_transactions))
-        .route("/api/get_transactions", axum::routing::get(get_user_transaction))
+        .route("/api/transactions/{transaction_id}", axum::routing::get(get_user_transaction))
         .route("/api/top_up", axum::routing::post(top_up))
+        .route("/api/logout", axum::routing::post(logout))
         .route(
             "/api/convert_currency",
             axum::routing::post(convert_currency),
@@ -158,7 +166,9 @@ async fn main() -> Result<(), eyre::Error> {
     // let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
 
     info!("About to run app");
-    
+
+
+
     //
     let addr = format!("{}:{}", host, port).parse::<SocketAddr>()?;
     let listener = TcpListener::bind(&addr).await?;
@@ -201,3 +211,37 @@ async fn shutdown_signal() {
         _ = terminate => info!("Received SIGTERM, shutting down"),
     }
 }
+
+
+
+
+async fn cleanup_expired_tokens(state: Arc<AppState>) {
+    let mut interval = interval(Duration::from_secs(24 * 60 * 60)); // Run daily
+    loop {
+        interval.tick().await;
+        let mut conn = match state.db.get() {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("Failed to get DB connection for cleanup: {}", e);
+                continue;
+            }
+        };
+        if let Err(e) = diesel::delete(
+            crate::schema::blacklisted_tokens::table
+                .filter(crate::schema::blacklisted_tokens::expires_at.lt(Utc::now())),
+        )
+            .execute(&mut conn)
+        {
+            error!("Failed to clean up expired tokens: {}", e);
+        } else {
+            info!("Cleaned up expired blacklisted tokens");
+        }
+    }
+}
+
+// In main.rs or startup:
+
+
+
+//card: 4137354633721211
+//exp: 10/2028

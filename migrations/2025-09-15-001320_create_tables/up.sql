@@ -33,11 +33,14 @@ CREATE TABLE transactions
     amount           BIGINT                   NOT NULL,
     transaction_type VARCHAR(50)              NOT NULL CHECK (transaction_type IN
                                                               ('topup_stripe', 'topup_paypal', 'internal_transfer_send',
-                                                               'internal_transfer_receive', 'paystack_payout', 'currency_conversion')),
-    currency   VARCHAR(3)               NOT NULL CHECK (currency IN
-                                                        ('USD', 'NGN', 'GBP', 'EUR', 'CAD', 'AUD', 'JPY', 'CHF', 'CNY',
-                                                         'SEK', 'NZD', 'MXN', 'SGD', 'HKD', 'NOK', 'KRW', 'TRY', 'INR',
-                                                         'BRL', 'ZAR')),
+                                                               'internal_transfer_receive', 'paystack_payout',
+                                                               'currency_conversion')),
+    currency         VARCHAR(3)               NOT NULL CHECK (currency IN
+                                                              ('USD', 'NGN', 'GBP', 'EUR', 'CAD', 'AUD', 'JPY', 'CHF',
+                                                               'CNY',
+                                                               'SEK', 'NZD', 'MXN', 'SGD', 'HKD', 'NOK', 'KRW', 'TRY',
+                                                               'INR',
+                                                               'BRL', 'ZAR')),
     status           VARCHAR(50)              NOT NULL CHECK (status IN ('pending', 'completed', 'failed')),
     provider         VARCHAR(50) CHECK (provider IN ('stripe', 'paypal', 'paystack', 'internal', NULL)),
     description      TEXT,
@@ -73,11 +76,22 @@ CREATE TABLE banks
     is_active     BOOLEAN
 );
 
+CREATE TABLE blacklisted_tokens
+(
+    token      VARCHAR     NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (token)
+);
+
+
+
 -- Create indexes
 CREATE INDEX idx_transactions_user_id ON transactions (user_id);
 CREATE INDEX idx_transactions_recipient_id ON transactions (recipient_id);
 CREATE INDEX idx_transactions_reference ON transactions (reference);
 CREATE INDEX idx_bank_accounts_user_id ON bank_accounts (user_id);
+CREATE INDEX idx_blacklisted_tokens_expires_at ON blacklisted_tokens (expires_at);
 
 -- Create function to update updated_at column
 CREATE OR REPLACE FUNCTION update_updated_at_column()

@@ -49,7 +49,7 @@ pub struct TransactionRequest {
 
 #[utoipa::path(
     get,
-    path = "/api/get_transactions",
+    path = "/api/transactions/{transaction_id}",
     params(
         ("transaction_id" = String, Path, description = "UUID of the transaction (reference)")
     ),
@@ -66,14 +66,14 @@ pub struct TransactionRequest {
 pub async fn get_user_transaction(
     State(state): State<Arc<AppState>>,
     Extension(claims): Extension<Claims>,
-    Json(req): Json<TransactionRequest>,
+    Path(transaction_id): Path<String>,
 ) -> Result<Json<TransactionResponse>, (StatusCode, String)> {
 
     let usr_id = Uuid::parse_str(&claims.sub).map_err(|e| {
         error!("Invalid user ID in JWT: {}", e);
         ApiError::Auth("Invalid user ID".to_string())
     })?;
-    let txn_id = Uuid::parse_str(&req.txn_id).map_err(|e| {
+    let txn_id = Uuid::parse_str(&transaction_id).map_err(|e| {
         error!("Invalid tnx id: {}", e);
         ApiError::Auth("Invalid transaction ID".to_string())
     })?;
@@ -95,7 +95,7 @@ pub async fn get_user_transaction(
         })?;
 
     Ok(Json(TransactionResponse {
-        id: req.txn_id,
+        id: transaction_id,
         transaction_type: transact.transaction_type,
         amount: transact.amount, // In cents
         currency: transact.currency,

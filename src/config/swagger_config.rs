@@ -12,7 +12,8 @@ use crate::handlers::{
     internal_conversion::__path_convert_currency,
     resolve_account::__path_resolve_account,
     get_transaction::__path_get_transactions,
-    transaction::__path_get_user_transaction
+    transaction::__path_get_user_transaction,
+    logout::__path_logout
 };
 use crate::models::models::*;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
@@ -26,7 +27,7 @@ use utoipa::{Modify, OpenApi};
         add_bank_account, withdraw, all_banks, paystack_webhook,
         initialize_banks, get_paypal_order, get_wallets,
         user_bank_accounts, convert_currency, resolve_account,
-        get_transactions, get_user_transaction
+        get_transactions, get_user_transaction, logout
     ),
     components(schemas(RegisterRequest)),
     modifiers(&SecurityAddon),

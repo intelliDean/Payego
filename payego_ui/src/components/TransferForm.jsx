@@ -63,11 +63,6 @@ function TransferForm() {
                 return;
             }
 
-            // if (!/^\d{3,5}$/.test(bankCode)) {
-            //     setError('Invalid bank code (must be 3-5 digits)');
-            //     setAccountName('');
-            //     return;
-            // }
             if (!/^\d{10}$/.test(accountNumber)) {
                 setError(null); // Clear error until 10 digits are reached
                 setAccountName('');
@@ -141,11 +136,7 @@ function TransferForm() {
                 setLoading(false);
                 return;
             }
-            // if (!/^\d{3,5}$/.test(bankCode)) {
-            //     setError('Invalid bank code (must be 3-5 digits)');
-            //     setLoading(false);
-            //     return;
-            // }
+
             if (!/^\d{10}$/.test(accountNumber)) {
                 setError('Account number must be 10 digits');
                 setLoading(false);
@@ -179,7 +170,7 @@ function TransferForm() {
             } else {
                 alert('Internal transfer initiated!');
             }
-            navigate('/dashboard');
+            navigate('/');
         } catch (err) {
             setError(err.response?.data?.message || `Failed to process ${transferType} transfer`);
         } finally {

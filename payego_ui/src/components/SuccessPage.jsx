@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import ErrorBoundary from "./ErrorBoundary";
-
 function SuccessPage() {
   const [searchParams] = useSearchParams();
   const transactionId = searchParams.get("transaction_id");
@@ -120,7 +119,7 @@ function SuccessPage() {
                     {error}
                   </p>
                   <Link
-                      to="/dashboard"
+                      to="/"
                       className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                       aria-label="Return to dashboard"
                   >
@@ -192,7 +191,7 @@ function SuccessPage() {
                     )}
                   </div>
                   <Link
-                      to="/dashboard"
+                      to="/"
                       className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                       aria-label="Return to dashboard"
                   >
@@ -222,7 +221,7 @@ function SuccessPage() {
                     No transaction data available. Did it get lost in the Payego party?
                   </p>
                   <Link
-                      to="/dashboard"
+                      to="/"
                       className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                       aria-label="Return to dashboard"
                   >
@@ -237,3 +236,107 @@ function SuccessPage() {
 }
 
 export default SuccessPage;
+
+
+//
+//
+// import React, { useState, useEffect } from 'react';
+// import axios from 'axios';
+// import { useLocation } from 'react-router-dom';
+// import PayPalPayment from './PayPalPayment';
+//
+// function SuccessPage() {
+//     const [transaction, setTransaction] = useState(null);
+//     const [error, setError] = useState(null);
+//     const [loading, setLoading] = useState(true);
+//     const location = useLocation();
+//
+//     const getToken = () => localStorage.getItem('jwt_token') || sessionStorage.getItem('jwt_token');
+//
+//     useEffect(() => {
+//         const fetchTransaction = async () => {
+//             const params = new URLSearchParams(location.search);
+//             const transactionId = params.get('transaction_id');
+//             if (!transactionId) {
+//                 setError('No transaction ID provided. Payego got lost in transit!');
+//                 setLoading(false);
+//                 return;
+//             }
+//
+//             try {
+//                 const token = getToken();
+//                 if (!token) {
+//                     throw new Error('No session found. Time to join the Payego party!');
+//                 }
+//                 const response = await axios.get(
+//                     `${import.meta.env.VITE_API_URL}/api/transactions/${transactionId}`,
+//                     {
+//                         headers: {
+//                             'Authorization': `Bearer ${token}`,
+//                         },
+//                     }
+//                 );
+//                 console.log('Transaction details:', response.data);
+//                 setTransaction(response.data);
+//             } catch (err) {
+//                 console.error('Fetch transaction error:', err);
+//                 setError(err.response?.data?.message || 'Transaction fetch crashed the Payego party!');
+//             } finally {
+//                 setLoading(false);
+//             }
+//         };
+//
+//         fetchTransaction();
+//     }, [location]);
+//
+//     const params = new URLSearchParams(location.search);
+//     const transactionId = params.get('transaction_id');
+//     const provider = transaction?.type?.startsWith('topup_paypal') ? 'paypal' : 'stripe';
+//
+//     return (
+//         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+//             <div className="max-w-md mx-auto p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+//                 <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+//                     Payment Status
+//                 </h2>
+//                 {provider === 'paypal' && !transaction && (
+//                     <PayPalPayment transactionId={transactionId} />
+//                 )}
+//                 {loading && (
+//                     <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+//                         <p className="text-blue-600 text-center text-sm">Loading transaction details...</p>
+//                     </div>
+//                 )}
+//                 {error && (
+//                     <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+//                         <p className="text-red-600 text-center text-sm">{error}</p>
+//                     </div>
+//                 )}
+//                 {transaction && (
+//                     <div className="mt-4 space-y-4">
+//                         <p className="text-gray-700">
+//                             <span className="font-medium">Status:</span> {transaction.status}
+//                         </p>
+//                         <p className="text-gray-700">
+//                             <span className="font-medium">Type:</span> {transaction.type}
+//                         </p>
+//                         <p className="text-gray-700">
+//                             <span className="font-medium">Amount:</span> {(transaction.amount / 100).toFixed(2)} {transaction.currency}
+//                         </p>
+//                         <p className="text-gray-700">
+//                             <span className="font-medium">Notes:</span> {transaction.description}
+//                         </p>
+//                         <button
+//                             onClick={() => window.location.href = '/dashboard'}
+//                             className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium"
+//                         >
+//                             Back to Dashboard
+//                         </button>
+//                     </div>
+//                 )}
+//             </div>
+//         </div>
+//     );
+// }
+//
+// export default SuccessPage;

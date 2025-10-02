@@ -34,6 +34,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    blacklisted_tokens (token) {
+        token -> Varchar,
+        expires_at -> Timestamptz,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     transactions (id) {
         id -> Uuid,
         user_id -> Uuid,
@@ -86,6 +94,7 @@ diesel::joinable!(wallets -> users (user_id));
 diesel::allow_tables_to_appear_in_same_query!(
     bank_accounts,
     banks,
+    blacklisted_tokens,
     transactions,
     users,
     wallets,

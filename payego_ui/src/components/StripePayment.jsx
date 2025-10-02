@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-
 function StripePayment({ clientSecret, transactionId, currency }) {
     const stripe = useStripe();
     const elements = useElements();
