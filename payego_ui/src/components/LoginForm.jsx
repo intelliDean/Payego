@@ -63,7 +63,7 @@ function LoginForm({ setAuth }) {
             const storage = rememberMe ? localStorage : sessionStorage;
             storage.setItem('jwt_token', response.data.token);
             setAuth(true);
-            navigate('/');
+            navigate('/dashboard');
         } catch (err) {
             const message = err.response?.data?.message;
             setError(message === 'Invalid credentials' ? 'Oops, wrong keys to the Payego castle!' : message || 'Login crashed. Try again!');
@@ -85,7 +85,7 @@ function LoginForm({ setAuth }) {
             const storage = rememberMe ? localStorage : sessionStorage;
             storage.setItem('jwt_token', response.data.token);
             setAuth(true);
-            navigate('/');
+            navigate('/dashboard');
         } catch (err) {
             setError(err.response?.data?.message || 'Google login flopped. Try again!');
         } finally {
@@ -165,15 +165,15 @@ function LoginForm({ setAuth }) {
     };
 
     return (
-        <div className="max-w-md mx-auto mt-10 p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+        <div className="max-w-md mx-auto mt-4 sm:mt-10 p-6 sm:p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
             <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <span className="text-white font-bold text-xl">P</span>
+                <div className="w-12 sm:w-16 h-12 sm:h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <span className="text-white font-bold text-lg sm:text-xl">P</span>
                 </div>
-                <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
                     {showForgotPassword && resetToken ? 'Reset Password' : showForgotPassword ? 'Forgot Password' : 'Welcome Back'}
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                     {showForgotPassword && resetToken ? 'Enter your new password' : showForgotPassword ? 'Enter your email to receive a reset link' : 'Sign in to your Payego account'}
                 </p>
             </div>

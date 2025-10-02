@@ -133,7 +133,7 @@ function RegisterForm({ setAuth }) {
                 { headers: { 'Content-Type': 'application/json' } }
             );
             setAuth(true);
-            navigate('/');
+            navigate('/dashboard');
         } catch (err) {
             setError(err.response?.data?.message || 'Verification failed');
             setLoading(false);
@@ -159,15 +159,15 @@ function RegisterForm({ setAuth }) {
     };
 
     return (
-        <div className="max-w-md mx-auto mt-10 p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+        <div className="max-w-md mx-auto mt-4 sm:mt-10 p-6 sm:p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
             <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <span className="text-white font-bold text-xl">P</span>
+                <div className="w-12 sm:w-16 h-12 sm:h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <span className="text-white font-bold text-lg sm:text-xl">P</span>
                 </div>
-                <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
                     {showVerification ? 'Verify Email' : 'Create Account'}
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                     {showVerification ? 'Enter the verification code sent to your email' : 'Join Payego and start managing your finances'}
                 </p>
             </div>

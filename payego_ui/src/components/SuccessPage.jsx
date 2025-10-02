@@ -87,20 +87,20 @@ function SuccessPage() {
 
   return (
       <ErrorBoundary>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <div className="max-w-md mx-auto p-8 bg-white rounded-2xl shadow-xl border border-gray-100 text-center">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="max-w-md mx-auto p-6 sm:p-8 bg-white rounded-2xl shadow-xl border border-gray-100 text-center">
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  <p className="mt-2 text-gray-600 text-sm">
+                  <p className="mt-2 text-gray-600 text-sm sm:text-base">
                     Fetching transaction details...
                   </p>
                 </div>
             ) : error ? (
                 <div className="space-y-4">
-                  <div className="w-20 h-20 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-16 sm:w-20 h-16 sm:h-20 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg
-                        className="w-10 h-10 text-white"
+                        className="w-8 sm:w-10 h-8 sm:h-10 text-white"
                         viewBox="0 0 24 24"
                         fill="currentColor"
                         aria-hidden="true"
@@ -112,15 +112,15 @@ function SuccessPage() {
                       />
                     </svg>
                   </div>
-                  <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
                     Oops, Something Went Wrong!
                   </h2>
-                  <p className="text-red-600 text-sm mb-4" id="error-message">
+                  <p className="text-red-600 text-sm sm:text-base mb-4" id="error-message">
                     {error}
                   </p>
                   <Link
                       to="/"
-                      className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 sm:px-8 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm sm:text-base"
                       aria-label="Return to dashboard"
                   >
                     Return to Dashboard
@@ -129,9 +129,9 @@ function SuccessPage() {
             ) : transaction ? (
                 <>
                   <div className="mb-8">
-                    <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <div className="w-16 sm:w-20 h-16 sm:h-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
                       <svg
-                          className="w-10 h-10 text-white"
+                          className="w-8 sm:w-10 h-8 sm:h-10 text-white"
                           viewBox="0 0 24 24"
                           fill="currentColor"
                           aria-hidden="true"
@@ -143,48 +143,48 @@ function SuccessPage() {
                         />
                       </svg>
                     </div>
-                    <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                       Payment Successful!
                     </h2>
-                    <p className="text-gray-600 text-sm">
-                      Your wallet’s feeling heavier!
+                    <p className="text-gray-600 text-sm sm:text-base">
+                      Your wallet's feeling heavier!
                     </p>
                   </div>
-                  <div className="mb-6 p-4 bg-gray-50 rounded-lg space-y-2">
-                    <div className="flex justify-between">
+                  <div className="mb-6 p-4 bg-gray-50 rounded-lg space-y-2 text-left">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
                       <p className="text-sm text-gray-600">Transaction ID</p>
-                      <p className="font-mono text-sm text-gray-800 break-all">
+                      <p className="font-mono text-xs sm:text-sm text-gray-800 break-all">
                         {transaction.id}
                       </p>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
                       <p className="text-sm text-gray-600">Type</p>
                       <p className="text-sm text-gray-800 capitalize">
                         {transaction.transaction_type ? transaction.transaction_type.replace("_", " ") : "Unknown"}
                       </p>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
                       <p className="text-sm text-gray-600">Amount</p>
                       <p className="text-sm text-gray-800">
                         {formatAmount(transaction.amount, transaction.currency)}
                       </p>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
                       <p className="text-sm text-gray-600">Date</p>
                       <p className="text-sm text-gray-800">
                         {formatDate(transaction.created_at)}
                       </p>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
                       <p className="text-sm text-gray-600">Status</p>
                       <p className="text-sm text-gray-800 capitalize">
                         {transaction.status}
                       </p>
                     </div>
                     {transaction.notes && (
-                        <div className="flex justify-between">
+                        <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
                           <p className="text-sm text-gray-600">Notes</p>
-                          <p className="text-sm text-gray-800 max-w-[200px] truncate">
+                          <p className="text-sm text-gray-800 sm:max-w-[200px] sm:truncate">
                             {transaction.notes}
                           </p>
                         </div>
@@ -192,7 +192,7 @@ function SuccessPage() {
                   </div>
                   <Link
                       to="/"
-                      className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 sm:px-8 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm sm:text-base"
                       aria-label="Return to dashboard"
                   >
                     Return to Dashboard
@@ -200,9 +200,9 @@ function SuccessPage() {
                 </>
             ) : (
                 <div className="space-y-4">
-                  <div className="w-20 h-20 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-16 sm:w-20 h-16 sm:h-20 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg
-                        className="w-10 h-10 text-white"
+                        className="w-8 sm:w-10 h-8 sm:h-10 text-white"
                         viewBox="0 0 24 24"
                         fill="currentColor"
                         aria-hidden="true"
@@ -214,15 +214,15 @@ function SuccessPage() {
                       />
                     </svg>
                   </div>
-                  <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
                     No Transaction Found
                   </h2>
-                  <p className="text-red-600 text-sm mb-4">
+                  <p className="text-red-600 text-sm sm:text-base mb-4">
                     No transaction data available. Did it get lost in the Payego party?
                   </p>
                   <Link
                       to="/"
-                      className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 sm:px-8 py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm sm:text-base"
                       aria-label="Return to dashboard"
                   >
                     Return to Dashboard

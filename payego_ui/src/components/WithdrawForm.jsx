@@ -91,7 +91,7 @@ function WithdrawForm() {
                 }
             );
             console.log(`Withdrawal initiated: transaction_id=${response.data.transaction_id}`);
-            navigate('/');
+            navigate('/dashboard');
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to process withdrawal');
         } finally {
@@ -100,13 +100,13 @@ function WithdrawForm() {
     };
 
     return (
-        <div className="max-w-md mx-auto mt-10 p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+        <div className="max-w-md mx-auto mt-4 sm:mt-10 p-6 sm:p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
             <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <span className="text-white text-2xl">🏦</span>
+                <div className="w-12 sm:w-16 h-12 sm:h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <span className="text-white text-xl sm:text-2xl">🏦</span>
                 </div>
-                <h2 className="text-3xl font-bold text-gray-800 mb-2">Withdraw Funds</h2>
-                <p className="text-gray-600">Transfer money to your bank account</p>
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Withdraw Funds</h2>
+                <p className="text-gray-600 text-sm sm:text-base">Transfer money to your bank account</p>
             </div>
             
             <form onSubmit={handleSubmit}>

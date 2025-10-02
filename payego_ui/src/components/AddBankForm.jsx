@@ -110,13 +110,13 @@ function AddBankForm() {
     };
 
     return (
-        <div className="max-w-md mx-auto mt-10 p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+        <div className="max-w-md mx-auto mt-4 sm:mt-10 p-6 sm:p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
             <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <span className="text-white text-2xl">🏛️</span>
+                <div className="w-12 sm:w-16 h-12 sm:h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <span className="text-white text-xl sm:text-2xl">🏛️</span>
                 </div>
-                <h2 className="text-3xl font-bold text-gray-800 mb-2">Add Bank Account</h2>
-                <p className="text-gray-600">Connect your bank account for withdrawals</p>
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Add Bank Account</h2>
+                <p className="text-gray-600 text-sm sm:text-base">Connect your bank account for withdrawals</p>
             </div>
 
             {fetching && (

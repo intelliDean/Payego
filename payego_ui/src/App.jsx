@@ -31,31 +31,31 @@ function App() {
         <Router>
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
                 <nav className="bg-white shadow-lg border-b border-gray-200">
-                    <div className="container mx-auto px-6 py-4 flex justify-between items-center">
+                    <div className="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
                         <div className="flex items-center space-x-2">
                             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
                                 <span className="text-white font-bold text-sm">P</span>
                             </div>
-                            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                                 Payego
                             </h1>
                         </div>
                         {isAuthenticated && (
                             <button 
                                 onClick={handleLogout} 
-                                className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 font-medium shadow-md hover:shadow-lg"
+                                className="px-4 sm:px-6 py-2 text-sm sm:text-base bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 font-medium shadow-md hover:shadow-lg"
                             >
                                 Logout
                             </button>
                         )}
                     </div>
                 </nav>
-                <div className="container mx-auto px-4 py-8">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
                 <Routes>
-                    <Route path="/page" element={<LandingPage />} />
+                    <Route path="/" element={!isAuthenticated ? <LandingPage /> : <Navigate to="/dashboard" />} />
                     <Route path="/login" element={!isAuthenticated ? <LoginForm setAuth={setIsAuthenticated} /> : <Navigate to="/" />} />
                     <Route path="/register" element={!isAuthenticated ? <RegisterForm setAuth={setIsAuthenticated} /> : <Navigate to="/" />} />
-                    <Route path="/" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} />
+                    <Route path="/dashboard" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} />
                     <Route path="/top-up" element={isAuthenticated ? <TopUpForm /> : <Navigate to="/login" />} />
                     <Route path="/banks" element={isAuthenticated ? <BankList /> : <Navigate to="/login" />} />
                     <Route path="/add-bank" element={isAuthenticated ? <AddBankForm /> : <Navigate to="/login" />} />

@@ -237,22 +237,22 @@ function BankList() {
                 )}
 
                 {!loading && filteredBanks.length > banksPerPage && (
-                    <div className="flex justify-center space-x-4 mt-6">
+                    <div className="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4 mt-6">
                         <button
                             onClick={handlePrevious}
                             disabled={currentPage === 1}
-                            className="px-4 py-2 rounded-lg font-medium transition-all duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400"
+                            className="w-full sm:w-auto px-4 py-2 rounded-lg font-medium transition-all duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-sm sm:text-base"
                             aria-label="Go to previous page"
                         >
                             ← Previous
                         </button>
-                        <span className="px-4 py-2 text-gray-600">
+                        <span className="px-4 py-2 text-gray-600 text-sm sm:text-base">
                             Page {currentPage} of {totalPages}
                         </span>
                         <button
                             onClick={handleNext}
                             disabled={currentPage === totalPages}
-                            className="px-4 py-2 rounded-lg font-medium transition-all duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400"
+                            className="w-full sm:w-auto px-4 py-2 rounded-lg font-medium transition-all duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-sm sm:text-base"
                             aria-label="Go to next page"
                         >
                             Next →
