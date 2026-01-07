@@ -1,0 +1,41 @@
+[package]
+name = "payego"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.47.1", features = ["full", "rt-multi-thread"] }
+axum = "0.8.4"
+http = "1.3.1"
+diesel = { version = "2.3.1", features = ["postgres", "r2d2", "uuid", "chrono"] }
+#reqwest = { version = "0.12.23", features = ["json"] }
+serde = { version = "1.0.225", features = ["derive"] } # Pinned to safer version
+headers = "0.4.1"
+chrono = { version = "0.4.20", default-features = false, features = ["clock", "std"] }
+jsonwebtoken = "9.3.1"
+bcrypt = "0.17.1"
+utoipa = { version = "5.4.0", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
+dotenvy = "0.15.7"
+eyre = "0.6.12"
+uuid = { version = "1.18.1", features = ["v4"] }
+tracing = "0.1.41"
+regex = "1.11.2"
+validator = { version = "0.20.0", features = ["derive"] }
+tower = "0.5.2"
+tower-http = { version = "0.6.6", features = ["limit", "cors"] }
+async-stripe = { version = "0.41.0", features = ["webhook-events", "runtime-tokio-hyper"] }
+serde_json = "1.0.145"
+base64 = "0.22.1"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json"] }
+lazy_static = "1.5.0"
+hmac = "0.13.0-rc.2"
+sha2 = "0.11.0-rc.2"
+hex = "0.4.3"
+base64ct = "1.8.0"
+openssl = { version = "0.10", features = ["vendored"] }  # For static linking
+
+reqwest = { version = "0.12.23", features = ["json", "rustls-tls"] }
+rand = "0.7.3"
+lettre = "0.11.18"
+url = "2.5.7"

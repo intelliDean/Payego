@@ -1,0 +1,194 @@
+# syntax=docker/dockerfile:1
+
+# Comments are provided throughout this file to help you get started.
+# If you need more help, visit the Dockerfile reference guide at
+# https://docs.docker.com/go/dockerfile-reference/
+
+# Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
+
+ARG RUST_VERSION=1.89.0
+ARG APP_NAME=payego
+
+################################################################################
+# Create a stage for building the application.
+
+FROM rust:${RUST_VERSION}-alpine AS build
+ARG APP_NAME
+WORKDIR /app
+
+# Install host build dependencies.
+RUN apk add --no-cache clang lld musl-dev git
+
+# Build the application.
+# Leverage a cache mount to /usr/local/cargo/registry/
+# for downloaded dependencies, a cache mount to /usr/local/cargo/git/db
+# for git repository dependencies, and a cache mount to /app/target/ for
+# compiled dependencies which will speed up subsequent builds.
+# Leverage a bind mount to the src directory to avoid having to copy the
+# source code into the container. Once built, copy the executable to an
+# output directory before the cache mounted /app/target is unmounted.
+RUN --mount=type=bind,source=src,target=src \
+    --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
+    --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
+    --mount=type=cache,target=/app/target/ \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/usr/local/cargo/registry/ \
+cargo build --locked --release && \
+cp ./target/release/$APP_NAME /bin/server
+
+################################################################################
+# Create a new stage for running the application that contains the minimal
+# runtime dependencies for the application. This often uses a different base
+# image from the build stage where the necessary files are copied from the build
+# stage.
+#
+# The example below uses the alpine image as the foundation for running the app.
+# By specifying the "3.18" tag, it will use version 3.18 of alpine. If
+# reproducibility is important, consider using a digest
+# (e.g., alpine@sha256:664888ac9cfd28068e062c991ebcff4b4c7307dc8dd4df9e728bedde5c449d91).
+FROM alpine:3.18 AS final
+
+# Create a non-privileged user that the app will run under.
+# See https://docs.docker.com/go/dockerfile-user-best-practices/
+ARG UID=10001
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/nonexistent" \
+    --shell "/sbin/nologin" \
+    --no-create-home \
+    --uid "${UID}" \
+    appuser
+USER appuser
+
+# Copy the executable from the "build" stage.
+COPY --from=build /bin/server /bin/
+
+# Expose the port that the application listens on.
+EXPOSE 8080
+
+# What the container should run when it is started.
+CMD ["/bin/server"]
+
+
+
+
+//=================
+
+
+
+# Comments are provided throughout this file to help you get started.
+# If you need more help, visit the Docker Compose reference guide at
+# https://docs.docker.com/go/compose-spec-reference/
+
+# Here the instructions define your application as a service called "server".
+# This service is built from the Dockerfile in the current directory.
+# You can add other services your application may depend on here, such as a
+# database or a cache. For examples, see the Awesome Compose repository:
+# https://github.com/docker/awesome-compose
+services:
+  server:
+    build:
+      context: .
+      target: final
+    ports:
+      - 8080:8080
+
+# The commented out section below is an example of how to define a PostgreSQL
+# database that your application can use. `depends_on` tells Docker Compose to
+# start the database before your application. The `db-data` volume persists the
+# database data between container restarts. The `db-password` secret is used
+# to set the database password. You must create `db/password.txt` and add
+# a password of your choosing to it before running `docker compose up`.
+#     depends_on:
+#       db:
+#         condition: service_healthy
+#   db:
+#     image: postgres
+#     restart: always
+#     user: postgres
+#     secrets:
+#       - db-password
+#     volumes:
+#       - db-data:/var/lib/postgresql/data
+#     environment:
+#       - POSTGRES_DB=example
+#       - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
+#     expose:
+#       - 5432
+#     healthcheck:
+#       test: [ "CMD", "pg_isready" ]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+# volumes:
+#   db-data:
+# secrets:
+#   db-password:
+#     file: db/password.txt
+
+
+
+
+//===========
+
+I had a 2 weeks break from work and after spending few days to sleep and rest, I thought of using this spare time to build something simple
+and when i was done with the ideation i chose Rust as the language for the backend and also because i love doing hard stuff. I wanted to
+bring the global payment gateways together in one project so i thought of a fintech project that helps a user manage all of his currencies, convert
+one currency to the other, transfer funds between user and withdraw those currencies into local bank accounts amongst many other features
+and i gave birth to PAYEGO.
+PAYEGO is a secure, user-friendly fintech wallet app designed to make managing digital funds a breeze! 🎉
+Tailored for African markets (supporting NGN alongside USD, EUR, GBP) but globally accessible
+
+
+after this project i understood 2 things.
+1. i understand why lots of people are running away from Rust.
+2. i learnt that there's no better language to write a fintech project than RUST.
+
+why RUST?
+Rust is a game-changer for this fintech project. Here’s why:
+Safety First: Rust’s strict compile-time checks for memory safety and concurrency prevented bugs like null pointer errors or race conditions,
+critical for handling sensitive financial data and concurrent transactions.
+Performance: Rust’s zero-cost abstractions and low-level control delivered blazing-fast API responses, ensuring endpoints handle high traffic efficiently.
+Reliability: Rust’s type system and error handling (e.g., Result and Option) made it easier to build robust APIs with predictable behavior
+Ecosystem Fit: Libraries like Axum, Utoipa, and Diesel provided a modern, type-safe foundation for building secure, scalable fintech APIs
+etc
+
+
+
+anyway, let's talk about PAYEGO
+with payego, user...
+can can keep difference currencies in their wallet,
+can add money to their wallet in any currency
+can transfer any currency to another user
+can concert any currency to another currency with real time exchange rate
+can convert any currency to naira and withdraw it directly into your naira account
+can any currency to naira and send the naira to any nigerian bank account
+etc
+
+all the tools that made this happen
+RUST programming language
+Axum: Rust Web framework
+Diesel: ORM for PostgreSQL
+PostgreSQL: Managed with Diesel migrations for schemas
+Utoipa: OpenAPI documentation for clear API specs.
+Jsonwebtoken: JWT creation and verification with blacklisting for secure logout.
+Reqwest: HTTP requests for external APIs.
+Paypal SDK
+Stripe SDK
+Paystack SDK
+React
+Tailwind
+Axios: API calls with JWT headers for secure endpoints.
+
+Key Learnings
+Building Payego was a deep dive into fintech development. Here’s what I learned:
+
+Rust’s Power: Rust’s type safety and error handling made complex operations (e.g., atomic wallet updates) reliable, while Axum’s async model scaled effortlessly.
+Fintech Challenges: Supporting African markets (e.g., NGN) required careful currency handling and compliance with payment gateway restrictions.
+
+Payego is open to contribution, for example, i hurriedly wrote the frontend so it's not in it's best state, it can get better.
+ also the backend could be improved.
+
+ I’d love your feedback on features, UX, or potential improvements.
+ What fintech projects are you working on? Let’s connect and discuss! 🌍💸 #Fintech #Rust #React #Stripe #PayPal #Paystack #DieselORM #Axum

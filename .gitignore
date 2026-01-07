@@ -1,0 +1,36 @@
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+target/
+dist/
+build/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Secrets and credentials
+secrets/
+*.key
+*.pem
+*.p12
+credentials.json
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+.directory
+
+# Docker override (may contain secrets)
+docker-compose.override.yml
+docker-compose.yml
