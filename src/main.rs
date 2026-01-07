@@ -39,14 +39,9 @@ use chrono::Utc;
 use diesel::prelude::*;
 use tokio::time::{interval, Duration};
 
-
-mod config;
-mod error;
-mod handlers;
-mod logging;
-mod models;
-mod schema;
-mod utility;
+// Import from library
+use payego::{config, error, handlers, logging, models, schema};
+use error::ApiError;
 
 #[tokio::main]
 async fn main() -> Result<(), eyre::Error> {
