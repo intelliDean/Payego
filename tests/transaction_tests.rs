@@ -19,6 +19,7 @@ fn test_new_transaction_creation() {
         provider: Some("internal".to_string()),
         description: Some("Test transfer".to_string()),
         reference,
+        metadata: None,
     };
     
     assert_eq!(tx.user_id, user_id);
@@ -43,6 +44,7 @@ fn test_transaction_reference_uniqueness() {
         provider: Some("stripe".to_string()),
         description: None,
         reference: Uuid::new_v4(),
+        metadata: None,
     };
     
     let tx2 = NewTransaction {
@@ -55,6 +57,7 @@ fn test_transaction_reference_uniqueness() {
         provider: Some("stripe".to_string()),
         description: None,
         reference: Uuid::new_v4(),
+        metadata: None,
     };
     
     assert_ne!(tx1.reference, tx2.reference);

@@ -3,7 +3,7 @@ use crate::models::models::{AppState, BankAccount, NewTransaction, Transaction, 
 use crate::schema::{bank_accounts, transactions, wallets};
 use diesel::prelude::*;
 use reqwest::Client;
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::sync::{Arc, LazyLock};
 use regex::Regex;
 use tracing::{error, debug, info};
@@ -51,15 +51,16 @@ impl WithdrawalService {
             ApiError::DatabaseConnection(e.to_string())
         })?;
 
-        // Idempotency check
+        // Idempotency check with metadata
         let existing_transaction = transactions::table
-            .filter(transactions::reference.eq(req.reference))
+            .filter(diesel::dsl::sql::<diesel::sql_types::Bool>("metadata->>'idempotency_key' = ").bind::<diesel::sql_types::Text, _>(&req.idempotency_key))
+            .filter(transactions::user_id.eq(user_id))
             .first::<Transaction>(&mut conn)
             .optional()
             .map_err(ApiError::Database)?;
 
         if let Some(tx) = existing_transaction {
-            info!("Idempotent request: transaction {} already exists", tx.reference);
+            info!("Idempotent request: transaction {} already exists for key {}", tx.reference, req.idempotency_key);
             return Ok(WithdrawResponse {
                 transaction_id: tx.reference.to_string(),
             });
@@ -107,7 +108,7 @@ impl WithdrawalService {
         let amount_ngn_kobo = if req.currency == "NGN" {
             amount_cents
         } else {
-            let exchange_rate = Self::get_exchange_rate(&req.currency, "NGN").await?;
+            let exchange_rate = Self::get_exchange_rate(&state.exchange_api_url, &req.currency, "NGN").await?;
             ((amount_cents as f64) * exchange_rate).round() as i64
         };
 
@@ -120,16 +121,11 @@ impl WithdrawalService {
             &req.currency
         ).await?;
 
-        // Extract connection again for transaction as previous borrow ended? 
-        // Actually we need to be careful with connection ownership.
-        // Let's grab a fresh connection or structure this better. 
-        // For atomic transaction block we need a connection.
-        
+        // Atomic DB transaction
         let mut conn = state.db.get().map_err(|e| {
              ApiError::DatabaseConnection(e.to_string())
         })?;
 
-        // Atomic DB transaction
         conn.transaction(|conn| {
             // Debit owner wallet
             diesel::update(wallets::table)
@@ -151,6 +147,9 @@ impl WithdrawalService {
                     provider: Some("paystack".to_string()),
                     description: Some(format!("Withdrawal to bank {} in {}", bank_account.bank_code, req.currency)),
                     reference: req.reference,
+                    metadata: Some(json!({
+                        "idempotency_key": req.idempotency_key
+                    })),
                 })
                 .execute(conn)
                 .map_err(ApiError::Database)?;
@@ -182,9 +181,11 @@ impl WithdrawalService {
 
         let client = Client::new();
 
+        let base_url = &state.paystack_api_url;
+
         // Check Paystack balance
         let balance_resp = client
-            .get("https://api.paystack.co/balance")
+            .get(format!("{}/balance", base_url))
             .header("Authorization", format!("Bearer {}", paystack_key))
             .send()
             .await
@@ -221,7 +222,7 @@ impl WithdrawalService {
 
         // Initiate Transfer
         let resp = client
-            .post("https://api.paystack.co/transfer")
+            .post(format!("{}/transfer", base_url))
             .header("Authorization", format!("Bearer {}", paystack_key))
             .json(&serde_json::json!({
                 "source": "balance",
@@ -258,14 +259,11 @@ impl WithdrawalService {
         Ok(())
     }
 
-    async fn get_exchange_rate(from_currency: &str, to_currency: &str) -> Result<f64, ApiError> {
+    async fn get_exchange_rate(base_url: &str, from_currency: &str, to_currency: &str) -> Result<f64, ApiError> {
         if from_currency == to_currency {
             return Ok(1.0);
         }
-        let url = format!(
-            "https://api.exchangerate-api.com/v4/latest/{}",
-            from_currency
-        );
+        let url = format!("{}/{}", base_url, from_currency);
         let client = Client::new();
         let resp = client
             .get(url)

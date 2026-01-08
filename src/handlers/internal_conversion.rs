@@ -29,6 +29,8 @@ pub struct ConvertRequest {
     pub from_currency: String,
     #[validate(regex(path = "SUPPORTED_CURRENCIES", message = "Invalid to currency"))]
     pub to_currency: String,
+    #[validate(length(min = 1, max = 255))]
+    pub idempotency_key: String,
 }
 
 #[derive(Serialize, ToSchema)]

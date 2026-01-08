@@ -30,6 +30,7 @@ pub struct PayoutRequest {
     pub account_number: String,
     pub account_name: Option<String>,
     pub reference: Uuid,
+    pub idempotency_key: String,
 }
 #[utoipa::path(
     post,
@@ -90,7 +91,7 @@ pub async fn external_transfer(
         })?;
 
     // Fetch current exchange rate (use a tool or API)
-    let exchange_rate = get_exchange_rate(&req.currency, "NGN").await.map_err(|e: (StatusCode, String)| {
+    let exchange_rate = get_exchange_rate(&state.exchange_api_url, &req.currency, "NGN").await.map_err(|e: (StatusCode, String)| {
         // error!("Exchange rate fetch failed: {}", e);
         ApiError::Payment("Exchange rate fetch failed".to_string())
     })?;
@@ -146,9 +147,10 @@ pub async fn external_transfer(
         return Err(ApiError::Payment(format!("Paystack recipient creation failed: {}", message)).into());
     }
 
-    // Idempotency check: check if transaction with this reference already exists
+    // Idempotency check with metadata
     let existing_transaction = transactions::table
-        .filter(transactions::reference.eq(req.reference))
+        .filter(diesel::dsl::sql::<diesel::sql_types::Bool>("metadata->>'idempotency_key' = ").bind::<diesel::sql_types::Text, _>(&req.idempotency_key))
+        .filter(transactions::user_id.eq(user_id))
         .first::<crate::models::models::Transaction>(&mut conn)
         .optional()
         .map_err(|e| {
@@ -156,8 +158,8 @@ pub async fn external_transfer(
             ApiError::Database(e)
         })?;
 
-    if let Some(_) = existing_transaction {
-        info!("Idempotent request: transaction {} already exists", req.reference);
+    if let Some(tx) = existing_transaction {
+        info!("Idempotent request: transaction {} already exists for key {}", tx.reference, req.idempotency_key);
         return Ok(StatusCode::OK);
     }
 
@@ -243,7 +245,11 @@ pub async fn external_transfer(
                 provider: Some("paystack".to_string()),
                 description: Some(format!("External transfer in {} to bank", &req.currency)),
                 reference,
-                // metadata: Some(Jsonb(json!({ "transfer_code": transfer_code, "exchange_rate": exchange_rate }))),
+                metadata: Some(json!({ 
+                    "transfer_code": transfer_code, 
+                    "exchange_rate": exchange_rate,
+                    "idempotency_key": req.idempotency_key
+                })),
             })
             .execute(conn)
             .map_err(|e: diesel::result::Error| {
@@ -267,8 +273,8 @@ pub async fn external_transfer(
 
 
 
-async fn get_exchange_rate(from_currency: &str, to_currency: &str) -> Result<f64, (StatusCode, String)> {
-    let url = format!("https://api.exchangerate-api.com/v4/latest/{}", from_currency);
+async fn get_exchange_rate(base_url: &str, from_currency: &str, to_currency: &str) -> Result<f64, (StatusCode, String)> {
+    let url = format!("{}/{}", base_url, from_currency);
     let client = Client::new();
     let resp = client
         .get(url)

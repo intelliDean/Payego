@@ -41,6 +41,9 @@ pub fn create_test_app_state() -> Arc<AppState> {
         jwt_secret: "test_secret_key_minimum_32_characters_long_for_testing".to_string(),
         stripe_secret_key: "sk_test_fake_key_for_testing_only".to_string(),
         app_url: "http://localhost:8080".to_string(),
+        exchange_api_url: "http://localhost:8080/mock/exchange".to_string(),
+        paypal_api_url: "http://localhost:8080/mock/paypal".to_string(),
+        paystack_api_url: "http://localhost:8080/mock/paystack".to_string(),
     })
 }
 

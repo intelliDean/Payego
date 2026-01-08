@@ -4,6 +4,7 @@ use crate::error::ApiError;
 use crate::schema::{users, wallets, transactions};
 use crate::models::models::{NewTransaction, Transaction};
 use tracing::{error, info};
+use serde_json::json;
 
 pub struct TransferService;
 
@@ -15,6 +16,7 @@ impl TransferService {
         amount: f64,
         currency: &str,
         reference: Uuid,
+        idempotency_key: &str,
     ) -> Result<String, ApiError> {
         // 1. Convert amount to cents
         let amount_cents = (amount * 100.0).round() as i64;
@@ -40,9 +42,10 @@ impl TransferService {
             return Err(ApiError::Auth("Cannot transfer to self".to_string()));
         }
 
-        // 4. Idempotency check
+        // 4. Idempotency check with metadata
         let existing_transaction = transactions::table
-            .filter(transactions::reference.eq(reference))
+            .filter(diesel::dsl::sql::<diesel::sql_types::Bool>("metadata->>'idempotency_key' = ").bind::<diesel::sql_types::Text, _>(idempotency_key))
+            .filter(transactions::user_id.eq(sender_id))
             .first::<Transaction>(conn)
             .optional()
             .map_err(|e| {
@@ -51,7 +54,7 @@ impl TransferService {
             })?;
 
         if let Some(tx) = existing_transaction {
-            info!("Idempotent request: transaction {} already exists", tx.reference);
+            info!("Idempotent request: transaction {} already exists for key {}", tx.reference, idempotency_key);
             return Ok(tx.reference.to_string());
         }
 
@@ -97,6 +100,9 @@ impl TransferService {
                     description: Some(format!("Transfer to {} in {}", recipient_email, currency_upper)),
                     reference,
                     currency: currency_upper.clone(),
+                    metadata: Some(json!({
+                        "idempotency_key": idempotency_key
+                    })),
                 })
                 .execute(conn)
                 .map_err(ApiError::Database)?;
@@ -126,6 +132,7 @@ impl TransferService {
                     description: Some(format!("Received from sender in {}", currency_upper)),
                     reference: Uuid::new_v4(), // Different reference for recipient tx?
                     currency: currency_upper,
+                    metadata: None, // Recipient doesn't track sender's idempotency key usually
                 })
                 .execute(conn)
                 .map_err(ApiError::Database)?;

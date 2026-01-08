@@ -104,7 +104,7 @@ pub struct NewTransaction {
     pub provider: Option<String>,
     pub description: Option<String>,
     pub reference: Uuid,
-    // pub metadata: Option<serde_json::Value>,
+    pub metadata: Option<JsonValue>,
 }
 
 // Bank Accounts table
@@ -163,7 +163,10 @@ pub struct AppState {
     pub db: DbPool,
     pub jwt_secret: String,
     pub stripe_secret_key: String,
-    pub app_url: String
+    pub app_url: String,
+    pub exchange_api_url: String,
+    pub paypal_api_url: String,
+    pub paystack_api_url: String,
 }
 
 #[derive(Serialize, ToSchema, Debug)]

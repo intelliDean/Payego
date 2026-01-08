@@ -31,6 +31,8 @@ pub struct TopUpRequest {
     #[validate(custom(function = "validate_currency"))]
     pub currency: String,
     pub reference: Uuid,
+    #[validate(length(min = 1, max = 255))]
+    pub idempotency_key: String,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]

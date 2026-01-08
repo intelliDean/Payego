@@ -26,7 +26,6 @@ async fn main() -> Result<(), eyre::Error> {
     // load environment variables
     dotenv().ok();
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    // let db_url = "postgresql://payego_user:RRXvbF1i8QKvvxIrVNfvzPzVDy7UNJgd@dpg-d388q2ggjchc73cs1pm0-a.oregon-postgres.render.com/payego";
 
     let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
@@ -66,7 +65,10 @@ async fn main() -> Result<(), eyre::Error> {
                 error!("STRIPE_SECRET_KEY environment variable not set: {}", e);
                 eyre::eyre!("STRIPE_SECRET_KEY environment variable must be set")
             })?,
-        app_url: env::var("APP_URL").unwrap_or_else(|_| "http://localhost:8080".to_string())
+        app_url: env::var("APP_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()),
+        exchange_api_url: env::var("EXCHANGE_API_URL").unwrap_or_else(|_| "https://api.exchangerate-api.com/v4/latest".to_string()),
+        paypal_api_url: env::var("PAYPAL_API_URL").unwrap_or_else(|_| "https://api-m.sandbox.paypal.com".to_string()),
+        paystack_api_url: env::var("PAYSTACK_API_URL").unwrap_or_else(|_| "https://api.paystack.co".to_string()),
     });
 
     // Initialize banks (non-fatal failure - can be initialized later via API)

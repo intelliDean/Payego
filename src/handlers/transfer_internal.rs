@@ -36,6 +36,8 @@ pub struct TransferRequest {
     #[validate(regex(path = "SUPPORTED_CURRENCIES", message = "Invalid currency"))]
     pub currency: String,
     pub reference: Uuid,
+    #[validate(length(min = 1, max = 255))]
+    pub idempotency_key: String,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -102,6 +104,7 @@ pub async fn internal_transfer(
         req.amount,
         &req.currency,
         req.reference,
+        &req.idempotency_key,
     )?;
 
     Ok(Json(TransferResponse {

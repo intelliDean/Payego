@@ -18,6 +18,7 @@ pub struct WithdrawRequest {
     pub currency: String, // Currency to withdraw from (e.g., "USD", "NGN")
     pub bank_id: String, // Bank account ID from /api/bank_accounts
     pub reference: Uuid,
+    pub idempotency_key: String,
 }
 
 #[derive(Serialize, ToSchema)]

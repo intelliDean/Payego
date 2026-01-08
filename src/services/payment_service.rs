@@ -8,6 +8,7 @@ use tracing::{error, info};
 use reqwest::Client;
 use stripe::{CheckoutSession, CheckoutSessionMode, Client as StripeClient, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreateCheckoutSessionLineItemsPriceData, CreateCheckoutSessionLineItemsPriceDataProductData, Currency};
 use std::str::FromStr;
+use serde_json;
 
 pub struct PaymentService;
 
@@ -23,8 +24,10 @@ impl PaymentService {
         })?;
 
         // 1. Idempotency check
+        // 1. Idempotency check with metadata
         let existing_transaction = crate::schema::transactions::table
-            .filter(crate::schema::transactions::reference.eq(req.reference))
+            .filter(diesel::dsl::sql::<diesel::sql_types::Bool>("metadata->>'idempotency_key' = ").bind::<diesel::sql_types::Text, _>(&req.idempotency_key))
+            .filter(crate::schema::transactions::user_id.eq(user_id))
             .first::<Transaction>(conn)
             .optional()
             .map_err(|e| {
@@ -33,7 +36,7 @@ impl PaymentService {
             })?;
 
         if let Some(tx) = existing_transaction {
-            info!("Idempotent request: transaction {} already exists", tx.reference);
+            info!("Idempotent request: transaction {} already exists for key {}", tx.reference, req.idempotency_key);
             return Ok(TopUpResponse {
                 session_url: None,
                 payment_id: tx.provider.as_ref().filter(|p| p.as_str() == "paypal").map(|_| tx.id.to_string()),
@@ -58,6 +61,9 @@ impl PaymentService {
                     provider: Some(req.provider.clone()),
                     description: Some(format!("{} top-up in {}", req.provider, req.currency)),
                     reference: transaction_id,
+                    metadata: Some(serde_json::json!({
+                        "idempotency_key": req.idempotency_key
+                    })),
                 })
                 .execute(conn)
                 .map_err(ApiError::Database)?;
@@ -71,7 +77,7 @@ impl PaymentService {
                 Self::initiate_stripe_payment(&state, &req, transaction_id, amount_cents).await?
             }
             "paypal" => {
-                Self::initiate_paypal_payment(&client, &req, transaction_id).await?
+                Self::initiate_paypal_payment(&client, &state, &req, transaction_id).await?
             }
             _ => return Err(ApiError::Payment(format!("Unsupported provider: {}", req.provider))),
         };
@@ -137,15 +143,17 @@ impl PaymentService {
 
     async fn initiate_paypal_payment(
         client: &Client,
+        state: &AppState,
         req: &TopUpRequest,
         transaction_id: Uuid,
     ) -> Result<(Option<String>, Option<String>), ApiError> {
         let client_id = std::env::var("PAYPAL_CLIENT_ID").map_err(|_| ApiError::Payment("PayPal ID missing".into()))?;
         let secret = std::env::var("PAYPAL_SECRET").map_err(|_| ApiError::Payment("PayPal secret missing".into()))?;
         let app_url = std::env::var("APP_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
+        let base_url = &state.paypal_api_url;
 
         let token_resp = client
-            .post("https://api-m.sandbox.paypal.com/v1/oauth2/token")
+            .post(format!("{}/v1/oauth2/token", base_url))
             .header("Content_Type", "application/x-www-form-urlencoded")
             .basic_auth(client_id, Some(secret))
             .form(&[("grant_type", "client_credentials")])
@@ -157,7 +165,7 @@ impl PaymentService {
         let access_token = token_json["access_token"].as_str().ok_or_else(|| ApiError::Payment("PayPal token missing".into()))?;
 
         let resp = client
-            .post("https://api-m.sandbox.paypal.com/v2/checkout/orders")
+            .post(format!("{}/v2/checkout/orders", base_url))
             .bearer_auth(access_token)
             .json(&serde_json::json!({
                 "intent": "CAPTURE",
