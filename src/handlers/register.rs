@@ -27,7 +27,7 @@ pub async fn register(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<RegisterRequest>,
 ) -> Result<(StatusCode, Json<RegisterResponse>), (StatusCode, String)> {
-    // Validate the payload first
+    // Validate request
     payload.validate().map_err(|e| {
         tracing::error!("Validation error: {}", e);
         ApiError::Validation(e)

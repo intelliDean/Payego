@@ -607,6 +607,7 @@ dependencies = [
  "itoa",
  "pq-sys",
  "r2d2",
+ "serde_json",
  "uuid 1.19.0",
 ]
 
@@ -3712,6 +3713,7 @@ dependencies = [
  "quote",
  "regex",
  "syn 2.0.114",
+ "uuid 1.19.0",
 ]
 
 [[package]]

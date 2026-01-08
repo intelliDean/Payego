@@ -10,7 +10,8 @@ fn test_transfer_request_validation() {
     let req = serde_json::from_value::<TransferRequest>(json!({
         "amount": 100.0,
         "recipient_email": "test@example.com",
-        "currency": "USD"
+        "currency": "USD",
+        "reference": uuid::Uuid::new_v4()
     })).unwrap();
     assert!(req.validate().is_ok());
 
@@ -18,7 +19,8 @@ fn test_transfer_request_validation() {
     let req = serde_json::from_value::<TransferRequest>(json!({
         "amount": 0.5,
         "recipient_email": "test@example.com",
-        "currency": "USD"
+        "currency": "USD",
+        "reference": uuid::Uuid::new_v4()
     })).unwrap();
     assert!(req.validate().is_err());
 
@@ -26,7 +28,8 @@ fn test_transfer_request_validation() {
     let req = serde_json::from_value::<TransferRequest>(json!({
         "amount": 20000.0,
         "recipient_email": "test@example.com",
-        "currency": "USD"
+        "currency": "USD",
+        "reference": uuid::Uuid::new_v4()
     })).unwrap();
     assert!(req.validate().is_err());
 
@@ -34,7 +37,8 @@ fn test_transfer_request_validation() {
     let req = serde_json::from_value::<TransferRequest>(json!({
         "amount": 100.0,
         "recipient_email": "not-an-email",
-        "currency": "USD"
+        "currency": "USD",
+        "reference": uuid::Uuid::new_v4()
     })).unwrap();
     assert!(req.validate().is_err());
 
@@ -42,7 +46,8 @@ fn test_transfer_request_validation() {
     let req = serde_json::from_value::<TransferRequest>(json!({
         "amount": 100.0,
         "recipient_email": "test@example.com",
-        "currency": "UNKNOWN"
+        "currency": "UNKNOWN",
+        "reference": uuid::Uuid::new_v4()
     })).unwrap();
     assert!(req.validate().is_err());
 }

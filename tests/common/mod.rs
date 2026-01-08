@@ -20,7 +20,7 @@ pub fn create_test_db_pool() -> Pool<ConnectionManager<PgConnection>> {
     // but here we just use builder().build() and handle it better if possible.
     // For now, let's just use build() but don't panic if it's just a unit test.
     Pool::builder()
-        .max_size(1)
+        .max_size(5)
         .build(manager)
         .unwrap_or_else(|e| {
             eprintln!("Warning: Failed to create test database pool: {}. Tests requiring a database will fail.", e);
@@ -31,6 +31,11 @@ pub fn create_test_db_pool() -> Pool<ConnectionManager<PgConnection>> {
 
 /// Create a test AppState
 pub fn create_test_app_state() -> Arc<AppState> {
+    static INIT: std::sync::Once = std::sync::Once::new();
+    INIT.call_once(|| {
+        payego::logging::setup_logging();
+    });
+
     Arc::new(AppState {
         db: create_test_db_pool(),
         jwt_secret: "test_secret_key_minimum_32_characters_long_for_testing".to_string(),
