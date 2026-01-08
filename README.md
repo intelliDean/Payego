@@ -167,3 +167,9 @@ This creates a Postgres container pre-configured for the application.
 ## 📝 License
 
 This project is licensed under the MIT License.
+
+---
+
+##  Built with 👨‍💻 By
+
+**Michael Dean Oyewole**
