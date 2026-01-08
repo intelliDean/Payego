@@ -1,6 +1,7 @@
+use crate::config::security_config::create_token;
 use crate::error::ApiError;
 use crate::models::models::{AppState, NewUser, NewWallet, RegisterRequest, RegisterResponse};
-use axum::response::IntoResponse;
+use crate::services::auth_service::AuthService;
 use axum::{Json, extract::State, http::StatusCode};
 use bcrypt::hash;
 use diesel::prelude::*;
@@ -9,8 +10,6 @@ use std::sync::Arc;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
-use crate::config::security_config::create_token;
-use crate::error::ApiError::Bcrypt;
 
 #[utoipa::path(
     post,
@@ -33,12 +32,12 @@ pub async fn register(
         ApiError::Validation(e)
     })?;
 
-    let conn = &mut state.db.get().map_err(|e| {
+    let mut conn = state.db.get().map_err(|e| {
         tracing::error!("Database connection error: {}", e);
         ApiError::DatabaseConnection(e.to_string())
     })?;
 
-    let hashed = hash(&payload.password, 12).map_err(Bcrypt)?;
+    let hashed = hash(&payload.password, 12).map_err(ApiError::Bcrypt)?;
 
     // Clone the values we need before moving payload
     let email = payload.email.clone();
@@ -105,7 +104,7 @@ pub async fn register(
                 let email_exists: bool = crate::schema::users::table
                     .filter(crate::schema::users::email.eq(&email))
                     .select(diesel::dsl::count_star())
-                    .first::<i64>(conn)
+                    .first::<i64>(&mut conn)
                     .map(|count| count > 0)
                     .unwrap_or(false);
 
@@ -124,18 +123,17 @@ pub async fn register(
     // Generate JWT token with proper error handling
     let token = create_token(&state, &user_id.to_string())?;
 
+    // Generate Refresh Token
+    let refresh_token = AuthService::generate_refresh_token(&mut conn, user_id)?;
+
     tracing::info!("User registered: email={}", email);
 
     Ok((
         StatusCode::CREATED,
         Json(RegisterResponse {
             token,
+            refresh_token,
             user_email: email
         }),
     ))
 }
-
-//============
-
-
-

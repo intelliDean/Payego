@@ -68,7 +68,6 @@ pub async fn internal_transfer(
     Extension(claims): Extension<Claims>,
     Json(req): Json<TransferRequest>,
 ) -> Result<Json<TransferResponse>, (StatusCode, String)> {
-
     info!(
         "Transfer request: sender = {}, recipient_email = {}, amount = {}",
         claims.sub, req.recipient_email, req.amount
@@ -86,11 +85,8 @@ pub async fn internal_transfer(
         ApiError::Auth("Invalid user ID".to_string())
     })?;
 
-    // Convert amount to cents
-    let amount_cents = (req.amount * 100.0).round() as i64;
-
     // Get database connection
-    let conn = &mut state
+    let mut conn = state
         .db
         .get()
         .map_err(|e| {
@@ -98,146 +94,17 @@ pub async fn internal_transfer(
             ApiError::DatabaseConnection(e.to_string())
         })?;
 
-    // Parse recipient
-    let recipient = users::table
-        .filter(users::email.eq(&req.recipient_email))
-        .select(Recipient::as_select())
-        .first::<Recipient>(conn)
-        .map_err(|e| {
-            error!("Recipient lookup failed: {}", e);
-            if e.to_string().contains("not found") {
-                ApiError::Payment("Recipient is not known".to_string())
-            } else {
-                ApiError::Database(e)
-            }
-        })?;
-
-    // Prevent self-transfer
-    if sender_id == recipient.id {
-        error!("Self-transfer attempted: sender_id = {}", sender_id);
-        return Err(ApiError::Auth("Cannot transfer to self".to_string()).into());
-    }
-
-    // Idempotency check: check if transaction with this reference already exists
-    let existing_transaction = transactions::table
-        .filter(transactions::reference.eq(req.reference))
-        .first::<crate::models::models::Transaction>(conn)
-        .optional()
-        .map_err(|e| {
-            error!("Database error checking idempotency: {}", e);
-            ApiError::Database(e)
-        })?;
-
-    if let Some(tx) = existing_transaction {
-        info!("Idempotent request: transaction {} already exists", tx.reference);
-        return Ok(Json(TransferResponse {
-            transaction_id: tx.reference.to_string(),
-        }));
-    }
-
-    // Validate sender wallet and balance
-    let sender_wallet = wallets::table
-        .filter(wallets::user_id.eq(sender_id))
-        .filter(wallets::currency.eq(&req.currency.to_uppercase()))
-        .select((wallets::balance, wallets::currency))
-        .first::<(i64, String)>(conn)
-        .map_err(|e| {
-            error!("Sender wallet lookup failed: {}", e);
-            if e.to_string().contains("not found") {
-                ApiError::Payment("Sender wallet not found for specified currency".to_string())
-            } else {
-                ApiError::Database(e)
-            }
-        })?;
-
-    if sender_wallet.0 < amount_cents {
-        error!(
-            "Insufficient balance: available={}, required={}",
-            sender_wallet.0, amount_cents
-        );
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "Insufficient balance".to_string(),
-        ));
-    }
-
-    // Perform transfer atomically
-    let transaction_reference = req.reference;
-    conn.transaction(|conn| {
-        // Debit sender's wallet
-        diesel::update(wallets::table)
-            .filter(wallets::user_id.eq(sender_id))
-            .filter(wallets::currency.eq(&req.currency.to_uppercase()))
-            .set(wallets::balance.eq(wallets::balance - amount_cents))
-            .execute(conn)
-            .map_err(|e| {
-                error!("Sender wallet update failed: {}", e);
-                ApiError::Database(e)
-            })?;
-
-        // Create sender transaction
-        diesel::insert_into(transactions::table)
-            .values(NewTransaction {
-                user_id: sender_id,
-                recipient_id: Some(recipient.id),
-                amount: -amount_cents, // Negative for sender
-                transaction_type: "internal_transfer_send".to_string(),
-                status: "completed".to_string(),
-                provider: Some("internal".to_string()),
-                description: Some(format!("Transfer to {} in {}", req.recipient_email, req.currency)),
-                reference: transaction_reference,
-                currency: req.currency.to_uppercase(),
-            })
-            .execute(conn)
-            .map_err(|e| {
-                error!("Sender transaction insert failed: {}", e);
-                ApiError::Database(e)
-            })?;
-
-        // Credit recipient's wallet (create or update)
-        diesel::insert_into(wallets::table)
-            .values((
-                wallets::user_id.eq(recipient.id),
-                wallets::balance.eq(amount_cents),
-                wallets::currency.eq(req.currency.to_uppercase()),
-            ))
-            .on_conflict((wallets::user_id, wallets::currency))
-            .do_update()
-            .set(wallets::balance.eq(wallets::balance + amount_cents))
-            .execute(conn)
-            .map_err(|e| {
-                error!("Recipient wallet update failed: {}", e);
-                ApiError::Database(e)
-            })?;
-
-        // Create recipient transaction
-        diesel::insert_into(transactions::table)
-            .values(NewTransaction {
-                user_id: recipient.id,
-                recipient_id: Some(sender_id),
-                amount: amount_cents,
-                transaction_type: "internal_transfer_receive".to_string(),
-                status: "completed".to_string(),
-                provider: Some("internal".to_string()),
-                description: Some(format!("Received from sender in {}", req.currency)),
-                reference: Uuid::new_v4(),
-                currency: req.currency.to_uppercase(),
-            })
-            .execute(conn)
-            .map_err(|e| {
-                error!("Recipient transaction insert failed: {}", e);
-                ApiError::Database(e)
-            })?;
-
-        Ok::<(), ApiError>(())
-    })?;
-
-    info!(
-        "Internal transfer completed: {} {} from {} to {}",
-        req.amount, req.currency, sender_id, recipient.id
-    );
+    // Execute transfer via service
+    let transaction_id = crate::services::transfer_service::TransferService::execute_internal_transfer(
+        &mut conn,
+        sender_id,
+        &req.recipient_email,
+        req.amount,
+        &req.currency,
+        req.reference,
+    )?;
 
     Ok(Json(TransferResponse {
-        transaction_id: transaction_reference.to_string(),
+        transaction_id,
     }))
 }

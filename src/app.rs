@@ -1,6 +1,7 @@
 use axum::{
     middleware,
     Router,
+    response::{Response, IntoResponse},
 };
 use std::sync::Arc;
 use utoipa_swagger_ui::SwaggerUi;
@@ -18,11 +19,12 @@ use crate::handlers::{
     paystack_webhook::paystack_webhook, register::register,
     stripe_webhook::stripe_webhook, top_up::top_up, transfer_external::external_transfer,
     transfer_internal::internal_transfer, withdraw::withdraw,
-    initialize_banks::initialize_banks,
+    initialize_banks::initialize_banks, health::health_check,
 };
 use crate::handlers::logout::logout;
 use crate::handlers::transaction::get_user_transaction;
 use crate::models::models::AppState;
+use crate::observability::metrics::setup_metrics;
 
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 
@@ -41,11 +43,13 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/api/register", axum::routing::post(register))
         .route("/api/login", axum::routing::post(login))
+        .route("/api/auth/refresh", axum::routing::post(crate::handlers::refresh_token::refresh_token))
         .route("/api/webhook/stripe", axum::routing::post(stripe_webhook))
         .route("/webhooks/paystack", axum::routing::post(paystack_webhook))
         .route("/api/bank/init", axum::routing::post(initialize_banks))
         .route("/api/banks", axum::routing::get(all_banks))
-        .route("/api/resolve_account", axum::routing::get(resolve_account));
+        .route("/api/resolve_account", axum::routing::get(resolve_account))
+        .route("/api/health", axum::routing::get(health_check));
 
     // Protected routes (require JWT authentication)
     let protected_router = Router::new()
@@ -82,6 +86,38 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     Router::new()
         .merge(public_router)
         .merge(protected_router)
+        .layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)) // 2MB limit
+        .layer(middleware::from_fn(https_redirect_middleware))
         .layer(GovernorLayer::new(governor_conf))
         .with_state(state)
+}
+
+async fn https_redirect_middleware(
+    req: axum::extract::Request,
+    next: middleware::Next,
+) -> Result<axum::response::Response, (axum::http::StatusCode, String)> {
+    // Check if we are in production
+    let env = std::env::var("ENV").unwrap_or_else(|_| "development".to_string());
+    
+    if env == "production" {
+        let headers = req.headers();
+        let proto = headers
+            .get("x-forwarded-proto")
+            .and_then(|h| h.to_str().ok());
+
+        if let Some("http") = proto {
+            let host = headers
+                .get("host")
+                .and_then(|h| h.to_str().ok())
+                .unwrap_or("localhost");
+            
+            let uri = req.uri();
+            let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("");
+            let redirect_url = format!("https://{}{}", host, path_and_query);
+
+            return Ok(axum::response::Redirect::permanent(&redirect_url).into_response());
+        }
+    }
+
+    Ok(next.run(req).await)
 }

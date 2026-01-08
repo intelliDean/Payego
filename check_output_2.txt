@@ -1,0 +1,310 @@
+    Checking payego v0.1.0 (/mnt/data/Projects/RustroverProjects/payego)
+error[E0252]: the name `BankResponse` is defined multiple times
+  --> src/services/bank_service.rs:12:42
+   |
+ 2 | use crate::handlers::bank::BankResponse;
+   |     ----------------------------------- previous import of the type `BankResponse` here
+...
+12 | use crate::handlers::bank::{BankRequest, BankResponse};
+   |                                          ^^^^^^^^^^^^ `BankResponse` reimported here
+   |
+   = note: `BankResponse` must be defined only once in the type namespace of this module
+
+error[E0603]: struct `PrometheusHandle` is private
+   --> src/observability/metrics.rs:1:23
+    |
+  1 | use axum_prometheus::{PrometheusHandle, PrometheusMetricLayer};
+    |                       ^^^^^^^^^^^^^^^^ private struct
+    |
+note: the struct `PrometheusHandle` is defined here
+   --> /home/dean/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/axum-prometheus-0.10.0/src/lib.rs:229:63
+    |
+229 | use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
+    |                                                               ^^^^^^^^^^^^^^^^
+help: import `PrometheusHandle` directly
+    |
+  1 | use axum_prometheus::{metrics_exporter_prometheus::recorder::PrometheusHandle, PrometheusMetricLayer};
+    |                       +++++++++++++++++++++++++++++++++++++++
+
+warning: unused import: `Response`
+ --> src/app.rs:4:16
+  |
+4 |     response::{Response, IntoResponse},
+  |                ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::observability::metrics::setup_metrics`
+  --> src/app.rs:27:5
+   |
+27 | use crate::observability::metrics::setup_metrics;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `utoipa::ToSchema`
+  --> src/handlers/register.rs:10:5
+   |
+10 | use utoipa::ToSchema;
+   |     ^^^^^^^^^^^^^^^^
+
+warning: unused import: `ValidationError`
+ --> src/handlers/transfer_internal.rs:8:27
+  |
+8 | use validator::{Validate, ValidationError};
+  |                           ^^^^^^^^^^^^^^^
+
+warning: unused import: `lazy_static::lazy_static`
+  --> src/handlers/transfer_internal.rs:10:5
+   |
+10 | use lazy_static::lazy_static;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `transactions`, `users`, and `wallets`
+  --> src/handlers/transfer_internal.rs:14:21
+   |
+14 | use crate::schema::{users, wallets, transactions};
+   |                     ^^^^^  ^^^^^^^  ^^^^^^^^^^^^
+
+warning: unused import: `crate::models::models::NewTransaction`
+  --> src/handlers/transfer_internal.rs:15:5
+   |
+15 | use crate::models::models::NewTransaction;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `BankAccount`
+ --> src/handlers/transfer_external.rs:2:29
+  |
+2 | use crate::models::models::{BankAccount, NewTransaction, Wallet};
+  |                             ^^^^^^^^^^^
+
+warning: unused import: `bank_accounts`
+ --> src/handlers/transfer_external.rs:3:21
+  |
+3 | use crate::schema::{bank_accounts, transactions, wallets};
+  |                     ^^^^^^^^^^^^^
+
+warning: unused import: `serde_json::json`
+  --> src/handlers/transfer_external.rs:13:5
+   |
+13 | use serde_json::json;
+   |     ^^^^^^^^^^^^^^^^
+
+warning: unused import: `diesel::sql_types::Jsonb`
+ --> src/handlers/paystack_webhook.rs:5:5
+  |
+5 | use diesel::sql_types::Jsonb;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `json`
+ --> src/handlers/paystack_webhook.rs:7:25
+  |
+7 | use serde_json::{Value, json};
+  |                         ^^^^
+
+warning: unused imports: `DateTime` and `Utc`
+  --> src/handlers/paystack_webhook.rs:10:14
+   |
+10 | use chrono::{DateTime, Utc};
+   |              ^^^^^^^^  ^^^
+
+warning: unused import: `utoipa::ToSchema`
+  --> src/handlers/paystack_webhook.rs:12:5
+   |
+12 | use utoipa::ToSchema;
+   |     ^^^^^^^^^^^^^^^^
+
+warning: unused import: `serde::Deserialize`
+   --> src/handlers/stripe_webhook.rs:242:5
+    |
+242 | use serde::Deserialize;
+    |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Currency`
+   --> src/handlers/stripe_webhook.rs:245:14
+    |
+245 | use stripe::{Currency, Event, EventObject, EventType, Webhook};
+    |              ^^^^^^^^
+
+warning: unused import: `tracing::log::debug`
+   --> src/handlers/stripe_webhook.rs:246:5
+    |
+246 | use tracing::log::debug;
+    |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Extension`
+ --> src/handlers/all_banks.rs:2:22
+  |
+2 |     extract::{State, Extension},
+  |                      ^^^^^^^^^
+
+warning: unused import: `uuid::Uuid`
+  --> src/handlers/all_banks.rs:11:5
+   |
+11 | use uuid::Uuid;
+   |     ^^^^^^^^^^
+
+warning: unused import: `crate::config::security_config::Claims`
+  --> src/handlers/all_banks.rs:13:5
+   |
+13 | use crate::config::security_config::Claims;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `debug`
+ --> src/handlers/initialize_banks.rs:7:15
+  |
+7 | use tracing::{debug, error, info};
+  |               ^^^^^
+
+warning: unused imports: `DateTime` and `Utc`
+ --> src/handlers/user_wallets.rs:9:14
+  |
+9 | use chrono::{DateTime, Utc};
+  |              ^^^^^^^^  ^^^
+
+warning: unused imports: `DateTime` and `Utc`
+ --> src/handlers/user_bank_accounts.rs:9:14
+  |
+9 | use chrono::{DateTime, Utc};
+  |              ^^^^^^^^  ^^^
+
+warning: unused import: `crate::handlers::user_wallets::WalletResponse`
+  --> src/handlers/user_bank_accounts.rs:15:5
+   |
+15 | use crate::handlers::user_wallets::WalletResponse;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `response::IntoResponse`
+ --> src/handlers/get_transaction.rs:5:28
+  |
+5 | use axum::{extract::State, response::IntoResponse, Extension, Json};
+  |                            ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `headers::authorization::Bearer`
+ --> src/handlers/get_transaction.rs:8:5
+  |
+8 | use headers::authorization::Bearer;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Deserialize`
+  --> src/handlers/get_transaction.rs:10:13
+   |
+10 | use serde::{Deserialize, Serialize};
+   |             ^^^^^^^^^^^
+
+warning: unused import: `crate::handlers::user_bank_accounts::Account`
+ --> src/handlers/transaction.rs:3:5
+  |
+3 | use crate::handlers::user_bank_accounts::Account;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `reference` and `user_id`
+ --> src/handlers/transaction.rs:5:35
+  |
+5 | use crate::schema::transactions::{reference, user_id};
+  |                                   ^^^^^^^^^  ^^^^^^^
+
+warning: unused import: `axum::response::IntoResponse`
+  --> src/handlers/transaction.rs:15:5
+   |
+15 | use axum::response::IntoResponse;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `info`
+  --> src/handlers/transaction.rs:16:22
+   |
+16 | use tracing::{error, info};
+   |                      ^^^^
+
+warning: unused import: `crate::handlers::transfer_internal::TransferRequest`
+  --> src/handlers/transaction.rs:19:5
+   |
+19 | use crate::handlers::transfer_internal::TransferRequest;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::sync::Mutex`
+ --> src/utility.rs:1:5
+  |
+1 | use std::sync::Mutex;
+  |     ^^^^^^^^^^^^^^^^
+
+warning: unused import: `thread_rng`
+ --> src/services/auth_service.rs:6:17
+  |
+6 | use rand::{Rng, thread_rng};
+  |                 ^^^^^^^^^^
+
+warning: unused import: `BankResponse`
+  --> src/services/bank_service.rs:12:42
+   |
+12 | use crate::handlers::bank::{BankRequest, BankResponse};
+   |                                          ^^^^^^^^^^^^
+
+error[E0277]: the trait bound `Array<u8, UInt<UInt<UInt<UInt<..., ...>, ...>, ...>, ...>>: LowerHex` is not satisfied
+  --> src/services/auth_service.rs:79:25
+   |
+79 |         format!("{:x}", hasher.finalize())
+   |                  ----   ^^^^^^^^^^^^^^^^^ the trait `LowerHex` is not implemented for `Array<u8, UInt<UInt<UInt<UInt<UInt<..., ...>, ...>, ...>, ...>, ...>>`
+   |                  |
+   |                  required by this formatting parameter
+   |
+   = help: the following other types implement trait `LowerHex`:
+             &T
+             &mut T
+             Braced
+             Hyphenated
+             Saturating<T>
+             Urn
+             Wrapping<T>
+             axum::body::Bytes
+           and 72 others
+   = note: the full name for the type has been written to '/mnt/data/Projects/RustroverProjects/payego/target/debug/deps/payego-297d9383fed18df4.long-type-13815180839928337154.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unused import: `diesel::row::NamedRow`
+   --> src/handlers/stripe_webhook.rs:244:5
+    |
+244 | use diesel::row::NamedRow;
+    |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `e`
+  --> src/handlers/transfer_external.rs:93:80
+   |
+93 |     let exchange_rate = get_exchange_rate(&req.currency, "NGN").await.map_err(|e: (StatusCode, String)| {
+   |                                                                                ^ help: if this is intentional, prefix it with an underscore: `_e`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `state`
+   --> src/services/withdrawal_service.rs:172:9
+    |
+172 |         state: &AppState,
+    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_state`
+
+warning: unused variable: `e`
+  --> src/handlers/paypal_order.rs:32:65
+   |
+32 |     let paypal_secret = std::env::var("PAYPAL_SECRET").map_err(|e| {
+   |                                                                 ^ help: if this is intentional, prefix it with an underscore: `_e`
+
+warning: unused variable: `e`
+  --> src/handlers/paypal_order.rs:29:71
+   |
+29 |     let paypal_client_id = std::env::var("PAYPAL_CLIENT_ID").map_err(|e| {
+   |                                                                       ^ help: if this is intentional, prefix it with an underscore: `_e`
+
+warning: unused variable: `state`
+  --> src/handlers/paypal_order.rs:25:11
+   |
+25 |     State(state): State<Arc<AppState>>,
+   |           ^^^^^ help: if this is intentional, prefix it with an underscore: `_state`
+
+warning: unused variable: `usr_id`
+  --> src/handlers/get_transaction.rs:59:9
+   |
+59 |     let usr_id = Uuid::parse_str(&claims.sub).map_err(|e| {
+   |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_usr_id`
+
+Some errors have detailed explanations: E0252, E0277, E0603.
+For more information about an error, try `rustc --explain E0252`.
+warning: `payego` (lib) generated 42 warnings
+error: could not compile `payego` (lib) due to 3 previous errors; 42 warnings emitted

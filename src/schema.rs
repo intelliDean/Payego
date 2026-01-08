@@ -42,6 +42,18 @@ diesel::table! {
 }
 
 diesel::table! {
+    refresh_tokens (id) {
+        id -> Uuid,
+        user_id -> Uuid,
+        token_hash -> Text,
+        expires_at -> Timestamptz,
+        revoked -> Bool,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     transactions (id) {
         id -> Uuid,
         user_id -> Uuid,
@@ -89,12 +101,14 @@ diesel::table! {
 }
 
 diesel::joinable!(bank_accounts -> users (user_id));
+diesel::joinable!(refresh_tokens -> users (user_id));
 diesel::joinable!(wallets -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     bank_accounts,
     banks,
     blacklisted_tokens,
+    refresh_tokens,
     transactions,
     users,
     wallets,

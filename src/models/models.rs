@@ -137,6 +137,26 @@ pub struct NewBankAccount {
     pub is_verified: bool,
 }
 
+#[derive(Queryable, Selectable, Identifiable, Debug)]
+#[diesel(table_name = refresh_tokens)]
+pub struct RefreshToken {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub token_hash: String,
+    pub expires_at: DateTime<Utc>,
+    pub revoked: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Insertable, Debug)]
+#[diesel(table_name = refresh_tokens)]
+pub struct NewRefreshToken {
+    pub user_id: Uuid,
+    pub token_hash: String,
+    pub expires_at: DateTime<Utc>,
+}
+
 type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 #[derive(Clone)]
 pub struct AppState {
@@ -168,6 +188,7 @@ pub struct RegisterRequest {
 #[derive(Serialize, ToSchema)]
 pub struct RegisterResponse {
     pub token: String,
+    pub refresh_token: String,
     pub user_email: String,
 }
 
@@ -182,5 +203,6 @@ pub struct LoginRequest {
 #[derive(Serialize, ToSchema)]
 pub struct LoginResponse {
     pub token: String,
+    pub refresh_token: String,
     pub user_email: String,
 }

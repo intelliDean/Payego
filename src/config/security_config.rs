@@ -43,7 +43,7 @@ pub fn create_token(state: &AppState, user_id: &str) -> Result<String, ApiError>
 
     let now = Utc::now();
     let expiration_hours: i64 = env::var("JWT_EXPIRATION_HOURS")
-        .unwrap_or_else(|_| "48".to_string())
+        .unwrap_or_else(|_| "2".to_string())
         .parse()
         .map_err(|e| {
             error!("JWT expiration config error: {}", e);

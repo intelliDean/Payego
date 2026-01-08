@@ -1,5 +1,4 @@
 use std::sync::Mutex;
-use std::time::{Duration, SystemTime};
 use crate::error::ApiError;
 use base64::engine::general_purpose;
 use base64::Engine;
