@@ -18,9 +18,10 @@ use crate::models::models::{BankAccount, NewTransaction, Wallet};
 
 #[derive(Deserialize, ToSchema)]
 pub struct WithdrawRequest {
-    amount: f64, // Amount in the selected currency
-    currency: String, // Currency to withdraw from (e.g., "USD", "NGN")
-    bank_id: String, // Bank account ID from /api/bank_accounts
+    pub amount: f64, // Amount in the selected currency
+    pub currency: String, // Currency to withdraw from (e.g., "USD", "NGN")
+    pub bank_id: String, // Bank account ID from /api/bank_accounts
+    pub reference: Uuid,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -189,8 +190,25 @@ pub async fn withdraw(
             .into());
     }
 
+    // Idempotency check: check if transaction with this reference already exists
+    let existing_transaction = transactions::table
+        .filter(transactions::reference.eq(req.reference))
+        .first::<crate::models::models::Transaction>(conn)
+        .optional()
+        .map_err(|e| {
+            error!("Database error checking idempotency: {}", e);
+            ApiError::Database(e)
+        })?;
+
+    if let Some(tx) = existing_transaction {
+        info!("Idempotent request: transaction {} already exists", tx.reference);
+        return Ok(Json(WithdrawResponse {
+            transaction_id: tx.reference.to_string(),
+        }));
+    }
+
     // Initiate Paystack transfer
-    let reference = Uuid::new_v4();
+    let reference = req.reference;
     let resp = client
         .post("https://api.paystack.co/transfer")
         .header("Authorization", format!("Bearer {}", paystack_key))

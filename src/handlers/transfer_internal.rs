@@ -35,11 +35,12 @@ pub struct TransferRequest {
     pub recipient_email: String,
     #[validate(regex(path = "SUPPORTED_CURRENCIES", message = "Invalid currency"))]
     pub currency: String,
+    pub reference: Uuid,
 }
 
 #[derive(Serialize, ToSchema)]
 pub struct TransferResponse {
-    transaction_id: String,
+    pub transaction_id: String,
 }
 
 #[derive(Queryable, Selectable, Debug)]
@@ -97,7 +98,7 @@ pub async fn internal_transfer(
             ApiError::DatabaseConnection(e.to_string())
         })?;
 
-    // Fetch recipient
+    // Parse recipient
     let recipient = users::table
         .filter(users::email.eq(&req.recipient_email))
         .select(Recipient::as_select())
@@ -115,6 +116,23 @@ pub async fn internal_transfer(
     if sender_id == recipient.id {
         error!("Self-transfer attempted: sender_id = {}", sender_id);
         return Err(ApiError::Auth("Cannot transfer to self".to_string()).into());
+    }
+
+    // Idempotency check: check if transaction with this reference already exists
+    let existing_transaction = transactions::table
+        .filter(transactions::reference.eq(req.reference))
+        .first::<crate::models::models::Transaction>(conn)
+        .optional()
+        .map_err(|e| {
+            error!("Database error checking idempotency: {}", e);
+            ApiError::Database(e)
+        })?;
+
+    if let Some(tx) = existing_transaction {
+        info!("Idempotent request: transaction {} already exists", tx.reference);
+        return Ok(Json(TransferResponse {
+            transaction_id: tx.reference.to_string(),
+        }));
     }
 
     // Validate sender wallet and balance
@@ -144,7 +162,7 @@ pub async fn internal_transfer(
     }
 
     // Perform transfer atomically
-    let transaction_reference = Uuid::new_v4();
+    let transaction_reference = req.reference;
     conn.transaction(|conn| {
         // Debit sender's wallet
         diesel::update(wallets::table)

@@ -86,7 +86,7 @@ pub struct Transaction {
     pub status: String,
     pub provider: Option<String>,
     pub description: Option<String>,
-    pub reference: Option<String>,
+    pub reference: Uuid,
     pub metadata: Option<JsonValue>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -155,7 +155,7 @@ pub struct ErrorResponse {
 pub struct RegisterRequest {
     #[validate(email(message = "Invalid email format"))]
     pub email: String,
-    #[validate(length( min = 8), custom(function = "validate_password"))]
+    #[validate(length(min = 8), custom(function = "validate_password"))]
     pub password: String,
     #[validate(length(
         min = 3,

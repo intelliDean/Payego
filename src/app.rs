@@ -24,7 +24,18 @@ use crate::handlers::logout::logout;
 use crate::handlers::transaction::get_user_transaction;
 use crate::models::models::AppState;
 
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
+
 pub fn create_router(state: Arc<AppState>) -> Router {
+    // Rate limiting configuration
+    let governor_conf = Arc::new(
+        GovernorConfigBuilder::default()
+            .per_second(2) // 2 requests per second = 120 per minute
+            .burst_size(10)
+            .finish()
+            .unwrap(),
+    );
+
     // Public routes (no authentication)
     let public_router = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
@@ -71,5 +82,6 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     Router::new()
         .merge(public_router)
         .merge(protected_router)
+        .layer(GovernorLayer::new(governor_conf))
         .with_state(state)
 }

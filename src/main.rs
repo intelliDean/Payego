@@ -41,11 +41,18 @@ async fn main() -> Result<(), eyre::Error> {
 
     // database connection pool
     let manager = ConnectionManager::<PgConnection>::new(db_url);
-
-    let pool = Pool::builder().max_size(10).build(manager).map_err(|e| {
-        error!("Failed to create database pool: {}", e);
-        eyre::eyre!("Failed to create database pool: {}", e)
-    })?;
+    
+    let pool = Pool::builder()
+        .max_size(50)
+        .min_idle(Some(10))
+        .connection_timeout(Duration::from_secs(5))
+        .idle_timeout(Some(Duration::from_secs(300)))
+        .max_lifetime(Some(Duration::from_secs(1800)))
+        .build(manager)
+        .map_err(|e| {
+            error!("Failed to create database pool: {}", e);
+            eyre::eyre!("Failed to create database pool: {}", e)
+        })?;
 
     // info!("database pool: {:?}", pool);
 

@@ -24,11 +24,12 @@ static ACCOUNT_NUMBER_RE: LazyLock<Regex> = LazyLock::new(|| {
 
 #[derive(Deserialize, ToSchema)]
 pub struct PayoutRequest {
-    amount: f64, // Amount in NGN
-    currency: String, // Currency to deduct from (e.g., "USD")
-    bank_code: String,
-    account_number: String,
-    account_name: Option<String>,
+    pub amount: f64, // Amount in NGN
+    pub currency: String, // Currency to deduct from (e.g., "USD")
+    pub bank_code: String,
+    pub account_number: String,
+    pub account_name: Option<String>,
+    pub reference: Uuid,
 }
 #[utoipa::path(
     post,
@@ -145,6 +146,20 @@ pub async fn external_transfer(
         return Err(ApiError::Payment(format!("Paystack recipient creation failed: {}", message)).into());
     }
 
+    // Idempotency check: check if transaction with this reference already exists
+    let existing_transaction = transactions::table
+        .filter(transactions::reference.eq(req.reference))
+        .first::<crate::models::models::Transaction>(&mut conn)
+        .optional()
+        .map_err(|e| {
+            error!("Database error checking idempotency: {}", e);
+            ApiError::Database(e)
+        })?;
+
+    if let Some(_) = existing_transaction {
+        info!("Idempotent request: transaction {} already exists", req.reference);
+        return Ok(StatusCode::OK);
+    }
 
     let recipient_code = body["data"]["recipient_code"]
         .as_str()
@@ -156,7 +171,7 @@ pub async fn external_transfer(
     debug!("Paystack recipient_code: {}", recipient_code);
 
     // Initiate Paystack transfer
-    let reference = Uuid::new_v4();
+    let reference = req.reference;
     let resp = client
         .post("https://api.paystack.co/transfer")
         .header("Authorization", format!("Bearer {}", paystack_key))

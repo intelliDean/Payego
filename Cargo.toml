@@ -14,12 +14,11 @@ headers = "0.4.1"
 chrono = { version = "0.4.20", default-features = false, features = ["clock", "std"] }
 jsonwebtoken = "9.3.1"
 bcrypt = "0.17.1"
-utoipa = { version = "5.4.0", features = ["axum_extras"] }
+utoipa = { version = "5.4.0", features = ["axum_extras", "uuid"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
 dotenvy = "0.15.7"
 eyre = "0.6.12"
-uuid = { version = "0.8", features = ["v4", "serde"] }
-uuid1 = { package = "uuid", version = "1.18.1", features = ["v4", "serde"] }
+uuid = { version = "1.18.1", features = ["v4", "serde"] }
 tracing = "0.1.41"
 regex = "1.11.2"
 validator = { version = "0.20.0", features = ["derive"] }
@@ -40,6 +39,7 @@ reqwest = { version = "0.12.23", features = ["json", "rustls-tls"] }
 rand = "0.7.3"
 lettre = "0.11.18"
 url = "2.5.7"
+tower_governor = "0.8.0"
 
 [dev-dependencies]
 # Testing framework
