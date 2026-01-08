@@ -15,7 +15,7 @@ use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info, warn};
 use tokio::time::{interval, Duration};
 use chrono::Utc;
-use secrecy::Secret;
+use secrecy::SecretString;
 
 #[tokio::main]
 async fn main() -> Result<(), eyre::Error> {
@@ -54,17 +54,17 @@ async fn main() -> Result<(), eyre::Error> {
     //AppState
     let state = Arc::new(AppState {
         db: pool,
-        jwt_secret: Secret::new(JWTSecret::new().jwt_secret),
-        stripe_secret_key: Secret::new(env::var("STRIPE_SECRET_KEY")
+        jwt_secret: SecretString::new(JWTSecret::new().jwt_secret.into()),
+        stripe_secret_key: SecretString::new(env::var("STRIPE_SECRET_KEY")
             .map_err(|e| {
                 error!("STRIPE_SECRET_KEY environment variable not set: {}", e);
                 eyre::eyre!("STRIPE_SECRET_KEY environment variable must be set")
-            })?),
-        paystack_secret_key: Secret::new(env::var("PAYSTACK_SECRET_KEY")
+            })?.into()),
+        paystack_secret_key: SecretString::new(env::var("PAYSTACK_SECRET_KEY")
              .map_err(|e| {
                  error!("PAYSTACK_SECRET_KEY environment variable not set: {}", e);
                  eyre::eyre!("PAYSTACK_SECRET_KEY environment variable must be set")
-             })?),
+             })?.into()),
         app_url: env::var("APP_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()),
         exchange_api_url: env::var("EXCHANGE_API_URL").unwrap_or_else(|_| "https://api.exchangerate-api.com/v4/latest".to_string()),
         paypal_api_url: env::var("PAYPAL_API_URL").unwrap_or_else(|_| "https://api-m.sandbox.paypal.com".to_string()),
