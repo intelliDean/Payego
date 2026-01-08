@@ -154,34 +154,33 @@ pub struct ErrorResponse {
 #[derive(Deserialize, ToSchema, Validate)]
 pub struct RegisterRequest {
     #[validate(email(message = "Invalid email format"))]
-    pub(crate) email: String,
+    pub email: String,
     #[validate(length( min = 8), custom(function = "validate_password"))]
-    pub(crate) password: String,
+    pub password: String,
     #[validate(length(
         min = 3,
         max = 100,
         message = "Username must be between 3 and 100 characters"
     ))]
-    pub(crate) username: Option<String>,
+    pub username: Option<String>,
 }
-
 
 #[derive(Serialize, ToSchema)]
 pub struct RegisterResponse {
-    pub(crate) token: String,
-    pub(crate) user_email: String,
+    pub token: String,
+    pub user_email: String,
 }
 
 #[derive(Deserialize, ToSchema, Validate)]
 pub struct LoginRequest {
     #[validate(email(message = "Invalid email format"))]
-    pub(crate) email: String,
+    pub email: String,
     #[validate(length( min = 8), custom(function = "validate_password"))]
-    pub(crate) password: String,
+    pub password: String,
 }
 
 #[derive(Serialize, ToSchema)]
 pub struct LoginResponse {
-    pub(crate) token: String,
-    pub(crate) user_email: String,
+    pub token: String,
+    pub user_email: String,
 }

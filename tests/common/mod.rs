@@ -1,5 +1,6 @@
 use diesel::r2d2::{ConnectionManager, Pool};
 use diesel::PgConnection;
+use diesel::prelude::*;
 use payego::models::models::AppState;
 use std::sync::Arc;
 
@@ -12,10 +13,17 @@ pub fn create_test_db_pool() -> Pool<ConnectionManager<PgConnection>> {
         .unwrap_or_else(|_| "postgresql://payego_user:password@localhost/payego_test".to_string());
     
     let manager = ConnectionManager::<PgConnection>::new(database_url);
+    // Use build_unchecked if we want to allow tests to run without a live DB,
+    // but here we just use builder().build() and handle it better if possible.
+    // For now, let's just use build() but don't panic if it's just a unit test.
     Pool::builder()
-        .max_size(5)
+        .max_size(1)
         .build(manager)
-        .expect("Failed to create test pool")
+        .unwrap_or_else(|e| {
+            eprintln!("Warning: Failed to create test database pool: {}. Tests requiring a database will fail.", e);
+            // Return a pool anyway, it will only fail when .get() is called
+            Pool::builder().build_unchecked(ConnectionManager::<PgConnection>::new("postgres://invalid"))
+        })
 }
 
 /// Create a test AppState

@@ -8,3 +8,6 @@ pub mod logging;
 pub mod models;
 pub mod schema;
 pub mod utility;
+
+pub use models::AppState;
+pub use error::ApiError;

@@ -109,7 +109,7 @@ pub async fn login(
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, (StatusCode, String)> {
     // Validate input
-    payload.validate().map_err(|e| {
+    payload.validate().map_err(|e: validator::ValidationErrors| {
         tracing::error!("Validation error for email {}: {}", payload.email, e);
         ApiError::Validation(e)
     })?;
@@ -117,7 +117,7 @@ pub async fn login(
     info!("Login attempt for email: {}", payload.email);
 
     // Get database connection
-    let mut conn = state.db.get().map_err(|e| {
+    let mut conn = state.db.get().map_err(|e: diesel::r2d2::PoolError| {
         tracing::error!("Database connection error: {}", e);
         ApiError::DatabaseConnection(e.to_string())
     })?;
@@ -127,7 +127,7 @@ pub async fn login(
         .filter(crate::schema::users::email.eq(&payload.email))
         .first(&mut conn)
         .optional()
-        .map_err(|e| {
+        .map_err(|e: diesel::result::Error| {
             tracing::error!("Database error finding user {}: {}", payload.email, e);
             ApiError::Database(e)
         })?;
@@ -147,7 +147,7 @@ pub async fn login(
     };
 
     // Verify password
-    if !verify(&payload.password, &user.password_hash).map_err(|e| {
+    if !verify(&payload.password, &user.password_hash).map_err(|e: bcrypt::BcryptError| {
         tracing::error!("Password verification error for user {}: {}", user.id, e);
         ApiError::Bcrypt(e)
     })? {

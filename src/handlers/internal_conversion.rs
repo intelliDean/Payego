@@ -65,7 +65,7 @@ pub async fn convert_currency(
     info!("Convert currency initiated");
 
     // Validate input
-    req.validate().map_err(|e| {
+    req.validate().map_err(|e: validator::ValidationErrors| {
         error!("Validation error: {}", e);
         ApiError::Validation(e)
     })?;
@@ -78,7 +78,7 @@ pub async fn convert_currency(
     }
 
     // Parse user ID
-    let user_id = Uuid::parse_str(&claims.sub).map_err(|e| {
+    let user_id = Uuid::parse_str(&claims.sub).map_err(|e: uuid::Error| {
         error!("Invalid user ID: {}", e);
         ApiError::Auth("Invalid user ID".to_string())
     })?;
@@ -87,13 +87,13 @@ pub async fn convert_currency(
     let amount_cents = (req.amount * 100.0).round() as i64;
 
     // Get database connection
-    let conn = &mut state.db.get().map_err(|e| {
+    let conn = &mut state.db.get().map_err(|e: diesel::r2d2::PoolError| {
         error!("Database connection error: {}", e);
         ApiError::DatabaseConnection(e.to_string())
     })?;
 
     // Fetch exchange rate
-    let exchange_rate = get_exchange_rate(&req.from_currency, &req.to_currency).await.map_err(|e| {
+    let exchange_rate = get_exchange_rate(&req.from_currency, &req.to_currency).await.map_err(|e: ApiError| {
         // error!("Exchange rate fetch failed: {}", e);
         ApiError::Payment("Exchange rate fetch failed".to_string())
     })?;
@@ -111,7 +111,7 @@ pub async fn convert_currency(
             .filter(wallets::currency.eq(&req.from_currency))
             .select(Wallet::as_select())
             .first(conn)
-            .map_err(|e| {
+            .map_err(|e: diesel::result::Error| {
                 error!("From wallet lookup failed: {}", e);
                 if e.to_string().contains("not found") {
                     ApiError::Payment(format!("Wallet not found for {}", req.from_currency))
@@ -139,7 +139,7 @@ pub async fn convert_currency(
             .filter(wallets::currency.eq(&req.from_currency))
             .set(wallets::balance.eq(wallets::balance - amount_cents))
             .execute(conn)
-            .map_err(|e| {
+            .map_err(|e: diesel::result::Error| {
                 error!("From wallet update failed: {}", e);
                 ApiError::Database(e)
             })?;
@@ -155,7 +155,7 @@ pub async fn convert_currency(
             .do_update()
             .set(wallets::balance.eq(wallets::balance + net_converted_cents))
             .execute(conn)
-            .map_err(|e| {
+            .map_err(|e: diesel::result::Error| {
                 error!("To wallet update failed: {}", e);
                 ApiError::Database(e)
             })?;
@@ -177,14 +177,14 @@ pub async fn convert_currency(
                 currency: req.from_currency.clone(),
             })
             .execute(conn)
-            .map_err(|e| {
+            .map_err(|e: diesel::result::Error| {
                 error!("Transaction insert failed: {}", e);
                 ApiError::Database(e)
             })?;
 
         Ok(net_converted_cents as f64 / 100.0)
     })
-        .map_err(|e| e)?;
+        .map_err(|e: ApiError| e)?;
 
     info!(
         "Currency conversion completed: user_id={}, amount={}, from={}, to={}",

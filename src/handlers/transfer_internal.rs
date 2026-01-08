@@ -30,11 +30,11 @@ pub struct TransferRequest {
         max = 10000.0,
         message = "Amount must be between 1 and 10,000"
     ))]
-    amount: f64, // In base units (e.g., dollars)
+    pub amount: f64, // In base units (e.g., dollars)
     #[validate(email)]
-    recipient_email: String,
+    pub recipient_email: String,
     #[validate(regex(path = "SUPPORTED_CURRENCIES", message = "Invalid currency"))]
-    currency: String,
+    pub currency: String,
 }
 
 #[derive(Serialize, ToSchema)]

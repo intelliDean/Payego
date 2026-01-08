@@ -64,19 +64,19 @@ pub async fn add_bank_account(
     );
 
     // Validate input
-    req.validate().map_err(|e| {
+    req.validate().map_err(|e: validator::ValidationErrors| {
         error!("Validation error: {}", e);
         ApiError::Validation(e)
     })?;
 
     // Parse user_id
-    let user_id = Uuid::parse_str(&claims.sub).map_err(|e| {
+    let user_id = Uuid::parse_str(&claims.sub).map_err(|e: uuid::Error| {
         error!("Invalid user ID: {}", e);
         ApiError::Auth("Invalid user ID".to_string())
     })?;
 
     // Get database connection
-    let conn = &mut state.db.get().map_err(|e| {
+    let conn = &mut state.db.get().map_err(|e: diesel::r2d2::PoolError| {
         error!("Database connection error: {}", e);
         ApiError::DatabaseConnection(e.to_string())
     })?;
@@ -91,7 +91,7 @@ pub async fn add_bank_account(
         .on_conflict((wallets::user_id, wallets::currency))
         .do_nothing()
         .execute(conn)
-        .map_err(|e| {
+        .map_err(|e: diesel::result::Error| {
             error!("Wallet creation failed: {}", e);
             ApiError::Database(e)
         })?;
@@ -104,7 +104,7 @@ pub async fn add_bank_account(
         .select(diesel::dsl::count_star())
         .first::<i64>(conn)
         .map(|count| count > 0)
-        .map_err(|e| {
+        .map_err(|e: diesel::result::Error| {
             error!("Bank account lookup failed: {}", e);
             ApiError::Database(e)
         })?;
@@ -133,7 +133,7 @@ pub async fn add_bank_account(
         .header("Authorization", format!("Bearer {}", paystack_key))
         .send()
         .await
-        .map_err(|e| {
+        .map_err(|e: reqwest::Error| {
             error!("Paystack resolve API error: {}", e);
             ApiError::Payment(format!("Paystack resolve API error: {}", e))
         })?;
@@ -142,7 +142,7 @@ pub async fn add_bank_account(
     let resolve_body = resolve_resp
         .json::<serde_json::Value>()
         .await
-        .map_err(|e| {
+        .map_err(|e: reqwest::Error| {
             error!("Paystack resolve response parsing error: {}", e);
             ApiError::Payment("Paystack resolve response error".to_string())
         })?;
@@ -181,7 +181,7 @@ pub async fn add_bank_account(
         }))
         .send()
         .await
-        .map_err(|e| {
+        .map_err(|e: reqwest::Error| {
             error!("Paystack transferrecipient API error: {}", e);
             ApiError::Payment(format!("Paystack transferrecipient API error: {}", e))
         })?;
@@ -190,7 +190,7 @@ pub async fn add_bank_account(
     let recipient_body = recipient_resp
         .json::<serde_json::Value>()
         .await
-        .map_err(|e| {
+        .map_err(|e: reqwest::Error| {
             error!("Paystack transferrecipient response parsing error: {}", e);
             ApiError::Payment("Paystack transferrecipient response error".to_string())
         })?;
@@ -232,7 +232,7 @@ pub async fn add_bank_account(
             is_verified: true,
         })
         .execute(conn)
-        .map_err(|e| {
+        .map_err(|e: diesel::result::Error| {
             error!("Failed to add bank account: {}", e);
             if e.to_string().contains("unique") {
                 ApiError::Payment("Bank account already exists".to_string())

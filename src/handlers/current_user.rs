@@ -42,12 +42,12 @@ pub async fn current_user_details(
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<CurrentUserResponse>, (StatusCode, String)> {
     // Parse user ID from JWT claims
-    let user_id = Uuid::parse_str(&claims.sub).map_err(|e| {
+    let user_id = Uuid::parse_str(&claims.sub).map_err(|e: uuid::Error| {
         error!("Invalid user ID in JWT: {}", e);
         ApiError::Auth("Invalid user ID".to_string())
     })?;
 
-    let conn = &mut state.db.get().map_err(|e| {
+    let conn = &mut state.db.get().map_err(|e: diesel::r2d2::PoolError| {
         error!("Database connection error: {}", e);
         ApiError::DatabaseConnection(e.to_string())
     })?;
@@ -57,7 +57,7 @@ pub async fn current_user_details(
         .filter(users::id.eq(user_id))
         .select(users::email)
         .first::<String>(conn)
-        .map_err(|e| {
+        .map_err(|e: diesel::result::Error| {
             error!("Failed to fetch user: {}", e);
             ApiError::Database(e)
         })?;
@@ -67,7 +67,7 @@ pub async fn current_user_details(
         .filter(wallets::user_id.eq(user_id))
         .select((wallets::currency, wallets::balance))
         .load::<(String, i64)>(conn)
-        .map_err(|e| {
+        .map_err(|e: diesel::result::Error| {
             error!("Failed to fetch wallets: {}", e);
             ApiError::Database(e)
         })?

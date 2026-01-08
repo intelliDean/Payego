@@ -73,7 +73,7 @@ pub async fn resolve_account(
         .header("Authorization", format!("Bearer {}", paystack_key))
         .send()
         .await
-        .map_err(|e| {
+        .map_err(|e: reqwest::Error| {
             error!("Paystack resolve API error: {}", e);
             ApiError::Payment(format!("Failed to connect to Paystack: {}", e))
         })?;
@@ -82,7 +82,7 @@ pub async fn resolve_account(
     let body = resp
         .json::<serde_json::Value>()
         .await
-        .map_err(|e| {
+        .map_err(|e: reqwest::Error| {
             error!("Paystack response parsing error: {}", e);
             ApiError::Payment(format!("Invalid Paystack response: {}", e))
         })?;

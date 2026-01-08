@@ -69,16 +69,16 @@ pub async fn get_user_transaction(
     Path(transaction_id): Path<String>,
 ) -> Result<Json<TransactionResponse>, (StatusCode, String)> {
 
-    let usr_id = Uuid::parse_str(&claims.sub).map_err(|e| {
+    let usr_id = Uuid::parse_str(&claims.sub).map_err(|e: uuid::Error| {
         error!("Invalid user ID in JWT: {}", e);
         ApiError::Auth("Invalid user ID".to_string())
     })?;
-    let txn_id = Uuid::parse_str(&transaction_id).map_err(|e| {
+    let txn_id = Uuid::parse_str(&transaction_id).map_err(|e: uuid::Error| {
         error!("Invalid tnx id: {}", e);
         ApiError::Auth("Invalid transaction ID".to_string())
     })?;
 
-    let conn = &mut state.db.get().map_err(|e| {
+    let conn = &mut state.db.get().map_err(|e: diesel::r2d2::PoolError| {
         error!("Database connection error: {}", e);
         ApiError::DatabaseConnection(e.to_string())
     })?;
@@ -89,7 +89,7 @@ pub async fn get_user_transaction(
         .select(Transaction::as_select())
         .first(conn)
         // .optional()
-        .map_err(|e| {
+        .map_err(|e: diesel::result::Error| {
             error!("Transaction query failed: {}", e);
             ApiError::Database(e)
         })?;

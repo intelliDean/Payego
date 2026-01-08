@@ -26,7 +26,7 @@ pub async fn initialize_banks(
     let mut conn = state
         .db
         .get()
-        .map_err(|e| {
+        .map_err(|e: diesel::r2d2::PoolError| {
             error!("Database connection failed: {}", e);
             ApiError::DatabaseConnection(e.to_string())
         })?;
@@ -35,7 +35,7 @@ pub async fn initialize_banks(
     let bank_count: i64 = banks::table
         .count()
         .get_result(&mut conn)
-        .map_err(|e| {
+        .map_err(|e: diesel::result::Error| {
             error!("Failed to count banks: {}", e);
             ApiError::Database(e)
         })?;
@@ -59,13 +59,13 @@ pub async fn initialize_banks(
         .header("Authorization", format!("Bearer {}", paystack_key))
         .send()
         .await
-        .map_err(|e| {
+        .map_err(|e: reqwest::Error| {
             error!("Paystack banks API error: {}", e);
             ApiError::Payment(format!("Paystack banks API error: {}", e))
         })?;
 
     let status = resp.status();
-    let body = resp.json::<Value>().await.map_err(|e| {
+    let body = resp.json::<Value>().await.map_err(|e: reqwest::Error| {
         error!("Paystack response parsing error: {}", e);
         ApiError::Payment(format!("Paystack response error: {}", e))
     })?;
@@ -127,7 +127,7 @@ pub async fn initialize_banks(
         .on_conflict(banks::code)
         .do_nothing()
         .execute(&mut conn)
-        .map_err(|e| {
+        .map_err(|e: diesel::result::Error| {
             error!("Failed to insert banks into database: {}", e);
             ApiError::Database(e)
         })?;

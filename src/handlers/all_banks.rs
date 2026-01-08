@@ -34,7 +34,7 @@ pub async fn all_banks(
     State(state): State<Arc<AppState>>
 ) -> Result<Json<BankListResponse>, (StatusCode, String)> {
 
-    let mut conn = state.db.get().map_err(|e| {
+    let mut conn = state.db.get().map_err(|e: diesel::r2d2::PoolError| {
         error!("Database connection failed: {}", e);
         ApiError::DatabaseConnection(e.to_string())
     })?;
@@ -43,7 +43,7 @@ pub async fn all_banks(
     let banks: Vec<Bank> = banks::table
         .filter(banks::country.eq("Nigeria")) // For now, we are only dealing with Nigerian Banks
         .load::<Bank>(&mut conn)
-        .map_err(|e| {
+        .map_err(|e: diesel::result::Error| {
             error!("Failed to load banks from database: {}", e);
             ApiError::Database(e)
         })?;

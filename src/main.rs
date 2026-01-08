@@ -1,20 +1,22 @@
-use crate::config::{
+use payego::config::{
     security_config::{auth_middleware, JWTSecret},
     swagger_config::ApiDoc,
 };
-use crate::handlers::internal_conversion::convert_currency;
-use crate::handlers::resolve_account::resolve_account;
-use crate::handlers::user_bank_accounts::user_bank_accounts;
-use crate::handlers::user_wallets::get_wallets;
-use crate::handlers::{
+use payego::handlers::internal_conversion::convert_currency;
+use payego::handlers::resolve_account::resolve_account;
+use payego::handlers::user_bank_accounts::user_bank_accounts;
+use payego::handlers::user_wallets::get_wallets;
+use payego::handlers::{
     all_banks::all_banks, bank::add_bank_account, current_user::current_user_details,
     get_transaction::get_transactions, login::login, paypal_capture::paypal_capture,
     paypal_order::get_paypal_order, paystack_webhook::paystack_webhook, register::register,
     stripe_webhook::stripe_webhook, top_up::top_up, transfer_external::external_transfer,
     transfer_internal::internal_transfer, withdraw::withdraw,
 };
-use crate::logging::setup_logging;
-use crate::models::models::AppState;
+use payego::logging::setup_logging;
+use payego::models::models::AppState;
+use payego::error::ApiError;
+use payego::handlers::initialize_banks::initialize_banks;
 use axum::extract::State;
 use axum::{middleware, Router};
 use diesel::{
@@ -22,8 +24,6 @@ use diesel::{
     r2d2::{ConnectionManager, Pool},
 };
 use dotenvy::dotenv;
-use error::ApiError;
-use handlers::initialize_banks::initialize_banks;
 use http::HeaderValue;
 use std::{env, net::SocketAddr, sync::Arc};
 use tokio::{net::TcpListener, signal};
@@ -31,17 +31,14 @@ use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 use url::Url;
+use payego::handlers::logout::logout;
+use payego::handlers::transaction::get_user_transaction;
+use chrono::Utc;
+use tokio::time::{interval, Duration};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-use crate::handlers::logout::logout;
-use crate::handlers::transaction::get_user_transaction;
-use chrono::Utc;
-use diesel::prelude::*;
-use tokio::time::{interval, Duration};
-
 // Import from library
-use payego::{config, error, handlers, logging, models, schema};
-use error::ApiError;
+// (Duplicates removed)
 
 #[tokio::main]
 async fn main() -> Result<(), eyre::Error> {
@@ -221,8 +218,8 @@ async fn cleanup_expired_tokens(state: Arc<AppState>) {
             }
         };
         if let Err(e) = diesel::delete(
-            crate::schema::blacklisted_tokens::table
-                .filter(crate::schema::blacklisted_tokens::expires_at.lt(Utc::now())),
+            payego::schema::blacklisted_tokens::table
+                .filter(payego::schema::blacklisted_tokens::expires_at.lt(Utc::now())),
         )
             .execute(&mut conn)
         {

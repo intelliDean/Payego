@@ -63,13 +63,13 @@ pub async fn external_transfer(
     }
     let amount_ngn_cents = (req.amount * 100.0).round() as i64; // Amount in NGN cents
 
-    let mut conn = state.db.get().map_err(|e| {
+    let mut conn = state.db.get().map_err(|e: diesel::r2d2::PoolError| {
         error!("Database connection failed: {}", e);
         ApiError::DatabaseConnection(e.to_string())
     })?;
 
     // Parse user ID
-    let user_id = Uuid::parse_str(&claims.sub).map_err(|e| {
+    let user_id = Uuid::parse_str(&claims.sub).map_err(|e: uuid::Error| {
         error!("Invalid user ID: {}", e);
         ApiError::Auth("Invalid user ID".to_string())
     })?;
@@ -79,7 +79,7 @@ pub async fn external_transfer(
         .filter(wallets::user_id.eq(user_id))
         .filter(wallets::currency.eq(&req.currency))
         .first::<Wallet>(&mut conn)
-        .map_err(|e| {
+        .map_err(|e: diesel::result::Error| {
             error!("Sender wallet lookup failed: {}", e);
             if e.to_string().contains("not found") {
                 ApiError::Payment(format!("Sender wallet not found for currency {}", req.currency))
@@ -89,7 +89,7 @@ pub async fn external_transfer(
         })?;
 
     // Fetch current exchange rate (use a tool or API)
-    let exchange_rate = get_exchange_rate(&req.currency, "NGN").await.map_err(|e| {
+    let exchange_rate = get_exchange_rate(&req.currency, "NGN").await.map_err(|e: (StatusCode, String)| {
         // error!("Exchange rate fetch failed: {}", e);
         ApiError::Payment("Exchange rate fetch failed".to_string())
     })?;
@@ -125,13 +125,13 @@ pub async fn external_transfer(
         }))
         .send()
         .await
-        .map_err(|e| {
+        .map_err(|e: reqwest::Error| {
             error!("Paystack recipient creation failed: {}", e);
             ApiError::Payment(format!("Paystack recipient creation failed: {}", e))
         })?;
 
     let status = resp.status();
-    let body = resp.json::<serde_json::Value>().await.map_err(|e| {
+    let body = resp.json::<serde_json::Value>().await.map_err(|e: reqwest::Error| {
         error!("Paystack response parsing error: {}", e);
         ApiError::Payment(format!("Paystack response error: {}", e))
     })?;
@@ -169,13 +169,13 @@ pub async fn external_transfer(
         }))
         .send()
         .await
-        .map_err(|e| {
+        .map_err(|e: reqwest::Error| {
             error!("Paystack transfer failed: {}", e);
             ApiError::Payment(format!("Paystack transfer failed: {}", e))
         })?;
 
     let status = resp.status();
-    let body = resp.json::<serde_json::Value>().await.map_err(|e| {
+    let body = resp.json::<serde_json::Value>().await.map_err(|e: reqwest::Error| {
         error!("Paystack response parsing error: {}", e);
         ApiError::Payment(format!("Paystack response error: {}", e))
     })?;
@@ -207,7 +207,7 @@ pub async fn external_transfer(
             .filter(wallets::currency.eq(&req.currency))
             .set(wallets::balance.eq(wallets::balance - amount_to_deduct))
             .execute(conn)
-            .map_err(|e| {
+            .map_err(|e: diesel::result::Error| {
                 error!("Sender wallet update failed: {}", e);
                 ApiError::Database(e)
             })?;
@@ -231,7 +231,7 @@ pub async fn external_transfer(
                 // metadata: Some(Jsonb(json!({ "transfer_code": transfer_code, "exchange_rate": exchange_rate }))),
             })
             .execute(conn)
-            .map_err(|e| {
+            .map_err(|e: diesel::result::Error| {
                 error!("Payout transaction insert failed: {}", e);
                 ApiError::Database(e)
             })?;
@@ -259,12 +259,12 @@ async fn get_exchange_rate(from_currency: &str, to_currency: &str) -> Result<f64
         .get(url)
         .send()
         .await
-        .map_err(|e| {
+        .map_err(|e: reqwest::Error| {
             error!("Exchange rate API error: {}", e);
             ApiError::Payment(format!("Exchange rate API error: {}", e))
         })?;
 
-    let body = resp.json::<serde_json::Value>().await.map_err(|e| {
+    let body = resp.json::<serde_json::Value>().await.map_err(|e: reqwest::Error| {
         error!("Exchange rate response parsing error: {}", e);
         ApiError::Payment(format!("Exchange rate response error: {}", e))
     })?;

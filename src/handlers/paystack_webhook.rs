@@ -48,7 +48,7 @@ pub async fn paystack_webhook(
         ApiError::Token("Paystack webhook secret not set".to_string())
     })?;
 
-    let payload_bytes = serde_json::to_vec(&payload).map_err(|e| {
+    let payload_bytes = serde_json::to_vec(&payload).map_err(|e: serde_json::Error| {
         error!("Failed to serialize payload: {}", e);
         ApiError::Payment("Invalid webhook payload".to_string())
     })?;
@@ -74,7 +74,7 @@ pub async fn paystack_webhook(
     debug!("Received Paystack webhook event: {}", event);
 
     // Get database connection
-    let conn = &mut state.db.get().map_err(|e| {
+    let conn = &mut state.db.get().map_err(|e: diesel::r2d2::PoolError| {
         error!("Database connection failed: {}", e);
         ApiError::DatabaseConnection(e.to_string())
     })?;
@@ -86,7 +86,7 @@ pub async fn paystack_webhook(
                 error!("Missing reference in payload");
                 ApiError::Payment("Missing reference".to_string())
             })?;
-            let transaction_id = Uuid::parse_str(reference).map_err(|e| {
+            let transaction_id = Uuid::parse_str(reference).map_err(|e: uuid::Error| {
                 error!("Invalid transaction ID: {}", e);
                 ApiError::Payment("Invalid transaction ID".to_string())
             })?;
@@ -96,7 +96,7 @@ pub async fn paystack_webhook(
                 .filter(crate::schema::transactions::reference.eq(transaction_id))
                 .select(Transaction::as_select())
                 .first(conn)
-                .map_err(|e| {
+                .map_err(|e: diesel::result::Error| {
                     error!("Transaction lookup failed: {}", e);
                     if e.to_string().contains("not found") {
                         ApiError::Payment("Transaction not found".to_string())
@@ -121,7 +121,7 @@ pub async fn paystack_webhook(
             diesel::update(crate::schema::transactions::table.find(transaction_id))
                 .set(crate::schema::transactions::status.eq(new_status))
                 .execute(conn)
-                .map_err(|e| {
+                .map_err(|e: diesel::result::Error| {
                     error!("Transaction update failed: {}", e);
                     ApiError::Database(e)
                 })?;
@@ -145,7 +145,7 @@ pub async fn paystack_webhook(
                     .filter(crate::schema::wallets::currency.eq(currency))
                     .set(crate::schema::wallets::balance.eq(crate::schema::wallets::balance + amount))
                     .execute(conn)
-                    .map_err(|e| {
+                    .map_err(|e: diesel::result::Error| {
                         error!("Wallet update failed: {}", e);
                         ApiError::Database(e)
                     })?;
