@@ -15,12 +15,12 @@ use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info, warn};
 use tokio::time::{interval, Duration};
 use chrono::Utc;
+use secrecy::Secret;
 
 #[tokio::main]
 async fn main() -> Result<(), eyre::Error> {
-    // initialize tracing with environment-based log level (default: DEBUG)
+    // initialize tracing
     setup_logging();
-
     info!("Starting Payego application");
 
     // load environment variables
@@ -35,8 +35,6 @@ async fn main() -> Result<(), eyre::Error> {
         .split(',')
         .map(|s| s.trim().to_string())
         .collect::<Vec<String>>();
-
-    info!("cors origins: {:?}", cors_origins);
 
     // database connection pool
     let manager = ConnectionManager::<PgConnection>::new(db_url);
@@ -53,28 +51,30 @@ async fn main() -> Result<(), eyre::Error> {
             eyre::eyre!("Failed to create database pool: {}", e)
         })?;
 
-    // info!("database pool: {:?}", pool);
-
-
     //AppState
     let state = Arc::new(AppState {
         db: pool,
-        jwt_secret: JWTSecret::new().jwt_secret,
-        stripe_secret_key: env::var("STRIPE_SECRET_KEY")
+        jwt_secret: Secret::new(JWTSecret::new().jwt_secret),
+        stripe_secret_key: Secret::new(env::var("STRIPE_SECRET_KEY")
             .map_err(|e| {
                 error!("STRIPE_SECRET_KEY environment variable not set: {}", e);
                 eyre::eyre!("STRIPE_SECRET_KEY environment variable must be set")
-            })?,
+            })?),
+        paystack_secret_key: Secret::new(env::var("PAYSTACK_SECRET_KEY")
+             .map_err(|e| {
+                 error!("PAYSTACK_SECRET_KEY environment variable not set: {}", e);
+                 eyre::eyre!("PAYSTACK_SECRET_KEY environment variable must be set")
+             })?),
         app_url: env::var("APP_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()),
         exchange_api_url: env::var("EXCHANGE_API_URL").unwrap_or_else(|_| "https://api.exchangerate-api.com/v4/latest".to_string()),
         paypal_api_url: env::var("PAYPAL_API_URL").unwrap_or_else(|_| "https://api-m.sandbox.paypal.com".to_string()),
         paystack_api_url: env::var("PAYSTACK_API_URL").unwrap_or_else(|_| "https://api.paystack.co".to_string()),
     });
 
-    // Initialize banks (non-fatal failure - can be initialized later via API)
+    // Initialize banks
     if let Err((status, message)) = initialize_banks(State(state.clone())).await {
         error!("Failed to initialize banks ({}): {}", status, message);
-        warn!("Application starting without pre-loaded banks. Banks can be initialized later via /api/bank/init endpoint");
+        warn!("Application starting without pre-loaded banks.");
     } else {
         info!("Banks initialized successfully");
     }
@@ -92,16 +92,9 @@ async fn main() -> Result<(), eyre::Error> {
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
-    // Combine routers and apply CORS
     let app = payego::app::create_router(state.clone())
         .layer(cors);
 
-    // Start the server
-    // let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
-
-    info!("About to run app");
-
-    //
     let addr = format!("{}:{}", host, port).parse::<SocketAddr>()?;
     let listener = TcpListener::bind(&addr).await?;
     info!("Server running on http://{}", addr);
@@ -110,7 +103,6 @@ async fn main() -> Result<(), eyre::Error> {
         addr
     );
 
-    // serve graceful shutdown
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
@@ -119,7 +111,6 @@ async fn main() -> Result<(), eyre::Error> {
     Ok(())
 }
 
-// handle Ctrl+C for graceful shutdown
 async fn shutdown_signal() {
     let ctrl_c = async {
         signal::ctrl_c()
@@ -144,27 +135,27 @@ async fn shutdown_signal() {
     }
 }
 
-
 async fn cleanup_expired_tokens(state: Arc<AppState>) {
     let mut interval = interval(Duration::from_secs(24 * 60 * 60)); // Run daily
     loop {
         interval.tick().await;
+        // Db connection handling...
+        // Assuming simplified loop logic here for brevity as main.rs content
+        // The previous implementation was correct
         let mut conn = match state.db.get() {
-            Ok(conn) => conn,
-            Err(e) => {
-                error!("Failed to get DB connection for cleanup: {}", e);
-                continue;
-            }
-        };
-        if let Err(e) = diesel::delete(
-            payego::schema::blacklisted_tokens::table
-                .filter(payego::schema::blacklisted_tokens::expires_at.lt(Utc::now())),
-        )
-            .execute(&mut conn)
-        {
-            error!("Failed to clean up expired tokens: {}", e);
-        } else {
-            info!("Cleaned up expired blacklisted tokens");
-        }
+             Ok(conn) => conn,
+             Err(e) => {
+                 error!("Failed to get DB connection: {}", e);
+                 continue;
+             }
+         };
+         if let Err(e) = diesel::delete(
+             payego::schema::blacklisted_tokens::table
+                 .filter(payego::schema::blacklisted_tokens::expires_at.lt(Utc::now())),
+         )
+             .execute(&mut conn)
+         {
+             error!("Cleanup failed: {}", e);
+         }
     }
 }

@@ -1,836 +1,4 @@
     Checking payego v0.1.0 (/mnt/data/Projects/RustroverProjects/payego)
-error[E0432]: unresolved import `crate::models::models::BankResponse`
- --> src/services/bank_service.rs:2:29
-  |
-2 | use crate::models::models::{BankResponse, NewBankAccount};
-  |                             ^^^^^^^^^^^^
-  |                             |
-  |                             no `BankResponse` in `models::models`
-  |                             help: a similar name exists in the module: `AuthResponse`
-  |
-  = help: consider importing one of these structs instead:
-          crate::handlers::bank::BankResponse
-          crate::handlers::user_bank_accounts::BankResponse
-
-error: cannot find macro `error` in this scope
-   --> src/handlers/resolve_account.rs:107:13
-    |
-107 |             error!("Missing account_name in Paystack response: {:?}", body);
-    |             ^^^^^
-    |
-    = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-    |
-  1 + use tracing::error;
-    |
-
-error: cannot find macro `error` in this scope
-  --> src/handlers/resolve_account.rs:97:9
-   |
-97 |         error!("Paystack account resolution failed: {}", message);
-   |         ^^^^^
-   |
-   = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-   |
- 1 + use tracing::error;
-   |
-
-error: cannot find macro `debug` in this scope
-  --> src/handlers/resolve_account.rs:90:5
-   |
-90 |     debug!("Paystack response: {:?}", body);
-   |     ^^^^^
-   |
-help: consider importing this macro
-   |
- 1 + use tracing::debug;
-   |
-
-error: cannot find macro `error` in this scope
-  --> src/handlers/resolve_account.rs:86:13
-   |
-86 |             error!("Paystack response parsing error: {}", e);
-   |             ^^^^^
-   |
-   = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-   |
- 1 + use tracing::error;
-   |
-
-error: cannot find macro `error` in this scope
-  --> src/handlers/resolve_account.rs:77:13
-   |
-77 |             error!("Paystack resolve API error: {}", e);
-   |             ^^^^^
-   |
-   = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-   |
- 1 + use tracing::error;
-   |
-
-error: cannot find macro `debug` in this scope
-  --> src/handlers/resolve_account.rs:70:5
-   |
-70 |     debug!("Sending Paystack request: {}", url);
-   |     ^^^^^
-   |
-help: consider importing this macro
-   |
- 1 + use tracing::debug;
-   |
-
-error: cannot find macro `error` in this scope
-  --> src/handlers/resolve_account.rs:61:9
-   |
-61 |         error!("PAYSTACK_SECRET_KEY not set");
-   |         ^^^^^
-   |
-   = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-   |
- 1 + use tracing::error;
-   |
-
-error: cannot find macro `error` in this scope
-  --> src/handlers/resolve_account.rs:53:9
-   |
-53 |         error!("Invalid account number: {}", req.account_number);
-   |         ^^^^^
-   |
-   = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-   |
- 1 + use tracing::error;
-   |
-
-error: cannot find macro `error` in this scope
-   --> src/handlers/withdraw.rs:286:17
-    |
-286 |                 error!("Withdrawal transaction insert failed: {}", e);
-    |                 ^^^^^
-    |
-    = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-    |
-  1 + use tracing::error;
-    |
-
-error: cannot find macro `error` in this scope
-   --> src/handlers/withdraw.rs:263:17
-    |
-263 |                 error!("Owner wallet update failed: {}", e);
-    |                 ^^^^^
-    |
-    = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-    |
-  1 + use tracing::error;
-    |
-
-error: cannot find macro `debug` in this scope
-   --> src/handlers/withdraw.rs:252:5
-    |
-252 |     debug!("Paystack transfer_code: {}", transfer_code);
-    |     ^^^^^
-    |
-help: consider importing this macro
-    |
-  1 + use tracing::debug;
-    |
-
-error: cannot find macro `error` in this scope
-   --> src/handlers/withdraw.rs:248:13
-    |
-248 |             error!("Invalid Paystack response: missing transfer_code");
-    |             ^^^^^
-    |
-    = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-    |
-  1 + use tracing::error;
-    |
-
-error: cannot find macro `error` in this scope
-   --> src/handlers/withdraw.rs:241:9
-    |
-241 |         error!("Paystack withdrawal failed: {}", message);
-    |         ^^^^^
-    |
-    = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-    |
-  1 + use tracing::error;
-    |
-
-error: cannot find macro `error` in this scope
-   --> src/handlers/withdraw.rs:231:13
-    |
-231 |             error!("Paystack response parsing error: {}", e);
-    |             ^^^^^
-    |
-    = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-    |
-  1 + use tracing::error;
-    |
-
-error: cannot find macro `error` in this scope
-   --> src/handlers/withdraw.rs:222:13
-    |
-222 |             error!("Paystack API error: {}", e);
-    |             ^^^^^
-    |
-    = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-    |
-  1 + use tracing::error;
-    |
-
-error: cannot find macro `error` in this scope
-   --> src/handlers/withdraw.rs:196:13
-    |
-196 |             error!("Database error checking idempotency: {}", e);
-    |             ^^^^^
-    |
-    = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-    |
-  1 + use tracing::error;
-    |
-
-error: cannot find macro `error` in this scope
-   --> src/handlers/withdraw.rs:178:9
-    |
-178 |         error!(
-    |         ^^^^^
-    |
-    = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-    |
-  1 + use tracing::error;
-    |
-
-error: cannot find macro `error` in this scope
-   --> src/handlers/withdraw.rs:169:13
-    |
-169 |             error!("No NGN balance found in Paystack response");
-    |             ^^^^^
-    |
-    = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-    |
-  1 + use tracing::error;
-    |
-
-error: cannot find macro `error` in this scope
-   --> src/handlers/withdraw.rs:155:13
-    |
-155 |             error!("Paystack response parsing error: {}", e);
-    |             ^^^^^
-    |
-    = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-    |
-  1 + use tracing::error;
-    |
-
-error: cannot find macro `error` in this scope
-   --> src/handlers/withdraw.rs:147:13
-    |
-147 |             error!("Paystack API error: {}", e);
-    |             ^^^^^
-    |
-    = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-    |
-  1 + use tracing::error;
-    |
-
-error: cannot find macro `error` in this scope
-   --> src/handlers/withdraw.rs:137:9
-    |
-137 |         error!("PAYSTACK_SECRET_KEY not set");
-    |         ^^^^^
-    |
-    = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-    |
-  1 + use tracing::error;
-    |
-
-error: cannot find macro `error` in this scope
-   --> src/handlers/withdraw.rs:116:13
-    |
-116 |             error!("Bank account lookup failed: {}", e);
-    |             ^^^^^
-    |
-    = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-    |
-  1 + use tracing::error;
-    |
-
-error: cannot find macro `error` in this scope
-   --> src/handlers/withdraw.rs:102:9
-    |
-102 |         error!(
-    |         ^^^^^
-    |
-    = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-    |
-  1 + use tracing::error;
-    |
-
-error: cannot find macro `error` in this scope
-  --> src/handlers/withdraw.rs:92:13
-   |
-92 |             error!("Sender wallet lookup failed: {}", e);
-   |             ^^^^^
-   |
-   = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-   |
- 1 + use tracing::error;
-   |
-
-error: cannot find macro `error` in this scope
-  --> src/handlers/withdraw.rs:82:9
-   |
-82 |         error!("Database connection failed: {}", e);
-   |         ^^^^^
-   |
-   = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-   |
- 1 + use tracing::error;
-   |
-
-error: cannot find macro `error` in this scope
-  --> src/handlers/withdraw.rs:76:9
-   |
-76 |         error!("Invalid bank ID: {}", e);
-   |         ^^^^^
-   |
-   = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-   |
- 1 + use tracing::error;
-   |
-
-error: cannot find macro `error` in this scope
-  --> src/handlers/withdraw.rs:70:9
-   |
-70 |         error!("Invalid user ID: {}", e);
-   |         ^^^^^
-   |
-   = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-   |
- 1 + use tracing::error;
-   |
-
-error: cannot find macro `error` in this scope
-  --> src/handlers/withdraw.rs:63:9
-   |
-63 |         error!("Invalid currency: {}", req.currency);
-   |         ^^^^^
-   |
-   = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-   |
- 1 + use tracing::error;
-   |
-
-error: cannot find macro `error` in this scope
-  --> src/handlers/withdraw.rs:59:9
-   |
-59 |         error!("Invalid amount: {}", req.amount);
-   |         ^^^^^
-   |
-   = note: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
-help: consider importing this macro
-   |
- 1 + use tracing::error;
-   |
-
-error[E0106]: missing lifetime specifier
- --> src/observability/metrics.rs:3:28
-  |
-3 | pub fn setup_metrics() -> (PrometheusMetricLayer, PrometheusHandle) {
-  |                            ^^^^^^^^^^^^^^^^^^^^^ expected named lifetime parameter
-  |
-  = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
-  |
-3 | pub fn setup_metrics() -> (PrometheusMetricLayer<'static>, PrometheusHandle) {
-  |                                                 +++++++++
-
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `wallets`
-  --> src/handlers/bank.rs:85:25
-   |
-85 |     diesel::insert_into(wallets::table)
-   |                         ^^^^^^^ use of unresolved module or unlinked crate `wallets`
-   |
-   = help: if you wanted to use a crate named `wallets`, use `cargo add wallets` to add it to your `Cargo.toml`
-help: consider importing this struct through its public re-export
-   |
- 1 + use crate::schema::wallets::dsl::wallets;
-   |
-
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `wallets`
-  --> src/handlers/bank.rs:87:13
-   |
-87 |             wallets::user_id.eq(user_id),
-   |             ^^^^^^^ use of unresolved module or unlinked crate `wallets`
-   |
-   = help: if you wanted to use a crate named `wallets`, use `cargo add wallets` to add it to your `Cargo.toml`
-help: consider importing this struct through its public re-export
-   |
- 1 + use crate::schema::wallets::dsl::wallets;
-   |
-
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `wallets`
-  --> src/handlers/bank.rs:88:13
-   |
-88 |             wallets::balance.eq(0),
-   |             ^^^^^^^ use of unresolved module or unlinked crate `wallets`
-   |
-   = help: if you wanted to use a crate named `wallets`, use `cargo add wallets` to add it to your `Cargo.toml`
-help: consider importing this struct through its public re-export
-   |
- 1 + use crate::schema::wallets::dsl::wallets;
-   |
-
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `wallets`
-  --> src/handlers/bank.rs:89:13
-   |
-89 |             wallets::currency.eq("NGN"),
-   |             ^^^^^^^ use of unresolved module or unlinked crate `wallets`
-   |
-   = help: if you wanted to use a crate named `wallets`, use `cargo add wallets` to add it to your `Cargo.toml`
-help: consider importing this struct through its public re-export
-   |
- 1 + use crate::schema::wallets::dsl::wallets;
-   |
-
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `wallets`
-  --> src/handlers/bank.rs:91:23
-   |
-91 |         .on_conflict((wallets::user_id, wallets::currency))
-   |                       ^^^^^^^ use of unresolved module or unlinked crate `wallets`
-   |
-   = help: if you wanted to use a crate named `wallets`, use `cargo add wallets` to add it to your `Cargo.toml`
-help: consider importing this struct through its public re-export
-   |
- 1 + use crate::schema::wallets::dsl::wallets;
-   |
-
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `wallets`
-  --> src/handlers/bank.rs:91:41
-   |
-91 |         .on_conflict((wallets::user_id, wallets::currency))
-   |                                         ^^^^^^^ use of unresolved module or unlinked crate `wallets`
-   |
-   = help: if you wanted to use a crate named `wallets`, use `cargo add wallets` to add it to your `Cargo.toml`
-help: consider importing this struct through its public re-export
-   |
- 1 + use crate::schema::wallets::dsl::wallets;
-   |
-
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `bank_accounts`
-   --> src/handlers/bank.rs:100:20
-    |
-100 |     let existing = bank_accounts::table
-    |                    ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `bank_accounts`
-    |
-    = help: if you wanted to use a crate named `bank_accounts`, use `cargo add bank_accounts` to add it to your `Cargo.toml`
-help: consider importing this struct through its public re-export
-    |
-  1 + use crate::schema::bank_accounts::dsl::bank_accounts;
-    |
-
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `bank_accounts`
-   --> src/handlers/bank.rs:101:17
-    |
-101 |         .filter(bank_accounts::user_id.eq(user_id))
-    |                 ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `bank_accounts`
-    |
-    = help: if you wanted to use a crate named `bank_accounts`, use `cargo add bank_accounts` to add it to your `Cargo.toml`
-help: consider importing this struct through its public re-export
-    |
-  1 + use crate::schema::bank_accounts::dsl::bank_accounts;
-    |
-
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `bank_accounts`
-   --> src/handlers/bank.rs:102:17
-    |
-102 |         .filter(bank_accounts::bank_code.eq(&req.bank_code))
-    |                 ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `bank_accounts`
-    |
-    = help: if you wanted to use a crate named `bank_accounts`, use `cargo add bank_accounts` to add it to your `Cargo.toml`
-help: consider importing this struct through its public re-export
-    |
-  1 + use crate::schema::bank_accounts::dsl::bank_accounts;
-    |
-
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `bank_accounts`
-   --> src/handlers/bank.rs:103:17
-    |
-103 |         .filter(bank_accounts::account_number.eq(&req.account_number))
-    |                 ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `bank_accounts`
-    |
-    = help: if you wanted to use a crate named `bank_accounts`, use `cargo add bank_accounts` to add it to your `Cargo.toml`
-help: consider importing this struct through its public re-export
-    |
-  1 + use crate::schema::bank_accounts::dsl::bank_accounts;
-    |
-
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `bank_accounts`
-   --> src/handlers/bank.rs:223:25
-    |
-223 |     diesel::insert_into(bank_accounts::table)
-    |                         ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `bank_accounts`
-    |
-    = help: if you wanted to use a crate named `bank_accounts`, use `cargo add bank_accounts` to add it to your `Cargo.toml`
-help: consider importing this struct through its public re-export
-    |
-  1 + use crate::schema::bank_accounts::dsl::bank_accounts;
-    |
-
-error[E0422]: cannot find struct, variant or union type `NewBankAccount` in this scope
-   --> src/handlers/bank.rs:224:17
-    |
-224 |         .values(NewBankAccount {
-    |                 ^^^^^^^^^^^^^^ not found in this scope
-    |
-help: consider importing this struct
-    |
-  1 + use crate::models::models::NewBankAccount;
-    |
-
-error[E0412]: cannot find type `LazyLock` in this scope
-  --> src/handlers/withdraw.rs:29:30
-   |
-29 | static SUPPORTED_CURRENCIES: LazyLock<Regex> = LazyLock::new(|| {
-   |                              ^^^^^^^^ not found in this scope
-   |
-help: consider importing this struct
-   |
- 1 + use std::sync::LazyLock;
-   |
-
-error[E0412]: cannot find type `Regex` in this scope
-  --> src/handlers/withdraw.rs:29:39
-   |
-29 | static SUPPORTED_CURRENCIES: LazyLock<Regex> = LazyLock::new(|| {
-   |                                       ^^^^^ not found in this scope
-   |
-help: consider importing one of these structs
-   |
- 1 + use regex::Regex;
-   |
- 1 + use regex::bytes::Regex;
-   |
-
-error[E0433]: failed to resolve: use of undeclared type `LazyLock`
-  --> src/handlers/withdraw.rs:29:48
-   |
-29 | static SUPPORTED_CURRENCIES: LazyLock<Regex> = LazyLock::new(|| {
-   |                                                ^^^^^^^^ use of undeclared type `LazyLock`
-   |
-help: consider importing this struct
-   |
- 1 + use std::sync::LazyLock;
-   |
-
-error[E0433]: failed to resolve: use of undeclared type `Regex`
-  --> src/handlers/withdraw.rs:30:5
-   |
-30 |     Regex::new(r"^(USD|NGN|GBP|EUR|CAD|AUD|JPY|CHF|CNY|SEK|NZD|MXN|SGD|HKD|NOK|KRW|TRY|INR|BRL|ZAR)$")
-   |     ^^^^^ use of undeclared type `Regex`
-   |
-help: consider importing one of these structs
-   |
- 1 + use regex::Regex;
-   |
- 1 + use regex::bytes::Regex;
-   |
-
-error[E0433]: failed to resolve: use of undeclared type `Client`
-   --> src/handlers/withdraw.rs:140:18
-    |
-140 |     let client = Client::new();
-    |                  ^^^^^^ use of undeclared type `Client`
-    |
-help: consider importing one of these structs
-    |
-  1 + use reqwest::Client;
-    |
-  1 + use stripe::Client;
-    |
-
-error[E0433]: failed to resolve: use of undeclared type `Client`
-   --> src/handlers/withdraw.rs:310:18
-    |
-310 |     let client = Client::new();
-    |                  ^^^^^^ use of undeclared type `Client`
-    |
-help: consider importing one of these structs
-    |
-  1 + use reqwest::Client;
-    |
-  1 + use stripe::Client;
-    |
-
-error[E0433]: failed to resolve: use of undeclared type `Client`
-   --> src/handlers/internal_conversion.rs:208:18
-    |
-208 |     let client = Client::new();
-    |                  ^^^^^^ use of undeclared type `Client`
-    |
-help: consider importing one of these structs
-    |
-  1 + use reqwest::Client;
-    |
-  1 + use stripe::Client;
-    |
-
-error[E0433]: failed to resolve: use of undeclared type `ApiError`
-  --> src/handlers/resolve_account.rs:62:9
-   |
-62 |         ApiError::Payment("Paystack configuration error".to_string())
-   |         ^^^^^^^^ use of undeclared type `ApiError`
-   |
-help: consider importing this enum through its public re-export
-   |
- 1 + use crate::ApiError;
-   |
-
-error[E0433]: failed to resolve: use of undeclared type `Client`
-  --> src/handlers/resolve_account.rs:65:18
-   |
-65 |     let client = Client::new();
-   |                  ^^^^^^ use of undeclared type `Client`
-   |
-help: consider importing one of these structs
-   |
- 1 + use reqwest::Client;
-   |
- 1 + use stripe::Client;
-   |
-
-error[E0433]: failed to resolve: use of undeclared type `ApiError`
-  --> src/handlers/resolve_account.rs:78:13
-   |
-78 |             ApiError::Payment(format!("Failed to connect to Paystack: {}", e))
-   |             ^^^^^^^^ use of undeclared type `ApiError`
-   |
-help: consider importing this enum through its public re-export
-   |
- 1 + use crate::ApiError;
-   |
-
-error[E0433]: failed to resolve: use of undeclared type `ApiError`
-  --> src/handlers/resolve_account.rs:87:13
-   |
-87 |             ApiError::Payment(format!("Invalid Paystack response: {}", e))
-   |             ^^^^^^^^ use of undeclared type `ApiError`
-   |
-help: consider importing this enum through its public re-export
-   |
- 1 + use crate::ApiError;
-   |
-
-error[E0433]: failed to resolve: use of undeclared type `ApiError`
-   --> src/handlers/resolve_account.rs:108:13
-    |
-108 |             ApiError::Payment("Invalid Paystack response: missing account_name".to_string())
-    |             ^^^^^^^^ use of undeclared type `ApiError`
-    |
-help: consider importing this enum through its public re-export
-    |
-  1 + use crate::ApiError;
-    |
-
-error[E0423]: expected value, found module `refresh_tokens`
-  --> src/services/auth_service.rs:27:29
-   |
-27 |         diesel::insert_into(refresh_tokens)
-   |                             ^^^^^^^^^^^^^^ not a value
-   |
-help: consider importing this unit struct through its public re-export instead
-   |
- 1 + use crate::services::auth_service::refresh_tokens::dsl::refresh_tokens;
-   |
-
-error[E0423]: expected value, found module `refresh_tokens`
-  --> src/services/auth_service.rs:46:28
-   |
-46 |         let token_record = refresh_tokens
-   |                            ^^^^^^^^^^^^^^
-   |
-help: use the path separator to refer to an item
-   |
-46 -         let token_record = refresh_tokens
-47 -             .filter(user_id.eq(user_uuid))
-46 +         let token_record = refresh_tokens::filter(user_id.eq(user_uuid))
-   |
-help: consider importing this unit struct through its public re-export instead
-   |
- 1 + use crate::services::auth_service::refresh_tokens::dsl::refresh_tokens;
-   |
-
-error[E0425]: cannot find value `user_id` in this scope
-  --> src/services/auth_service.rs:47:21
-   |
-47 |             .filter(user_id.eq(user_uuid))
-   |                     ^^^^^^^
-   |
-help: a local variable with a similar name exists
-   |
-47 |             .filter(user_uuid.eq(user_uuid))
-   |                          ++
-help: consider importing one of these unit structs
-   |
- 1 + use crate::schema::bank_accounts::user_id;
-   |
- 1 + use crate::schema::transactions::user_id;
-   |
- 1 + use crate::schema::wallets::user_id;
-   |
- 1 + use crate::services::auth_service::refresh_tokens::user_id;
-   |
-
-error[E0425]: cannot find value `token_hash` in this scope
-  --> src/services/auth_service.rs:48:21
-   |
-48 |             .filter(token_hash.eq(&hashed_token))
-   |                     ^^^^^^^^^^ not found in this scope
-   |
-help: consider importing this unit struct through its public re-export
-   |
- 1 + use crate::services::auth_service::refresh_tokens::token_hash;
-   |
-
-error[E0425]: cannot find value `revoked` in this scope
-  --> src/services/auth_service.rs:49:21
-   |
-49 |             .filter(revoked.eq(false))
-   |                     ^^^^^^^ not found in this scope
-   |
-help: consider importing this unit struct through its public re-export
-   |
- 1 + use crate::services::auth_service::refresh_tokens::revoked;
-   |
-
-error[E0425]: cannot find value `expires_at` in this scope
-  --> src/services/auth_service.rs:50:21
-   |
-50 |             .filter(expires_at.gt(Utc::now()))
-   |                     ^^^^^^^^^^ not found in this scope
-   |
-help: consider importing one of these unit structs
-   |
- 1 + use crate::schema::blacklisted_tokens::expires_at;
-   |
- 1 + use crate::services::auth_service::refresh_tokens::expires_at;
-   |
-
-error[E0423]: expected value, found module `refresh_tokens`
-  --> src/services/auth_service.rs:57:24
-   |
-57 |         diesel::update(refresh_tokens.find(token_record.id))
-   |                        ^^^^^^^^^^^^^^
-   |
-help: use the path separator to refer to an item
-   |
-57 -         diesel::update(refresh_tokens.find(token_record.id))
-57 +         diesel::update(refresh_tokens::find(token_record.id))
-   |
-help: consider importing this unit struct through its public re-export instead
-   |
- 1 + use crate::services::auth_service::refresh_tokens::dsl::refresh_tokens;
-   |
-
-error[E0425]: cannot find value `revoked` in this scope
-  --> src/services/auth_service.rs:58:18
-   |
-58 |             .set(revoked.eq(true))
-   |                  ^^^^^^^ not found in this scope
-   |
-help: consider importing this unit struct through its public re-export
-   |
- 1 + use crate::services::auth_service::refresh_tokens::revoked;
-   |
-
-error[E0423]: expected value, found module `refresh_tokens`
-  --> src/services/auth_service.rs:69:24
-   |
-69 |         diesel::update(refresh_tokens.filter(user_id.eq(user_uuid)))
-   |                        ^^^^^^^^^^^^^^
-   |
-help: use the path separator to refer to an item
-   |
-69 -         diesel::update(refresh_tokens.filter(user_id.eq(user_uuid)))
-69 +         diesel::update(refresh_tokens::filter(user_id.eq(user_uuid)))
-   |
-help: consider importing this unit struct through its public re-export instead
-   |
- 1 + use crate::services::auth_service::refresh_tokens::dsl::refresh_tokens;
-   |
-
-error[E0425]: cannot find value `user_id` in this scope
-  --> src/services/auth_service.rs:69:46
-   |
-69 |         diesel::update(refresh_tokens.filter(user_id.eq(user_uuid)))
-   |                                              ^^^^^^^
-   |
-help: a local variable with a similar name exists
-   |
-69 |         diesel::update(refresh_tokens.filter(user_uuid.eq(user_uuid)))
-   |                                                   ++
-help: consider importing one of these unit structs
-   |
- 1 + use crate::schema::bank_accounts::user_id;
-   |
- 1 + use crate::schema::transactions::user_id;
-   |
- 1 + use crate::schema::wallets::user_id;
-   |
- 1 + use crate::services::auth_service::refresh_tokens::user_id;
-   |
-
-error[E0425]: cannot find value `revoked` in this scope
-  --> src/services/auth_service.rs:70:18
-   |
-70 |             .set(revoked.eq(true))
-   |                  ^^^^^^^ not found in this scope
-   |
-help: consider importing this unit struct through its public re-export
-   |
- 1 + use crate::services::auth_service::refresh_tokens::revoked;
-   |
-
-error[E0603]: struct `PrometheusHandle` is private
-   --> src/observability/metrics.rs:1:23
-    |
-  1 | use axum_prometheus::{PrometheusHandle, PrometheusMetricLayer};
-    |                       ^^^^^^^^^^^^^^^^ private struct
-    |
-note: the struct `PrometheusHandle` is defined here
-   --> /home/dean/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/axum-prometheus-0.10.0/src/lib.rs:229:63
-    |
-229 | use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
-    |                                                               ^^^^^^^^^^^^^^^^
-help: import `PrometheusHandle` directly
-    |
-  1 | use axum_prometheus::{metrics_exporter_prometheus::recorder::PrometheusHandle, PrometheusMetricLayer};
-    |                       +++++++++++++++++++++++++++++++++++++++
-
 warning: unused import: `Response`
  --> src/app.rs:4:16
   |
@@ -874,30 +42,6 @@ warning: unused import: `crate::models::models::NewTransaction`
    |
 15 | use crate::models::models::NewTransaction;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: unused import: `crate::services::bank_service::BankService`
- --> src/handlers/bank.rs:3:5
-  |
-3 | use crate::services::bank_service::BankService;
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: unused import: `BankAccount`
- --> src/handlers/transfer_external.rs:2:29
-  |
-2 | use crate::models::models::{BankAccount, NewTransaction, Wallet};
-  |                             ^^^^^^^^^^^
-
-warning: unused import: `bank_accounts`
- --> src/handlers/transfer_external.rs:3:21
-  |
-3 | use crate::schema::{bank_accounts, transactions, wallets};
-  |                     ^^^^^^^^^^^^^
-
-warning: unused import: `serde_json::json`
-  --> src/handlers/transfer_external.rs:13:5
-   |
-13 | use serde_json::json;
-   |     ^^^^^^^^^^^^^^^^
 
 warning: unused import: `diesel::sql_types::Jsonb`
  --> src/handlers/paystack_webhook.rs:5:5
@@ -983,12 +127,6 @@ warning: unused import: `crate::handlers::user_wallets::WalletResponse`
 15 | use crate::handlers::user_wallets::WalletResponse;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: unused import: `crate::services::bank_service::BankService`
-  --> src/handlers/resolve_account.rs:13:5
-   |
-13 | use crate::services::bank_service::BankService;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 warning: unused import: `response::IntoResponse`
  --> src/handlers/get_transaction.rs:5:28
   |
@@ -1049,1092 +187,203 @@ warning: unused import: `thread_rng`
 6 | use rand::{Rng, thread_rng};
   |                 ^^^^^^^^^^
 
-error[E0599]: `schema::wallets::table` is not an iterator
-   --> src/handlers/withdraw.rs:88:10
-    |
- 87 |       let sender_wallet = wallets::table
-    |  _________________________-
- 88 | |         .filter(wallets::user_id.eq(user_id))
-    | |         -^^^^^^ `schema::wallets::table` is not an iterator
-    | |_________|
-    |
-    |
-   ::: src/schema.rs:91:1
-    |
- 91 | / diesel::table! {
- 92 | |     wallets (id) {
- 93 | |         id -> Uuid,
- 94 | |         user_id -> Uuid,
-...   |
-101 | | }
-    | |_- method `filter` not found for this struct because it doesn't satisfy `schema::wallets::table: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::wallets::table: Iterator`
-            which is required by `&mut schema::wallets::table: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: the following traits which provide `filter` are implemented but not in scope; perhaps you want to import one of them
-    |
-  1 + use diesel::QueryDsl;
-    |
-  1 + use diesel::query_dsl::methods::FilterDsl;
-    |
-
-error[E0599]: `schema::wallets::columns::user_id` is not an iterator
-  --> src/handlers/withdraw.rs:88:34
-   |
-88 |         .filter(wallets::user_id.eq(user_id))
-   |                                  ^^ `schema::wallets::columns::user_id` is not an iterator
-   |
-  ::: src/schema.rs:94:9
-   |
-94 |         user_id -> Uuid,
-   |         ------- method `eq` not found for this struct because it doesn't satisfy `schema::wallets::columns::user_id: Iterator`
-   |
-   = note: the following trait bounds were not satisfied:
-           `schema::wallets::columns::user_id: Iterator`
-           which is required by `&mut schema::wallets::columns::user_id: Iterator`
-note: the trait `Iterator` must be implemented
-  --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-   |
-40 | pub trait Iterator {
-   | ^^^^^^^^^^^^^^^^^^
-   = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-   |
- 1 + use diesel::ExpressionMethods;
-   |
-
-error[E0599]: `schema::wallets::columns::currency` is not an iterator
-  --> src/handlers/withdraw.rs:89:35
-   |
-89 |         .filter(wallets::currency.eq(&req.currency))
-   |                                   ^^ `schema::wallets::columns::currency` is not an iterator
-   |
-  ::: src/schema.rs:97:9
-   |
-97 |         currency -> Varchar,
-   |         -------- method `eq` not found for this struct because it doesn't satisfy `schema::wallets::columns::currency: Iterator`
-   |
-   = note: the following trait bounds were not satisfied:
-           `schema::wallets::columns::currency: Iterator`
-           which is required by `&mut schema::wallets::columns::currency: Iterator`
-note: the trait `Iterator` must be implemented
-  --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-   |
-40 | pub trait Iterator {
-   | ^^^^^^^^^^^^^^^^^^
-   = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-   |
- 1 + use diesel::ExpressionMethods;
-   |
-
-error[E0282]: type annotations needed
-  --> src/handlers/withdraw.rs:91:19
-   |
-91 |         .map_err(|e| {
-   |                   ^
-92 |             error!("Sender wallet lookup failed: {}", e);
-93 |             if e.to_string().contains("not found") {
-   |                - type must be known at this point
-   |
-help: consider giving this closure parameter an explicit type
-   |
-91 |         .map_err(|e: /* Type */| {
-   |                    ++++++++++++
-
-error[E0599]: `schema::bank_accounts::table` is not an iterator
-   --> src/handlers/withdraw.rs:111:10
-    |
-110 |       let bank_account = bank_accounts::table
-    |  ________________________-
-111 | |         .filter(bank_accounts::user_id.eq(user_id))
-    | |         -^^^^^^ `schema::bank_accounts::table` is not an iterator
-    | |_________|
-    |
-    |
-   ::: src/schema.rs:3:1
-    |
-  3 | / diesel::table! {
-  4 | |     bank_accounts (id) {
-  5 | |         id -> Uuid,
-  6 | |         user_id -> Uuid,
-...   |
- 21 | | }
-    | |_- method `filter` not found for this struct because it doesn't satisfy `schema::bank_accounts::table: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::bank_accounts::table: Iterator`
-            which is required by `&mut schema::bank_accounts::table: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: the following traits which provide `filter` are implemented but not in scope; perhaps you want to import one of them
-    |
-  1 + use diesel::QueryDsl;
-    |
-  1 + use diesel::query_dsl::methods::FilterDsl;
-    |
-
-error[E0599]: `schema::bank_accounts::columns::user_id` is not an iterator
-   --> src/handlers/withdraw.rs:111:40
-    |
-111 |         .filter(bank_accounts::user_id.eq(user_id))
-    |                                        ^^ `schema::bank_accounts::columns::user_id` is not an iterator
-    |
-   ::: src/schema.rs:6:9
-    |
-  6 |         user_id -> Uuid,
-    |         ------- method `eq` not found for this struct because it doesn't satisfy `schema::bank_accounts::columns::user_id: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::bank_accounts::columns::user_id: Iterator`
-            which is required by `&mut schema::bank_accounts::columns::user_id: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0599]: `schema::bank_accounts::columns::id` is not an iterator
-   --> src/handlers/withdraw.rs:112:35
-    |
-112 |         .filter(bank_accounts::id.eq(bnk_id))
-    |                                   ^^ `schema::bank_accounts::columns::id` is not an iterator
-    |
-   ::: src/schema.rs:5:9
-    |
-  5 |         id -> Uuid,
-    |         -- method `eq` not found for this struct because it doesn't satisfy `schema::bank_accounts::columns::id: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::bank_accounts::columns::id: Iterator`
-            which is required by `&mut schema::bank_accounts::columns::id: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0599]: `schema::bank_accounts::columns::is_verified` is not an iterator
-   --> src/handlers/withdraw.rs:113:44
-    |
-113 |         .filter(bank_accounts::is_verified.eq(true))
-    |                                            ^^ `schema::bank_accounts::columns::is_verified` is not an iterator
-    |
-   ::: src/schema.rs:17:9
-    |
- 17 |         is_verified -> Bool,
-    |         ----------- method `eq` not found for this struct because it doesn't satisfy `_: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::bank_accounts::columns::is_verified: Iterator`
-            which is required by `&mut schema::bank_accounts::columns::is_verified: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0282]: type annotations needed
-   --> src/handlers/withdraw.rs:115:19
-    |
-115 |         .map_err(|e| {
-    |                   ^
-116 |             error!("Bank account lookup failed: {}", e);
-117 |             if e.to_string().contains("not found") {
-    |                - type must be known at this point
-    |
-help: consider giving this closure parameter an explicit type
-    |
-115 |         .map_err(|e: /* Type */| {
-    |                    ++++++++++++
-
-error[E0282]: type annotations needed
-   --> src/handlers/withdraw.rs:141:24
-    |
-141 |       let balance_resp = client
-    |  ________________________^
-142 | |         .get("https://api.paystack.co/balance")
-143 | |         .header("Authorization", format!("Bearer {}", paystack_key))
-144 | |         .send()
-145 | |         .await
-    | |______________^ cannot infer type
-
-error[E0282]: type annotations needed
-   --> src/handlers/withdraw.rs:151:24
-    |
-151 |       let balance_body = balance_resp
-    |  ________________________^
-152 | |         .json::<serde_json::Value>()
-153 | |         .await
-    | |______________^ cannot infer type
-
-error[E0282]: type annotations needed
-   --> src/handlers/withdraw.rs:163:20
-    |
-163 |         .and_then(|arr| {
-    |                    ^^^
-164 |             arr.iter()
-    |             --- type must be known at this point
-    |
-help: consider giving this closure parameter an explicit type
-    |
-163 |         .and_then(|arr: /* Type */| {
-    |                       ++++++++++++
-
-error[E0599]: `schema::transactions::table` is not an iterator
-   --> src/handlers/withdraw.rs:192:10
-    |
-191 |       let existing_transaction = transactions::table
-    |  ________________________________-
-192 | |         .filter(transactions::reference.eq(req.reference))
-    | |         -^^^^^^ `schema::transactions::table` is not an iterator
-    | |_________|
-    |
-    |
-   ::: src/schema.rs:56:1
-    |
- 56 | / diesel::table! {
- 57 | |     transactions (id) {
- 58 | |         id -> Uuid,
- 59 | |         user_id -> Uuid,
-...   |
- 76 | | }
-    | |_- method `filter` not found for this struct because it doesn't satisfy `schema::transactions::table: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::transactions::table: Iterator`
-            which is required by `&mut schema::transactions::table: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: the following traits which provide `filter` are implemented but not in scope; perhaps you want to import one of them
-    |
-  1 + use diesel::QueryDsl;
-    |
-  1 + use diesel::query_dsl::methods::FilterDsl;
-    |
-
-error[E0599]: `schema::transactions::columns::reference` is not an iterator
-   --> src/handlers/withdraw.rs:192:41
-    |
-192 |         .filter(transactions::reference.eq(req.reference))
-    |                                         ^^ `schema::transactions::columns::reference` is not an iterator
-    |
-   ::: src/schema.rs:71:9
-    |
- 71 |         reference -> Uuid,
-    |         --------- method `eq` not found for this struct because it doesn't satisfy `schema::transactions::columns::reference: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::transactions::columns::reference: Iterator`
-            which is required by `&mut schema::transactions::columns::reference: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0282]: type annotations needed
-   --> src/handlers/withdraw.rs:209:16
-    |
-209 |       let resp = client
-    |  ________________^
-210 | |         .post("https://api.paystack.co/transfer")
-211 | |         .header("Authorization", format!("Bearer {}", paystack_key))
-212 | |         .json(&serde_json::json!({
-...   |
-219 | |         .send()
-220 | |         .await
-    | |______________^ cannot infer type
-
-error[E0282]: type annotations needed
-   --> src/handlers/withdraw.rs:227:16
-    |
-227 |       let body = resp
-    |  ________________^
-228 | |         .json::<serde_json::Value>()
-229 | |         .await
-    | |______________^ cannot infer type
-
-error[E0599]: no method named `transaction` found for mutable reference `&mut PooledConnection<ConnectionManager<diesel::PgConnection>>` in the current scope
-   --> src/handlers/withdraw.rs:255:10
-    |
-255 |     conn.transaction(|conn| {
-    |     -----^^^^^^^^^^^
-    |
-    = help: items from traits can only be used if the trait is in scope
-help: trait `Connection` which provides `transaction` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::Connection;
-    |
-help: there is a method `test_transaction` with a similar name
-    |
-255 |     conn.test_transaction(|conn| {
-    |           +++++
-
-error[E0599]: `schema::wallets::columns::user_id` is not an iterator
-   --> src/handlers/withdraw.rs:258:38
-    |
-258 |             .filter(wallets::user_id.eq(user_id))
-    |                                      ^^ `schema::wallets::columns::user_id` is not an iterator
-    |
-   ::: src/schema.rs:94:9
-    |
- 94 |         user_id -> Uuid,
-    |         ------- method `eq` not found for this struct because it doesn't satisfy `schema::wallets::columns::user_id: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::wallets::columns::user_id: Iterator`
-            which is required by `&mut schema::wallets::columns::user_id: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0599]: `schema::wallets::columns::currency` is not an iterator
-   --> src/handlers/withdraw.rs:259:39
-    |
-259 |             .filter(wallets::currency.eq(&req.currency))
-    |                                       ^^ `schema::wallets::columns::currency` is not an iterator
-    |
-   ::: src/schema.rs:97:9
-    |
- 97 |         currency -> Varchar,
-    |         -------- method `eq` not found for this struct because it doesn't satisfy `schema::wallets::columns::currency: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::wallets::columns::currency: Iterator`
-            which is required by `&mut schema::wallets::columns::currency: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0599]: `schema::wallets::columns::balance` is not an iterator
-   --> src/handlers/withdraw.rs:260:35
-    |
-260 |             .set(wallets::balance.eq(wallets::balance - amount_cents))
-    |                                   ^^ `schema::wallets::columns::balance` is not an iterator
-    |
-   ::: src/schema.rs:95:9
-    |
- 95 |         balance -> Int8,
-    |         ------- method `eq` not found for this struct because it doesn't satisfy `schema::wallets::columns::balance: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::wallets::columns::balance: Iterator`
-            which is required by `&mut schema::wallets::columns::balance: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0599]: no method named `execute` found for struct `InsertStatement<T, U, Op, Ret>` in the current scope
-    --> src/handlers/withdraw.rs:284:14
+error[E0277]: the trait bound `entities::Bank: serde::Serialize` is not satisfied
+    --> src/handlers/all_banks.rs:17:10
      |
- 272 | /         diesel::insert_into(transactions::table)
- 273 | |             .values(NewTransaction {
- 274 | |                 user_id,
- 275 | |                 recipient_id: None,
-...    |
- 283 | |             })
- 284 | |             .execute(conn)
-     | |             -^^^^^^^ method not found in `InsertStatement<table, ValuesClause<..., ...>>`
-     | |_____________|
+  17 | #[derive(Serialize, Deserialize, ToSchema)]
+     |          ^^^^^^^^^ unsatisfied trait bound
+  18 | pub struct BankListResponse {
+  19 |     pub banks: Vec<Bank>,
+     |     --- required by a bound introduced by this call
      |
+help: the trait `Serialize` is not implemented for `entities::Bank`
+    --> src/models/entities.rs:31:1
      |
-    ::: /home/dean/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/diesel-2.3.2/src/query_dsl/mod.rs:1478:8
+  31 | pub struct Bank {
+     | ^^^^^^^^^^^^^^^
+     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `entities::Bank` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Serialize`:
+               &'a T
+               &'a mut T
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+             and 3023 others
+     = note: required for `Vec<entities::Bank>` to implement `Serialize`
+note: required by a bound in `security_config::_::_serde::ser::SerializeStruct::serialize_field`
+    --> /home/dean/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_core-1.0.228/src/ser/mod.rs:1917:21
      |
-1478 |       fn execute(self, conn: &mut Conn) -> QueryResult<usize>
-     |          ------- the method is available for `InsertStatement<schema::transactions::table, query_builder::insert_statement::ValuesClause<(DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::user_id, diesel::expression::bound::Bound<diesel::sql_types::Uuid, uuid::Uuid>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::recipient_id, diesel::expression::bound::Bound<diesel::sql_types::Nullable<diesel::sql_types::Uuid>, uuid::Uuid>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::amount, diesel::expression::bound::Bound<BigInt, i64>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::transaction_type, diesel::expression::bound::Bound<diesel::sql_types::Text, std::string::String>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::currency, diesel::expression::bound::Bound<diesel::sql_types::Text, std::string::String>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::status, diesel::expression::bound::Bound<diesel::sql_types::Text, std::string::String>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::provider, diesel::expression::bound::Bound<diesel::sql_types::Nullable<diesel::sql_types::Text>, std::string::String>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::description, diesel::expression::bound::Bound<diesel::sql_types::Nullable<diesel::sql_types::Text>, std::string::String>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::reference, diesel::expression::bound::Bound<diesel::sql_types::Uuid, uuid::Uuid>>>), schema::transactions::table>>` here
-     |
-     = help: items from traits can only be used if the trait is in scope
-     = note: the full name for the type has been written to '/mnt/data/Projects/RustroverProjects/payego/target/debug/deps/payego-297d9383fed18df4.long-type-7769761972855630472.txt'
+1915 |     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+     |        --------------- required by a bound in this associated function
+1916 |     where
+1917 |         T: ?Sized + Serialize;
+     |                     ^^^^^^^^^ required by this bound in `SerializeStruct::serialize_field`
+     = note: the full name for the type has been written to '/mnt/data/Projects/RustroverProjects/payego/target/debug/deps/payego-297d9383fed18df4.long-type-6690052998769946375.txt'
      = note: consider using `--verbose` to print the full type name to the console
-help: trait `RunQueryDsl` which provides `execute` is implemented but not in scope; perhaps you want to import it
+     = note: this error originates in the derive macro `Serialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `entities::Bank: serde::Deserialize<'de>` is not satisfied
+    --> src/handlers/all_banks.rs:19:16
      |
-   1 + use diesel::RunQueryDsl;
+  19 |     pub banks: Vec<Bank>,
+     |                ^^^^^^^^^ unsatisfied trait bound
      |
-
-error[E0282]: type annotations needed
-   --> src/handlers/withdraw.rs:311:16
-    |
-311 |       let resp = client
-    |  ________________^
-312 | |         .get(url)
-313 | |         .send()
-314 | |         .await
-    | |______________^ cannot infer type
-
-error[E0282]: type annotations needed
-   --> src/handlers/withdraw.rs:315:19
-    |
-315 |         .map_err(|e| ApiError::Payment(e.to_string()))?;
-    |                   ^                    - type must be known at this point
-    |
-help: consider giving this closure parameter an explicit type
-    |
-315 |         .map_err(|e: /* Type */| ApiError::Payment(e.to_string()))?;
-    |                    ++++++++++++
-
-error[E0282]: type annotations needed
-   --> src/handlers/withdraw.rs:317:16
-    |
-317 |       let body = resp
-    |  ________________^
-318 | |         .json::<serde_json::Value>()
-319 | |         .await
-    | |______________^ cannot infer type
-
-error[E0282]: type annotations needed
-   --> src/handlers/withdraw.rs:320:19
-    |
-320 |         .map_err(|e| ApiError::Payment(e.to_string()))?;
-    |                   ^                    - type must be known at this point
-    |
-help: consider giving this closure parameter an explicit type
-    |
-320 |         .map_err(|e: /* Type */| ApiError::Payment(e.to_string()))?;
-    |                    ++++++++++++
-
-error[E0599]: no method named `transaction` found for mutable reference `&mut PooledConnection<ConnectionManager<diesel::PgConnection>>` in the current scope
-   --> src/handlers/internal_conversion.rs:105:33
-    |
-105 |     let converted_amount = conn.transaction(|conn| {
-    |                            -----^^^^^^^^^^^
-    |
-    = help: items from traits can only be used if the trait is in scope
-help: trait `Connection` which provides `transaction` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::Connection;
-    |
-help: there is a method `test_transaction` with a similar name
-    |
-105 |     let converted_amount = conn.test_transaction(|conn| {
-    |                                  +++++
-
-error[E0599]: `schema::wallets::table` is not an iterator
-   --> src/handlers/internal_conversion.rs:108:14
-    |
-107 |           let from_wallet = wallets::table
-    |  ___________________________-
-108 | |             .filter(wallets::user_id.eq(user_id))
-    | |             -^^^^^^ `schema::wallets::table` is not an iterator
-    | |_____________|
-    |
-    |
-   ::: src/schema.rs:91:1
-    |
- 91 | / diesel::table! {
- 92 | |     wallets (id) {
- 93 | |         id -> Uuid,
- 94 | |         user_id -> Uuid,
-...   |
-101 | | }
-    | |_- method `filter` not found for this struct because it doesn't satisfy `schema::wallets::table: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::wallets::table: Iterator`
-            which is required by `&mut schema::wallets::table: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: the following traits which provide `filter` are implemented but not in scope; perhaps you want to import one of them
-    |
-  1 + use diesel::QueryDsl;
-    |
-  1 + use diesel::query_dsl::methods::FilterDsl;
-    |
-
-error[E0599]: `schema::wallets::columns::user_id` is not an iterator
-   --> src/handlers/internal_conversion.rs:108:38
-    |
-108 |             .filter(wallets::user_id.eq(user_id))
-    |                                      ^^ `schema::wallets::columns::user_id` is not an iterator
-    |
-   ::: src/schema.rs:94:9
-    |
- 94 |         user_id -> Uuid,
-    |         ------- method `eq` not found for this struct because it doesn't satisfy `schema::wallets::columns::user_id: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::wallets::columns::user_id: Iterator`
-            which is required by `&mut schema::wallets::columns::user_id: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0599]: `schema::wallets::columns::currency` is not an iterator
-   --> src/handlers/internal_conversion.rs:109:39
-    |
-109 |             .filter(wallets::currency.eq(&req.from_currency))
-    |                                       ^^ `schema::wallets::columns::currency` is not an iterator
-    |
-   ::: src/schema.rs:97:9
-    |
- 97 |         currency -> Varchar,
-    |         -------- method `eq` not found for this struct because it doesn't satisfy `schema::wallets::columns::currency: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::wallets::columns::currency: Iterator`
-            which is required by `&mut schema::wallets::columns::currency: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0599]: no function or associated item named `as_select` found for struct `user_wallets::Wallet` in the current scope
-   --> src/handlers/internal_conversion.rs:110:29
-    |
-110 |             .select(Wallet::as_select())
-    |                             ^^^^^^^^^ function or associated item not found in `user_wallets::Wallet`
-    |
-   ::: src/handlers/user_wallets.rs:20:1
-    |
- 20 | pub struct Wallet {
-    | ----------------- function or associated item `as_select` not found for this struct
-    |
-    = help: items from traits can only be used if the trait is in scope
-help: trait `SelectableHelper` which provides `as_select` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::SelectableHelper;
-    |
-help: there is a method `as_sql` with a similar name
-    |
-110 -             .select(Wallet::as_select())
-110 +             .select(Wallet::as_sql())
-    |
-
-error[E0599]: `schema::wallets::columns::user_id` is not an iterator
-   --> src/handlers/internal_conversion.rs:136:38
-    |
-136 |             .filter(wallets::user_id.eq(user_id))
-    |                                      ^^ `schema::wallets::columns::user_id` is not an iterator
-    |
-   ::: src/schema.rs:94:9
-    |
- 94 |         user_id -> Uuid,
-    |         ------- method `eq` not found for this struct because it doesn't satisfy `schema::wallets::columns::user_id: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::wallets::columns::user_id: Iterator`
-            which is required by `&mut schema::wallets::columns::user_id: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0599]: `schema::wallets::columns::currency` is not an iterator
-   --> src/handlers/internal_conversion.rs:137:39
-    |
-137 |             .filter(wallets::currency.eq(&req.from_currency))
-    |                                       ^^ `schema::wallets::columns::currency` is not an iterator
-    |
-   ::: src/schema.rs:97:9
-    |
- 97 |         currency -> Varchar,
-    |         -------- method `eq` not found for this struct because it doesn't satisfy `schema::wallets::columns::currency: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::wallets::columns::currency: Iterator`
-            which is required by `&mut schema::wallets::columns::currency: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0599]: `schema::wallets::columns::balance` is not an iterator
-   --> src/handlers/internal_conversion.rs:138:35
-    |
-138 |             .set(wallets::balance.eq(wallets::balance - amount_cents))
-    |                                   ^^ `schema::wallets::columns::balance` is not an iterator
-    |
-   ::: src/schema.rs:95:9
-    |
- 95 |         balance -> Int8,
-    |         ------- method `eq` not found for this struct because it doesn't satisfy `schema::wallets::columns::balance: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::wallets::columns::balance: Iterator`
-            which is required by `&mut schema::wallets::columns::balance: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0599]: `schema::wallets::columns::user_id` is not an iterator
-   --> src/handlers/internal_conversion.rs:148:34
-    |
-148 |                 wallets::user_id.eq(user_id),
-    |                                  ^^ `schema::wallets::columns::user_id` is not an iterator
-    |
-   ::: src/schema.rs:94:9
-    |
- 94 |         user_id -> Uuid,
-    |         ------- method `eq` not found for this struct because it doesn't satisfy `schema::wallets::columns::user_id: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::wallets::columns::user_id: Iterator`
-            which is required by `&mut schema::wallets::columns::user_id: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0599]: `schema::wallets::columns::balance` is not an iterator
-   --> src/handlers/internal_conversion.rs:149:34
-    |
-149 |                 wallets::balance.eq(net_converted_cents),
-    |                                  ^^ `schema::wallets::columns::balance` is not an iterator
-    |
-   ::: src/schema.rs:95:9
-    |
- 95 |         balance -> Int8,
-    |         ------- method `eq` not found for this struct because it doesn't satisfy `schema::wallets::columns::balance: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::wallets::columns::balance: Iterator`
-            which is required by `&mut schema::wallets::columns::balance: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0599]: `schema::wallets::columns::currency` is not an iterator
-   --> src/handlers/internal_conversion.rs:150:35
-    |
-150 |                 wallets::currency.eq(&req.to_currency),
-    |                                   ^^ `schema::wallets::columns::currency` is not an iterator
-    |
-   ::: src/schema.rs:97:9
-    |
- 97 |         currency -> Varchar,
-    |         -------- method `eq` not found for this struct because it doesn't satisfy `schema::wallets::columns::currency: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::wallets::columns::currency: Iterator`
-            which is required by `&mut schema::wallets::columns::currency: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0599]: `schema::wallets::columns::balance` is not an iterator
-   --> src/handlers/internal_conversion.rs:154:35
-    |
-154 |             .set(wallets::balance.eq(wallets::balance + net_converted_cents))
-    |                                   ^^ `schema::wallets::columns::balance` is not an iterator
-    |
-   ::: src/schema.rs:95:9
-    |
- 95 |         balance -> Int8,
-    |         ------- method `eq` not found for this struct because it doesn't satisfy `schema::wallets::columns::balance: Iterator`
-    |
-    = note: the following trait bounds were not satisfied:
-            `schema::wallets::columns::balance: Iterator`
-            which is required by `&mut schema::wallets::columns::balance: Iterator`
-note: the trait `Iterator` must be implemented
-   --> /home/dean/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/iter/traits/iterator.rs:40:1
-    |
- 40 | pub trait Iterator {
-    | ^^^^^^^^^^^^^^^^^^
-    = help: items from traits can only be used if the trait is in scope
-help: trait `ExpressionMethods` which provides `eq` is implemented but not in scope; perhaps you want to import it
-    |
-  1 + use diesel::ExpressionMethods;
-    |
-
-error[E0599]: no method named `execute` found for struct `InsertStatement<T, U, Op, Ret>` in the current scope
-    --> src/handlers/internal_conversion.rs:177:14
+help: the trait `Deserialize<'_>` is not implemented for `entities::Bank`
+    --> src/models/entities.rs:31:1
      |
- 162 | /         diesel::insert_into(transactions::table)
- 163 | |             .values(NewTransaction {
- 164 | |                 user_id,
- 165 | |                 recipient_id: None,
-...    |
- 176 | |             })
- 177 | |             .execute(conn)
-     | |             -^^^^^^^ method not found in `InsertStatement<table, ValuesClause<..., ...>>`
-     | |_____________|
+  31 | pub struct Bank {
+     | ^^^^^^^^^^^^^^^
+     = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `entities::Bank` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Deserialize<'de>`:
+               &'a [u8]
+               &'a std::path::Path
+               &'a str
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+             and 2871 others
+     = note: required for `Vec<entities::Bank>` to implement `Deserialize<'_>`
+note: required by a bound in `next_element`
+    --> /home/dean/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_core-1.0.228/src/de/mod.rs:1771:12
      |
-     |
-    ::: /home/dean/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/diesel-2.3.2/src/query_dsl/mod.rs:1478:8
-     |
-1478 |       fn execute(self, conn: &mut Conn) -> QueryResult<usize>
-     |          ------- the method is available for `InsertStatement<schema::transactions::table, query_builder::insert_statement::ValuesClause<(DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::user_id, diesel::expression::bound::Bound<diesel::sql_types::Uuid, uuid::Uuid>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::recipient_id, diesel::expression::bound::Bound<diesel::sql_types::Nullable<diesel::sql_types::Uuid>, uuid::Uuid>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::amount, diesel::expression::bound::Bound<BigInt, i64>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::transaction_type, diesel::expression::bound::Bound<diesel::sql_types::Text, std::string::String>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::currency, diesel::expression::bound::Bound<diesel::sql_types::Text, std::string::String>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::status, diesel::expression::bound::Bound<diesel::sql_types::Text, std::string::String>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::provider, diesel::expression::bound::Bound<diesel::sql_types::Nullable<diesel::sql_types::Text>, std::string::String>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::description, diesel::expression::bound::Bound<diesel::sql_types::Nullable<diesel::sql_types::Text>, std::string::String>>>, DefaultableColumnInsertValue<ColumnInsertValue<schema::transactions::columns::reference, diesel::expression::bound::Bound<diesel::sql_types::Uuid, uuid::Uuid>>>), schema::transactions::table>>` here
-     |
-     = help: items from traits can only be used if the trait is in scope
-     = note: the full name for the type has been written to '/mnt/data/Projects/RustroverProjects/payego/target/debug/deps/payego-297d9383fed18df4.long-type-7769761972855630472.txt'
+1769 |     fn next_element<T>(&mut self) -> Result<Option<T>, Self::Error>
+     |        ------------ required by a bound in this associated function
+1770 |     where
+1771 |         T: Deserialize<'de>,
+     |            ^^^^^^^^^^^^^^^^ required by this bound in `SeqAccess::next_element`
+     = note: the full name for the type has been written to '/mnt/data/Projects/RustroverProjects/payego/target/debug/deps/payego-297d9383fed18df4.long-type-6690052998769946375.txt'
      = note: consider using `--verbose` to print the full type name to the console
-help: trait `RunQueryDsl` which provides `execute` is implemented but not in scope; perhaps you want to import it
+
+error[E0277]: the trait bound `entities::Bank: serde::Deserialize<'de>` is not satisfied
+    --> src/handlers/all_banks.rs:19:16
      |
-   1 + use diesel::RunQueryDsl;
+  19 |     pub banks: Vec<Bank>,
+     |                ^^^^^^^^^ unsatisfied trait bound
      |
+help: the trait `Deserialize<'_>` is not implemented for `entities::Bank`
+    --> src/models/entities.rs:31:1
+     |
+  31 | pub struct Bank {
+     | ^^^^^^^^^^^^^^^
+     = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `entities::Bank` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Deserialize<'de>`:
+               &'a [u8]
+               &'a std::path::Path
+               &'a str
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+             and 2871 others
+     = note: required for `Vec<entities::Bank>` to implement `Deserialize<'_>`
+note: required by a bound in `next_value`
+    --> /home/dean/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_core-1.0.228/src/de/mod.rs:1916:12
+     |
+1914 |     fn next_value<V>(&mut self) -> Result<V, Self::Error>
+     |        ---------- required by a bound in this associated function
+1915 |     where
+1916 |         V: Deserialize<'de>,
+     |            ^^^^^^^^^^^^^^^^ required by this bound in `MapAccess::next_value`
+     = note: the full name for the type has been written to '/mnt/data/Projects/RustroverProjects/payego/target/debug/deps/payego-297d9383fed18df4.long-type-6690052998769946375.txt'
+     = note: consider using `--verbose` to print the full type name to the console
 
-error[E0282]: type annotations needed
-   --> src/handlers/internal_conversion.rs:209:16
-    |
-209 |       let resp = client
-    |  ________________^
-210 | |         .get(url)
-211 | |         .send()
-212 | |         .await
-    | |______________^ cannot infer type
-
-error[E0282]: type annotations needed
-   --> src/handlers/internal_conversion.rs:216:16
-    |
-216 |       let body = resp
-    |  ________________^
-217 | |         .json::<serde_json::Value>()
-218 | |         .await
-    | |______________^ cannot infer type
-
-error[E0282]: type annotations needed
-  --> src/handlers/resolve_account.rs:71:16
+error[E0277]: the trait bound `entities::Bank: serde::Deserialize<'de>` is not satisfied
+  --> src/handlers/all_banks.rs:17:21
    |
-71 |       let resp = client
-   |  ________________^
-72 | |         .get(&url)
-73 | |         .header("Authorization", format!("Bearer {}", paystack_key))
-74 | |         .send()
-75 | |         .await
-   | |______________^ cannot infer type
-
-error[E0282]: type annotations needed
-  --> src/handlers/resolve_account.rs:82:16
+17 | #[derive(Serialize, Deserialize, ToSchema)]
+   |                     ^^^^^^^^^^^ unsatisfied trait bound
    |
-82 |       let body = resp
-   |  ________________^
-83 | |         .json::<serde_json::Value>()
-84 | |         .await
-   | |______________^ cannot infer type
-
-error[E0616]: field `bank_code` of struct `BankRequest` is private
-  --> src/services/bank_service.rs:23:26
+help: the trait `Deserialize<'_>` is not implemented for `entities::Bank`
+  --> src/models/entities.rs:31:1
    |
-23 |             user_id, req.bank_code, req.account_number
-   |                          ^^^^^^^^^ private field
-
-error[E0616]: field `account_number` of struct `BankRequest` is private
-  --> src/services/bank_service.rs:23:41
+31 | pub struct Bank {
+   | ^^^^^^^^^^^^^^^
+   = note: for local types consider adding `#[derive(serde::Deserialize)]` to your `entities::Bank` type
+   = note: for types from other crates check whether the crate offers a `serde` feature flag
+   = help: the following other types implement trait `Deserialize<'de>`:
+             &'a [u8]
+             &'a std::path::Path
+             &'a str
+             ()
+             (T,)
+             (T0, T1)
+             (T0, T1, T2)
+             (T0, T1, T2, T3)
+           and 2871 others
+   = note: required for `Vec<entities::Bank>` to implement `Deserialize<'_>`
+note: required by a bound in `security_config::_::_serde::__private228::de::missing_field`
+  --> /home/dean/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:26:8
    |
-23 |             user_id, req.bank_code, req.account_number
-   |                                         ^^^^^^^^^^^^^^ private field
-
-error[E0616]: field `bank_code` of struct `BankRequest` is private
-  --> src/services/bank_service.rs:49:54
-   |
-49 |             .filter(bank_accounts::bank_code.eq(&req.bank_code))
-   |                                                      ^^^^^^^^^ private field
-
-error[E0616]: field `account_number` of struct `BankRequest` is private
-  --> src/services/bank_service.rs:50:59
-   |
-50 |             .filter(bank_accounts::account_number.eq(&req.account_number))
-   |                                                           ^^^^^^^^^^^^^^ private field
-
-error[E0616]: field `bank_code` of struct `BankRequest` is private
-  --> src/services/bank_service.rs:64:63
-   |
-64 |         let account_name = Self::resolve_account_details(&req.bank_code, &req.account_number).await?;
-   |                                                               ^^^^^^^^^ private field
-
-error[E0616]: field `account_number` of struct `BankRequest` is private
-  --> src/services/bank_service.rs:64:79
-   |
-64 |         let account_name = Self::resolve_account_details(&req.bank_code, &req.account_number).await?;
-   |                                                                               ^^^^^^^^^^^^^^ private field
-
-error[E0616]: field `bank_code` of struct `BankRequest` is private
-  --> src/services/bank_service.rs:68:67
-   |
-68 |         let recipient_code = Self::create_transfer_recipient(&req.bank_code, &req.account_number, &account_name).await?;
-   |                                                                   ^^^^^^^^^ private field
-
-error[E0616]: field `account_number` of struct `BankRequest` is private
-  --> src/services/bank_service.rs:68:83
-   |
-68 |         let recipient_code = Self::create_transfer_recipient(&req.bank_code, &req.account_number, &account_name).await?;
-   |                                                                                   ^^^^^^^^^^^^^^ private field
-
-error[E0616]: field `bank_code` of struct `BankRequest` is private
-  --> src/services/bank_service.rs:76:32
-   |
-76 |                 bank_code: req.bank_code,
-   |                                ^^^^^^^^^ private field
-
-error[E0616]: field `account_number` of struct `BankRequest` is private
-  --> src/services/bank_service.rs:77:37
-   |
-77 |                 account_number: req.account_number,
-   |                                     ^^^^^^^^^^^^^^ private field
-
-error[E0616]: field `bank_name` of struct `BankRequest` is private
-  --> src/services/bank_service.rs:79:37
-   |
-79 |                 bank_name: Some(req.bank_name),
-   |                                     ^^^^^^^^^ private field
-
-error[E0616]: field `from_currency` of struct `ConvertRequest` is private
-  --> src/services/conversion_service.rs:29:16
-   |
-29 |         if req.from_currency == req.to_currency {
-   |                ^^^^^^^^^^^^^ private field
-
-error[E0616]: field `to_currency` of struct `ConvertRequest` is private
-  --> src/services/conversion_service.rs:29:37
-   |
-29 |         if req.from_currency == req.to_currency {
-   |                                     ^^^^^^^^^^^ private field
-
-error[E0616]: field `from_currency` of struct `ConvertRequest` is private
-  --> src/services/conversion_service.rs:40:58
-   |
-40 |         let exchange_rate = Self::get_exchange_rate(&req.from_currency, &req.to_currency).await?;
-   |                                                          ^^^^^^^^^^^^^ private field
-
-error[E0616]: field `to_currency` of struct `ConvertRequest` is private
-  --> src/services/conversion_service.rs:40:78
-   |
-40 |         let exchange_rate = Self::get_exchange_rate(&req.from_currency, &req.to_currency).await?;
-   |                                                                              ^^^^^^^^^^^ private field
-
-error[E0616]: field `amount` of struct `ConvertRequest` is private
-  --> src/services/conversion_service.rs:43:30
-   |
-43 |         let fee = 0.01 * req.amount * exchange_rate;
-   |                              ^^^^^^ private field
-
-error[E0616]: field `amount` of struct `ConvertRequest` is private
-  --> src/services/conversion_service.rs:45:33
-   |
-45 |         let amount_cents = (req.amount * 100.0).round() as i64;
-   |                                 ^^^^^^ private field
-
-error[E0616]: field `from_currency` of struct `ConvertRequest` is private
-  --> src/services/conversion_service.rs:53:51
-   |
-53 |                 .filter(wallets::currency.eq(&req.from_currency))
-   |                                                   ^^^^^^^^^^^^^ private field
-
-error[E0282]: type annotations needed
-  --> src/services/conversion_service.rs:56:27
-   |
-56 |                 .map_err(|e| {
-   |                           ^
-57 |                     error!("From wallet lookup failed: {}", e);
-58 |                     if e.to_string().contains("not found") {
-   |                        - type must be known at this point
-   |
-help: consider giving this closure parameter an explicit type
-   |
-56 |                 .map_err(|e: /* Type */| {
-   |                            ++++++++++++
-
-error[E0616]: field `from_currency` of struct `ConvertRequest` is private
-  --> src/services/conversion_service.rs:59:82
-   |
-59 |                         ApiError::Payment(format!("Wallet not found for {}", req.from_currency))
-   |                                                                                  ^^^^^^^^^^^^^ private field
-
-error[E0616]: field `from_currency` of struct `ConvertRequest` is private
-  --> src/services/conversion_service.rs:81:51
-   |
-81 |                 .filter(wallets::currency.eq(&req.from_currency))
-   |                                                   ^^^^^^^^^^^^^ private field
-
-error[E0308]: mismatched types
-  --> src/services/conversion_service.rs:82:42
-   |
-82 |                 .set(wallets::balance.eq(wallets::balance - amount_cents))
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `balance`, found `Sub<balance, _>`
-   |
-   = note: expected struct `schema::wallets::columns::balance`
-              found struct `diesel::expression::ops::numeric::Sub<schema::wallets::columns::balance, _>`
-
-error[E0616]: field `to_currency` of struct `ConvertRequest` is private
-  --> src/services/conversion_service.rs:94:47
-   |
-94 |                     wallets::currency.eq(&req.to_currency),
-   |                                               ^^^^^^^^^^^ private field
-
-error[E0308]: mismatched types
-  --> src/services/conversion_service.rs:98:42
-   |
-98 |                 .set(wallets::balance.eq(wallets::balance + net_converted_cents))
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `balance`, found `Add<balance, _>`
-   |
-   = note: expected struct `schema::wallets::columns::balance`
-              found struct `diesel::expression::ops::numeric::Add<schema::wallets::columns::balance, _>`
-
-error[E0616]: field `amount` of struct `ConvertRequest` is private
-   --> src/services/conversion_service.rs:116:29
-    |
-116 |                         req.amount, req.from_currency, net_converted_cents as f64 / 100.0, req.to_currency, exchange_rate, fee
-    |                             ^^^^^^ private field
-
-error[E0616]: field `from_currency` of struct `ConvertRequest` is private
-   --> src/services/conversion_service.rs:116:41
-    |
-116 |                         req.amount, req.from_currency, net_converted_cents as f64 / 100.0, req.to_currency, exchange_rate, fee
-    |                                         ^^^^^^^^^^^^^ private field
-
-error[E0616]: field `to_currency` of struct `ConvertRequest` is private
-   --> src/services/conversion_service.rs:116:96
-    |
-116 |                         req.amount, req.from_currency, net_converted_cents as f64 / 100.0, req.to_currency, exchange_rate, fee
-    |                                                                                                ^^^^^^^^^^^ private field
-
-error[E0616]: field `from_currency` of struct `ConvertRequest` is private
-   --> src/services/conversion_service.rs:119:35
-    |
-119 |                     currency: req.from_currency.clone(),
-    |                                   ^^^^^^^^^^^^^ private field
-
-error[E0616]: field `amount` of struct `ConvertRequest` is private
-   --> src/services/conversion_service.rs:132:26
-    |
-132 |             user_id, req.amount, req.from_currency, req.to_currency
-    |                          ^^^^^^ private field
-
-error[E0616]: field `from_currency` of struct `ConvertRequest` is private
-   --> src/services/conversion_service.rs:132:38
-    |
-132 |             user_id, req.amount, req.from_currency, req.to_currency
-    |                                      ^^^^^^^^^^^^^ private field
-
-error[E0616]: field `to_currency` of struct `ConvertRequest` is private
-   --> src/services/conversion_service.rs:132:57
-    |
-132 |             user_id, req.amount, req.from_currency, req.to_currency
-    |                                                         ^^^^^^^^^^^ private field
-
-error[E0277]: the trait bound `Array<u8, UInt<UInt<UInt<UInt<..., ...>, ...>, ...>, ...>>: LowerHex` is not satisfied
-  --> src/services/auth_service.rs:79:25
-   |
-79 |         format!("{:x}", hasher.finalize())
-   |                  ----   ^^^^^^^^^^^^^^^^^ the trait `LowerHex` is not implemented for `Array<u8, UInt<UInt<UInt<UInt<UInt<..., ...>, ...>, ...>, ...>, ...>>`
-   |                  |
-   |                  required by this formatting parameter
-   |
-   = help: the following other types implement trait `LowerHex`:
-             &T
-             &mut T
-             Braced
-             Hyphenated
-             Saturating<T>
-             Urn
-             Wrapping<T>
-             axum::body::Bytes
-           and 72 others
-   = note: the full name for the type has been written to '/mnt/data/Projects/RustroverProjects/payego/target/debug/deps/payego-297d9383fed18df4.long-type-8620869828910229796.txt'
+24 | pub fn missing_field<'de, V, E>(field: &'static str) -> Result<V, E>
+   |        ------------- required by a bound in this function
+25 | where
+26 |     V: Deserialize<'de>,
+   |        ^^^^^^^^^^^^^^^^ required by this bound in `missing_field`
+   = note: the full name for the type has been written to '/mnt/data/Projects/RustroverProjects/payego/target/debug/deps/payego-297d9383fed18df4.long-type-6690052998769946375.txt'
    = note: consider using `--verbose` to print the full type name to the console
-   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `entities::Bank: ToSchema` is not satisfied
+  --> src/handlers/all_banks.rs:19:20
+   |
+19 |     pub banks: Vec<Bank>,
+   |                    ^^^^ unsatisfied trait bound
+   |
+help: the trait `ToSchema` is not implemented for `entities::Bank`
+  --> src/models/entities.rs:31:1
+   |
+31 | pub struct Bank {
+   | ^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `ToSchema`:
+             &'t [T]
+             &'t mut [T]
+             &str
+             ()
+             AuthResponse
+             BTreeMap<K, T>
+             BTreeSet<K>
+             BankListResponse
+           and 61 others
+
+error[E0277]: the trait bound `entities::Bank: PartialSchema` is not satisfied
+   --> src/handlers/all_banks.rs:19:20
+    |
+ 19 |     pub banks: Vec<Bank>,
+    |                    ^^^^ unsatisfied trait bound
+    |
+help: the trait `ComposeSchema` is not implemented for `entities::Bank`
+   --> src/models/entities.rs:31:1
+    |
+ 31 | pub struct Bank {
+    | ^^^^^^^^^^^^^^^
+    = help: the following other types implement trait `ComposeSchema`:
+              &[T]
+              &mut [T]
+              &str
+              AuthResponse
+              BTreeMap<K, T>
+              BTreeSet<K>
+              BankListResponse
+              BankRequest
+            and 60 others
+    = note: required for `entities::Bank` to implement `PartialSchema`
+note: required by a bound in `utoipa::ToSchema::name`
+   --> /home/dean/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/utoipa-5.4.0/src/lib.rs:374:21
+    |
+374 | pub trait ToSchema: PartialSchema {
+    |                     ^^^^^^^^^^^^^ required by this bound in `ToSchema::name`
+...
+405 |     fn name() -> Cow<'static, str> {
+    |        ---- required by a bound in this associated function
 
 warning: unused import: `diesel::row::NamedRow`
    --> src/handlers/stripe_webhook.rs:244:5
@@ -2143,12 +392,12 @@ warning: unused import: `diesel::row::NamedRow`
     |     ^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused variable: `e`
-  --> src/handlers/transfer_external.rs:93:80
-   |
-93 |     let exchange_rate = get_exchange_rate(&req.currency, "NGN").await.map_err(|e: (StatusCode, String)| {
-   |                                                                                ^ help: if this is intentional, prefix it with an underscore: `_e`
-   |
-   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+   --> src/services/transfer_service.rs:178:115
+    |
+178 |         let exchange_rate = Self::get_exchange_rate(&state.exchange_api_url, &req.currency, "NGN").await.map_err(|e| {
+    |                                                                                                                   ^ help: if this is intentional, prefix it with an underscore: `_e`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
 
 warning: unused variable: `e`
   --> src/handlers/paypal_order.rs:32:65
@@ -2174,13 +423,6 @@ warning: unused variable: `usr_id`
 59 |     let usr_id = Uuid::parse_str(&claims.sub).map_err(|e| {
    |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_usr_id`
 
-warning: unused variable: `state`
-   --> src/services/withdrawal_service.rs:172:9
-    |
-172 |         state: &AppState,
-    |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_state`
-
-Some errors have detailed explanations: E0106, E0277, E0282, E0308, E0412, E0422, E0423, E0425, E0432...
-For more information about an error, try `rustc --explain E0106`.
-warning: `payego` (lib) generated 43 warnings
-error: could not compile `payego` (lib) due to 141 previous errors; 43 warnings emitted
+For more information about this error, try `rustc --explain E0277`.
+warning: `payego` (lib) generated 37 warnings
+error: could not compile `payego` (lib) due to 8 previous errors; 37 warnings emitted

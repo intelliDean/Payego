@@ -9,6 +9,7 @@ use reqwest::Client;
 use stripe::{CheckoutSession, CheckoutSessionMode, Client as StripeClient, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreateCheckoutSessionLineItemsPriceData, CreateCheckoutSessionLineItemsPriceDataProductData, Currency};
 use std::str::FromStr;
 use serde_json;
+use secrecy::ExposeSecret;
 
 pub struct PaymentService;
 
@@ -101,7 +102,7 @@ impl PaymentService {
         transaction_id: Uuid,
         amount_cents: i64,
     ) -> Result<(Option<String>, Option<String>), ApiError> {
-        let stripe_client = StripeClient::new(&state.stripe_secret_key);
+        let stripe_client = StripeClient::new(state.stripe_secret_key.expose_secret());
         let line_item = CreateCheckoutSessionLineItems {
             quantity: Some(1),
             price_data: Some(CreateCheckoutSessionLineItemsPriceData {

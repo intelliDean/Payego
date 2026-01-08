@@ -1,10 +1,7 @@
 use payego::services::withdrawal_service::WithdrawalService;
 use payego::models::models::{AppState, Wallet, BankAccount};
 use payego::handlers::withdraw::WithdrawRequest;
-use diesel::{r2d2, PgConnection, Connection};
-use diesel::r2d2::ConnectionManager;
-use dotenvy::dotenv;
-use std::env;
+use diesel::{PgConnection, Connection};
 use std::sync::Arc;
 use wiremock::{MockServer, Mock, ResponseTemplate};
 use wiremock::matchers::{method, path};
@@ -13,15 +10,7 @@ use serde_json::json;
 use payego::schema::{users, wallets, transactions, bank_accounts};
 use diesel::prelude::*;
 
-fn get_test_pool() -> r2d2::Pool<ConnectionManager<PgConnection>> {
-    dotenv().ok();
-    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let manager = ConnectionManager::<PgConnection>::new(db_url);
-    r2d2::Pool::builder()
-        .max_size(5) 
-        .build(manager)
-        .expect("Failed to create pool")
-}
+mod common;
 
 #[tokio::test]
 async fn test_withdrawal_success() {
@@ -73,8 +62,13 @@ async fn test_withdrawal_success() {
         .await;
 
 
-    // 2. Setup DB
-    let pool = get_test_pool();
+    // 2. Setup AppState
+    let mut base_state = (*common::create_test_app_state()).clone();
+    base_state.exchange_api_url = base_url.clone();
+    base_state.paystack_api_url = base_url.clone();
+    let state = Arc::new(base_state);
+
+    let pool = &state.db;
     let conn = &mut pool.get().unwrap();
     
     let user_id = Uuid::new_v4();
@@ -112,29 +106,22 @@ async fn test_withdrawal_success() {
             bank_accounts::account_name.eq("Test User"),
             bank_accounts::bank_code.eq("057"),
             bank_accounts::paystack_recipient_code.eq("RCP_123456"),
+            bank_accounts::is_verified.eq(true),
         ))
         .execute(conn)
         .unwrap();
 
-
-    // 3. Setup AppState
-    let state = Arc::new(AppState {
-        db: pool.clone(),
-        jwt_secret: "secret".to_string(),
-        stripe_secret_key: "sk_test".to_string(),
-        app_url: "http://localhost:8080".to_string(),
-        exchange_api_url: base_url.clone(), // Use same mock server
-        paypal_api_url: "http://unused".to_string(),
-        paystack_api_url: base_url.clone(), // Use same mock server for simplicity, paths are distinct
-    });
-
     // 4. Call Service
+    unsafe {
+        std::env::set_var("PAYSTACK_SECRET_KEY", "sk_test_paystack");
+    }
+    
     let req = WithdrawRequest {
         amount: 10.0,
         currency: "USD".to_string(),
         bank_id: bank_id.to_string(),
         reference: Uuid::new_v4(),
-        idempotency_key: "withdraw_key_1".to_string(),
+        idempotency_key: format!("withdraw_key_{}", Uuid::new_v4()),
     };
 
     let result = WithdrawalService::initiate_withdrawal(state, user_id, req).await;
@@ -152,10 +139,73 @@ async fn test_withdrawal_success() {
         .first::<Wallet>(conn)
         .unwrap();
     assert_eq!(wallet.balance, 1000);
-
+    
     // 6. Cleanup
     diesel::delete(bank_accounts::table.filter(bank_accounts::user_id.eq(user_id))).execute(conn).unwrap();
     diesel::delete(wallets::table.filter(wallets::user_id.eq(user_id))).execute(conn).unwrap();
     diesel::delete(transactions::table.filter(transactions::user_id.eq(user_id))).execute(conn).unwrap();
     diesel::delete(users::table.filter(users::id.eq(user_id))).execute(conn).unwrap();
+}
+
+#[tokio::test]
+async fn test_withdrawal_insufficient_balance() {
+    let state = common::create_test_app_state();
+    let pool = &state.db;
+    let conn = &mut pool.get().unwrap();
+    
+    let user_id = Uuid::new_v4();
+    let bank_id = Uuid::new_v4();
+    
+    diesel::insert_into(users::table)
+        .values((
+            users::id.eq(user_id),
+            users::email.eq(format!("test_fail_bal_{}@example.com", user_id)),
+            users::password_hash.eq("hash"),
+        ))
+        .execute(conn)
+        .unwrap();
+
+    // Wallet with 0 balance
+    diesel::insert_into(wallets::table)
+        .values((
+            wallets::id.eq(Uuid::new_v4()),
+            wallets::user_id.eq(user_id),
+            wallets::balance.eq(0),
+            wallets::currency.eq("USD"),
+        ))
+        .execute(conn)
+        .unwrap();
+
+    let req = WithdrawRequest {
+        amount: 10.0,
+        currency: "USD".to_string(),
+        bank_id: bank_id.to_string(),
+        reference: Uuid::new_v4(),
+        idempotency_key: "any".to_string(),
+    };
+
+    let result = WithdrawalService::initiate_withdrawal(state, user_id, req).await;
+    assert!(result.is_err());
+
+    // Cleanup
+    diesel::delete(wallets::table.filter(wallets::user_id.eq(user_id))).execute(conn).unwrap();
+    diesel::delete(users::table.filter(users::id.eq(user_id))).execute(conn).unwrap();
+
+}
+
+#[tokio::test]
+async fn test_withdrawal_unsupported_currency() {
+    let state = common::create_test_app_state();
+    let user_id = Uuid::new_v4();
+    
+    let req = WithdrawRequest {
+        amount: 10.0,
+        currency: "XXX".to_string(),
+        bank_id: Uuid::new_v4().to_string(),
+        reference: Uuid::new_v4(),
+        idempotency_key: "any".to_string(),
+    };
+
+    let result = WithdrawalService::initiate_withdrawal(state, user_id, req).await;
+    assert!(result.is_err());
 }

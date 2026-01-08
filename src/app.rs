@@ -27,6 +27,11 @@ use crate::models::models::AppState;
 use crate::observability::metrics::setup_metrics;
 
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
+use tower::ServiceBuilder;
+use tower_http::{
+    trace::TraceLayer,
+    request_id::{MakeRequestUuid, SetRequestIdLayer},
+};
 
 pub fn create_router(state: Arc<AppState>) -> Router {
     // Rate limiting configuration
@@ -88,7 +93,12 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .merge(protected_router)
         .layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)) // 2MB limit
         .layer(middleware::from_fn(https_redirect_middleware))
-        .layer(GovernorLayer::new(governor_conf))
+        .layer(
+            ServiceBuilder::new()
+                .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
+                .layer(TraceLayer::new_for_http())
+                .layer(GovernorLayer::new(governor_conf))
+        )
         .with_state(state)
 }
 

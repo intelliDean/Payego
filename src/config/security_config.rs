@@ -13,6 +13,7 @@ use std::env;
 use std::sync::Arc;
 use tracing::log::info;
 use tracing::{error, warn};
+use secrecy::ExposeSecret;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -39,7 +40,7 @@ impl JWTSecret {
 }
 
 pub fn create_token(state: &AppState, user_id: &str) -> Result<String, ApiError> {
-    let secret = state.jwt_secret.as_bytes();
+    let secret = state.jwt_secret.expose_secret().as_bytes();
 
     let now = Utc::now();
     let expiration_hours: i64 = env::var("JWT_EXPIRATION_HOURS")
@@ -148,7 +149,7 @@ pub fn verify_token(state: &AppState, token: &str) -> Result<Claims, String> {
 
     decode::<Claims>(
         token,
-        &DecodingKey::from_secret(state.jwt_secret.as_bytes()),
+        &DecodingKey::from_secret(state.jwt_secret.expose_secret().as_bytes()),
         &validation,
     )
     .map(|data| data.claims)

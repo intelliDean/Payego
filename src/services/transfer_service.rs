@@ -2,9 +2,13 @@ use diesel::prelude::*;
 use uuid::Uuid;
 use crate::error::ApiError;
 use crate::schema::{users, wallets, transactions};
-use crate::models::models::{NewTransaction, Transaction};
-use tracing::{error, info};
+use crate::models::models::{NewTransaction, Transaction, Wallet, AppState};
+use tracing::{error, info, debug};
 use serde_json::json;
+use reqwest::{Client, StatusCode};
+use std::sync::Arc;
+use crate::models::models::PayoutRequest;
+use secrecy::ExposeSecret;
 
 pub struct TransferService;
 
@@ -142,5 +146,235 @@ impl TransferService {
 
         info!("Internal transfer completed: {} to {} from {} to {}", amount, recipient_email, sender_id, recipient_id);
         Ok(reference.to_string())
+    }
+
+    pub async fn execute_external_transfer(
+        state: Arc<AppState>,
+        user_id: Uuid,
+        req: PayoutRequest,
+    ) -> Result<StatusCode, ApiError> {
+         let amount_ngn_cents = (req.amount * 100.0).round() as i64; // Amount in NGN cents
+
+        let mut conn = state.db.get().map_err(|e| {
+            error!("Database connection failed: {}", e);
+            ApiError::DatabaseConnection(e.to_string())
+        })?;
+
+        // ALL LOGIC FROM HANDLER GOES HERE
+        // Fetch sender wallet in the selected currency
+        let sender_wallet = wallets::table
+            .filter(wallets::user_id.eq(user_id))
+            .filter(wallets::currency.eq(&req.currency))
+            .first::<Wallet>(&mut conn)
+            .map_err(|e| {
+                error!("Sender wallet lookup failed: {}", e);
+                if e == diesel::result::Error::NotFound {
+                    ApiError::Payment(format!("Sender wallet not found for currency {}", req.currency))
+                } else {
+                    ApiError::Database(e).into()
+                }
+            })?;
+
+        // Fetch current exchange rate (use a tool or API)
+        let exchange_rate = Self::get_exchange_rate(&state.exchange_api_url, &req.currency, "NGN").await.map_err(|e| {
+            // error!("Exchange rate fetch failed: {}", e);
+            ApiError::Payment("Exchange rate fetch failed".to_string())
+        })?;
+
+        let amount_to_deduct = (amount_ngn_cents as f64 / exchange_rate).round() as i64;
+
+        // Validate balance
+        if sender_wallet.balance < amount_to_deduct {
+            error!(
+                "Insufficient balance: available={}, required={}",
+                sender_wallet.balance, amount_to_deduct
+            );
+            return Err(ApiError::Auth("Insufficient balance".to_string()).into());
+        }
+
+
+        // Create temporary Paystack recipient
+        let paystack_key = state.paystack_secret_key.expose_secret();
+        let client = Client::new();
+        let account_name = req.account_name.clone().unwrap_or("External Transfer Recipient".to_string());
+        
+        // PAYSTACK CALLS (RECIPIENT)
+        let resp = client
+            .post("https://api.paystack.co/transferrecipient")
+            .header("Authorization", format!("Bearer {}", paystack_key))
+            .json(&serde_json::json!({
+                "type": "nuban",
+                "name": account_name,
+                "account_number": req.account_number,
+                "bank_code": req.bank_code,
+                "currency": "NGN"
+            }))
+            .send()
+            .await
+            .map_err(|e| {
+                error!("Paystack recipient creation failed: {}", e);
+                ApiError::Payment(format!("Paystack recipient creation failed: {}", e))
+            })?;
+
+        let status = resp.status();
+        let body = resp.json::<serde_json::Value>().await.map_err(|e| {
+            error!("Paystack response parsing error: {}", e);
+            ApiError::Payment(format!("Paystack response error: {}", e))
+        })?;
+
+        if !status.is_success() || body["status"].as_bool().unwrap_or(false) == false {
+            let message = body["message"]
+                .as_str()
+                .unwrap_or("Unknown Paystack error")
+                .to_string();
+            error!("Paystack recipient creation failed: {}", message);
+            return Err(ApiError::Payment(format!("Paystack recipient creation failed: {}", message)).into());
+        }
+
+        // Idempotency check with metadata
+        let existing_transaction = transactions::table
+            .filter(diesel::dsl::sql::<diesel::sql_types::Bool>("metadata->>'idempotency_key' = ").bind::<diesel::sql_types::Text, _>(&req.idempotency_key))
+            .filter(transactions::user_id.eq(user_id))
+            .first::<Transaction>(&mut conn)
+            .optional()
+            .map_err(|e| {
+                error!("Database error checking idempotency: {}", e);
+                ApiError::Database(e)
+            })?;
+
+        if let Some(tx) = existing_transaction {
+            info!("Idempotent request: transaction {} already exists for key {}", tx.reference, req.idempotency_key);
+            return Ok(StatusCode::OK);
+        }
+
+        let recipient_code = body["data"]["recipient_code"]
+            .as_str()
+            .ok_or_else(|| {
+                error!("Invalid Paystack response: missing recipient_code");
+                ApiError::Payment("Invalid Paystack response: missing recipient_code".to_string())
+            })?
+            .to_string();
+        debug!("Paystack recipient_code: {}", recipient_code);
+
+        // Initiate Paystack transfer
+        let reference = req.reference;
+        let resp = client
+            .post("https://api.paystack.co/transfer")
+            .header("Authorization", format!("Bearer {}", paystack_key))
+            .json(&serde_json::json!({
+                "source": "balance",
+                "reason": format!("External transfer from Payego in {}", req.currency),
+                "amount": amount_ngn_cents,
+                "recipient": recipient_code,
+                "reference": reference.to_string(),
+            }))
+            .send()
+            .await
+            .map_err(|e| {
+                error!("Paystack transfer failed: {}", e);
+                ApiError::Payment(format!("Paystack transfer failed: {}", e))
+            })?;
+
+        let status = resp.status();
+        let body = resp.json::<serde_json::Value>().await.map_err(|e| {
+            error!("Paystack response parsing error: {}", e);
+            ApiError::Payment(format!("Paystack response error: {}", e))
+        })?;
+
+        if !status.is_success() || body["status"].as_bool().unwrap_or(false) == false {
+            let message = body["message"]
+                .as_str()
+                .unwrap_or("Unknown Paystack error")
+                .to_string();
+            error!("Paystack transfer failed: {}", message);
+            return Err(ApiError::Payment(format!("Paystack transfer failed: {}", message)).into());
+        }
+
+        let transfer_code = body["data"]["transfer_code"]
+            .as_str()
+            .ok_or_else(|| {
+                error!("Invalid Paystack response: missing transfer_code");
+                ApiError::Payment("Invalid Paystack response: missing transfer_code".to_string())
+            })?
+            .to_string();
+        debug!("Paystack transfer_code: {}", transfer_code);
+
+
+        // Atomic transaction
+        conn.transaction(|conn| {
+            // Debit sender wallet
+            diesel::update(wallets::table)
+                .filter(wallets::user_id.eq(user_id))
+                .filter(wallets::currency.eq(&req.currency))
+                .set(wallets::balance.eq(wallets::balance - amount_to_deduct))
+                .execute(conn)
+                .map_err(|e| {
+                    error!("Sender wallet update failed: {}", e);
+                    ApiError::Database(e)
+                })?;
+            info!(
+                "Debited sender wallet: user_id={}, amount={}",
+                user_id, amount_to_deduct
+            );
+
+            // Insert transaction
+            diesel::insert_into(transactions::table)
+                .values(NewTransaction {
+                    user_id,
+                    recipient_id: None,
+                    amount: -amount_to_deduct,
+                    transaction_type: "paystack_payout".to_string(),
+                    currency: req.currency.to_uppercase(),
+                    status: "pending".to_string(),
+                    provider: Some("paystack".to_string()),
+                    description: Some(format!("External transfer in {} to bank", &req.currency)),
+                    reference,
+                    metadata: Some(json!({ 
+                        "transfer_code": transfer_code, 
+                        "exchange_rate": exchange_rate,
+                        "idempotency_key": req.idempotency_key
+                    })),
+                })
+                .execute(conn)
+                .map_err(|e| {
+                    error!("Payout transaction insert failed: {}", e);
+                    ApiError::Database(e)
+                })?;
+
+            Ok::<(), ApiError>(())
+        })?;
+
+        info!(
+            "External transfer initiated: user_id={}, amount_ngn={}, currency={}, exchange_rate={}",
+            user_id, req.amount, req.currency, exchange_rate
+        );
+        Ok(StatusCode::OK)
+    }
+
+    async fn get_exchange_rate(base_url: &str, from_currency: &str, to_currency: &str) -> Result<f64, ApiError> {
+        let url = format!("{}/{}", base_url, from_currency);
+        let client = Client::new();
+        let resp = client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| {
+                error!("Exchange rate API error: {}", e);
+                ApiError::Payment(format!("Exchange rate API error: {}", e))
+            })?;
+
+        let body = resp.json::<serde_json::Value>().await.map_err(|e| {
+            error!("Exchange rate response parsing error: {}", e);
+            ApiError::Payment(format!("Exchange rate response error: {}", e))
+        })?;
+
+        let rate = body["rates"][to_currency]
+            .as_f64()
+            .ok_or_else(|| {
+                error!("Invalid exchange rate response");
+                ApiError::Payment("Invalid exchange rate response".to_string())
+            })?;
+
+        Ok(rate)
     }
 }

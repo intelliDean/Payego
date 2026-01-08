@@ -9,6 +9,7 @@ use crate::error::ApiError;
 use crate::models::models::Bank;
 use crate::schema::banks;
 use crate::AppState;
+use secrecy::ExposeSecret;
 
 #[utoipa::path(
     post,
@@ -48,10 +49,7 @@ pub async fn initialize_banks(
     }
 
     // Fetch from Paystack
-    let paystack_key = std::env::var("PAYSTACK_SECRET_KEY").map_err(|_| {
-        error!("PAYSTACK_SECRET_KEY not set");
-        ApiError::Token("Paystack key not set".to_string())
-    })?;
+    let paystack_key = state.paystack_secret_key.expose_secret();
     let client = Client::new();
     let url = "https://api.paystack.co/bank?country=nigeria";
     let resp = client
