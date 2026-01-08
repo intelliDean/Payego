@@ -1,8 +1,6 @@
 use crate::config::security_config::Claims;
 use crate::error::ApiError;
-use crate::handlers::user_bank_accounts::Account;
 use crate::models::models::AppState;
-use crate::schema::transactions::{reference, user_id};
 use axum::{
     extract::{Extension, Path, State},
     http::StatusCode,
@@ -12,11 +10,9 @@ use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use axum::response::IntoResponse;
-use tracing::{error, info};
+use tracing::error;
 use utoipa::ToSchema;
 use uuid::Uuid;
-use crate::handlers::transfer_internal::TransferRequest;
 
 #[derive(Queryable, Selectable, Debug)]
 #[diesel(table_name = crate::schema::transactions)]

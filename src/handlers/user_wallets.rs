@@ -6,7 +6,6 @@ use axum::{
 use diesel::prelude::*;
 use serde::Serialize;
 use std::sync::Arc;
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
 use tracing::{error, info};
 use utoipa::ToSchema;

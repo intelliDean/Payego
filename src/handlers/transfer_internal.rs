@@ -5,14 +5,11 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, LazyLock};
 use uuid::Uuid;
-use validator::{Validate, ValidationError};
+use validator::Validate;
 use regex::Regex;
-use lazy_static::lazy_static;
 use crate::AppState;
 use crate::error::ApiError;
 use crate::config::security_config::Claims;
-use crate::schema::{users, wallets, transactions};
-use crate::models::models::NewTransaction;
 use tracing::{error, info};
 use utoipa::ToSchema;
 

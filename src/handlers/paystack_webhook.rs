@@ -2,14 +2,11 @@ use crate::error::ApiError;
 use crate::models::models::{AppState};
 use axum::{Json, extract::State, http::StatusCode};
 use diesel::prelude::*;
-use diesel::sql_types::Jsonb;
 use hmac::{Hmac, Mac};
-use serde_json::{Value, json};
+use serde_json::Value;
 use sha2::Sha256;
 use std::sync::Arc;
-use chrono::{DateTime, Utc};
 use tracing::{debug, error, info};
-use utoipa::ToSchema;
 use uuid::Uuid;
 use hmac::KeyInit;
 

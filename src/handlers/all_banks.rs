@@ -1,5 +1,5 @@
 use axum::{
-    extract::{State, Extension},
+    extract::State,
     http::StatusCode,
     Json,
 };
@@ -8,9 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{error, info};
 use utoipa::ToSchema;
-use uuid::Uuid;
 use crate::{AppState, error::ApiError};
-use crate::config::security_config::Claims;
 use crate::models::models::Bank;
 use crate::schema::banks;
 

@@ -239,11 +239,8 @@ use crate::schema::{transactions, wallets};
 use axum::extract::State;
 use diesel::prelude::*;
 use http::{HeaderMap, StatusCode};
-use serde::Deserialize;
 use std::sync::Arc;
-use diesel::row::NamedRow;
-use stripe::{Currency, Event, EventObject, EventType, Webhook};
-use tracing::log::debug;
+use stripe::{Event, EventObject, EventType, Webhook};
 use tracing::{error, info};
 use uuid::Uuid;
 

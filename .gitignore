@@ -34,3 +34,10 @@ Thumbs.db
 # Docker override (may contain secrets)
 docker-compose.override.yml
 docker-compose.yml
+
+ANALYSIS_REPORT.md
+success_report.md
+
+# Build logs
+check_output*.txt
+

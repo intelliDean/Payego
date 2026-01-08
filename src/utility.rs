@@ -1,4 +1,3 @@
-use std::sync::Mutex;
 use crate::error::ApiError;
 use base64::engine::general_purpose;
 use base64::Engine;

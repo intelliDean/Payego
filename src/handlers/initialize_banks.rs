@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::sync::Arc;
 use axum::extract::State;
 use http::StatusCode;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 use crate::error::ApiError;
 use crate::models::models::Bank;
 use crate::schema::banks;

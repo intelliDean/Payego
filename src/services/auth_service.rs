@@ -3,7 +3,7 @@ use crate::models::models::{NewRefreshToken, RefreshToken};
 use crate::schema::refresh_tokens::dsl::*;
 use chrono::{Duration, Utc};
 use diesel::prelude::*;
-use rand::{Rng, thread_rng};
+use rand::Rng;
 use hex;
 use rand::distributions::Alphanumeric;
 use sha2::{Digest, Sha256};

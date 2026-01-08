@@ -1,7 +1,7 @@
 use axum::{
     middleware,
     Router,
-    response::{Response, IntoResponse},
+    response::IntoResponse,
 };
 use std::sync::Arc;
 use utoipa_swagger_ui::SwaggerUi;
@@ -24,7 +24,6 @@ use crate::handlers::{
 use crate::handlers::logout::logout;
 use crate::handlers::transaction::get_user_transaction;
 use crate::models::models::AppState;
-use crate::observability::metrics::setup_metrics;
 
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tower::ServiceBuilder;
