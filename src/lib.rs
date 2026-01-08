@@ -1,6 +1,7 @@
 // Library entry point for Payego
 // This exposes modules for testing while keeping main.rs as the binary entry point
 
+pub mod app;
 pub mod config;
 pub mod error;
 pub mod handlers;

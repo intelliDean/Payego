@@ -1,8 +1,11 @@
 use diesel::r2d2::{ConnectionManager, Pool};
 use diesel::PgConnection;
 use diesel::prelude::*;
+use axum::Router;
+use axum_test::TestServer;
 use payego::models::models::AppState;
 use std::sync::Arc;
+use uuid::Uuid;
 
 pub mod fixtures;
 pub mod helpers;
@@ -10,7 +13,7 @@ pub mod helpers;
 /// Create a test database pool
 pub fn create_test_db_pool() -> Pool<ConnectionManager<PgConnection>> {
     let database_url = std::env::var("TEST_DATABASE_URL")
-        .unwrap_or_else(|_| "postgresql://payego_user:password@localhost/payego_test".to_string());
+        .unwrap_or_else(|_| "postgresql://postgres:%40Tiptop2059!@localhost:5432/payego_test".to_string());
     
     let manager = ConnectionManager::<PgConnection>::new(database_url);
     // Use build_unchecked if we want to allow tests to run without a live DB,
@@ -34,6 +37,29 @@ pub fn create_test_app_state() -> Arc<AppState> {
         stripe_secret_key: "sk_test_fake_key_for_testing_only".to_string(),
         app_url: "http://localhost:8080".to_string(),
     })
+}
+
+/// Create a test application Router
+pub fn create_test_app(state: Arc<AppState>) -> Router {
+    payego::app::create_router(state)
+}
+
+/// Helper to create a test user and get its token
+pub async fn create_test_user(server: &TestServer, email: &str) -> (String, String) {
+    use serde_json::json;
+    
+    let response = server
+        .post("/api/register")
+        .json(&json!({
+            "email": email,
+            "password": "SecurePass123!",
+            "username": Some(format!("user_{}", Uuid::new_v4()))
+        }))
+        .await;
+    
+    response.assert_status(axum::http::StatusCode::CREATED);
+    let body: serde_json::Value = response.json();
+    (body["token"].as_str().unwrap().to_string(), email.to_string())
 }
 
 /// Run database migrations for tests

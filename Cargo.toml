@@ -18,7 +18,8 @@ utoipa = { version = "5.4.0", features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
 dotenvy = "0.15.7"
 eyre = "0.6.12"
-uuid = { version = "1.18.1", features = ["v4"] }
+uuid = { version = "0.8", features = ["v4", "serde"] }
+uuid1 = { package = "uuid", version = "1.18.1", features = ["v4", "serde"] }
 tracing = "0.1.41"
 regex = "1.11.2"
 validator = { version = "0.20.0", features = ["derive"] }
@@ -45,7 +46,7 @@ url = "2.5.7"
 tokio-test = "0.4"
 
 # HTTP testing for Axum
-axum-test = "15.0"
+axum-test = "18.5"
 
 # Database testing
 diesel_migrations = "2.3"

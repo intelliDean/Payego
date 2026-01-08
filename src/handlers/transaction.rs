@@ -84,11 +84,10 @@ pub async fn get_user_transaction(
     })?;
 
     let transact = crate::schema::transactions::table
-        .filter(crate::schema::transactions::reference.eq(&txn_id))
+        .filter(crate::schema::transactions::reference.eq(txn_id))
         .filter(crate::schema::transactions::user_id.eq(usr_id))
         .select(Transaction::as_select())
-        .first(conn)
-        // .optional()
+        .first::<Transaction>(conn)
         .map_err(|e: diesel::result::Error| {
             error!("Transaction query failed: {}", e);
             ApiError::Database(e)
