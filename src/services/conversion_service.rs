@@ -1,18 +1,20 @@
 use crate::error::ApiError;
+use crate::handlers::internal_conversion::{ConvertRequest, ConvertResponse};
 use crate::models::models::{AppState, NewTransaction, Transaction, Wallet};
 use crate::schema::{transactions, wallets};
 use diesel::prelude::*;
-use reqwest::Client;
-use serde_json::{Value, json};
-use std::sync::{Arc, LazyLock};
 use regex::Regex;
+use reqwest::Client;
+use serde_json::{json, Value};
+use std::sync::{Arc, LazyLock};
 use tracing::{error, info};
 use uuid::Uuid;
-use crate::handlers::internal_conversion::{ConvertRequest, ConvertResponse};
 
 static SUPPORTED_CURRENCIES: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(USD|NGN|GBP|EUR|CAD|AUD|JPY|CHF|CNY|SEK|NZD|MXN|SGD|HKD|NOK|KRW|TRY|INR|BRL|ZAR)$")
-        .expect("Invalid currency regex")
+    Regex::new(
+        r"^(USD|NGN|GBP|EUR|CAD|AUD|JPY|CHF|CNY|SEK|NZD|MXN|SGD|HKD|NOK|KRW|TRY|INR|BRL|ZAR)$",
+    )
+    .expect("Invalid currency regex")
 });
 
 pub struct ConversionService;
@@ -27,7 +29,9 @@ impl ConversionService {
 
         // Validate currencies
         if req.from_currency == req.to_currency {
-             return Err(ApiError::Payment("From and to currencies must be different".to_string()));
+            return Err(ApiError::Payment(
+                "From and to currencies must be different".to_string(),
+            ));
         }
 
         // Get database connection
@@ -38,7 +42,10 @@ impl ConversionService {
 
         // Idempotency check with metadata
         let existing_transaction = transactions::table
-            .filter(diesel::dsl::sql::<diesel::sql_types::Bool>("metadata->>'idempotency_key' = ").bind::<diesel::sql_types::Text, _>(&req.idempotency_key))
+            .filter(
+                diesel::dsl::sql::<diesel::sql_types::Bool>("metadata->>'idempotency_key' = ")
+                    .bind::<diesel::sql_types::Text, _>(&req.idempotency_key),
+            )
             .filter(transactions::user_id.eq(user_id))
             .first::<Transaction>(&mut conn)
             .optional()
@@ -48,9 +55,14 @@ impl ConversionService {
             })?;
 
         if let Some(tx) = existing_transaction {
-            info!("Idempotent request: transaction {} already exists for key {}", tx.reference, req.idempotency_key);
-            let metadata = tx.metadata.as_ref().ok_or(ApiError::Payment("Missing metadata in existing transaction".to_string()))?;
-            
+            info!(
+                "Idempotent request: transaction {} already exists for key {}",
+                tx.reference, req.idempotency_key
+            );
+            let metadata = tx.metadata.as_ref().ok_or(ApiError::Payment(
+                "Missing metadata in existing transaction".to_string(),
+            ))?;
+
             let converted_amount = metadata["converted_amount"].as_f64().unwrap_or(0.0);
             let exchange_rate = metadata["exchange_rate"].as_f64().unwrap_or(0.0);
             let fee = metadata["fee"].as_f64().unwrap_or(0.0);
@@ -64,7 +76,12 @@ impl ConversionService {
         }
 
         // Fetch exchange rate
-        let exchange_rate = Self::get_exchange_rate(&state.exchange_api_url, &req.from_currency, &req.to_currency).await?;
+        let exchange_rate = Self::get_exchange_rate(
+            &state.exchange_api_url,
+            &req.from_currency,
+            &req.to_currency,
+        )
+        .await?;
 
         // Calculate fee (e.g., 1%)
         let fee = 0.01 * req.amount * exchange_rate;
@@ -141,7 +158,12 @@ impl ConversionService {
                     provider: Some("internal".to_string()),
                     description: Some(format!(
                         "Converted {} {} to {} {} (rate: {}, fee: {})",
-                        req.amount, req.from_currency, final_converted_amount, req.to_currency, exchange_rate, fee
+                        req.amount,
+                        req.from_currency,
+                        final_converted_amount,
+                        req.to_currency,
+                        exchange_rate,
+                        fee
                     )),
                     reference: transaction_reference,
                     currency: req.from_currency.clone(),
@@ -174,7 +196,11 @@ impl ConversionService {
         })
     }
 
-    async fn get_exchange_rate(base_url: &str, from_currency: &str, to_currency: &str) -> Result<f64, ApiError> {
+    async fn get_exchange_rate(
+        base_url: &str,
+        from_currency: &str,
+        to_currency: &str,
+    ) -> Result<f64, ApiError> {
         if from_currency == to_currency {
             return Ok(1.0);
         }
@@ -193,7 +219,10 @@ impl ConversionService {
             .map_err(|e| ApiError::Payment(format!("Invalid exchange rate response: {}", e)))?;
 
         if !status.is_success() {
-            return Err(ApiError::Payment(format!("Exchange rate API failed: {}", body["error"].as_str().unwrap_or("Unknown error"))));
+            return Err(ApiError::Payment(format!(
+                "Exchange rate API failed: {}",
+                body["error"].as_str().unwrap_or("Unknown error")
+            )));
         }
 
         let rate = body["rates"][to_currency]

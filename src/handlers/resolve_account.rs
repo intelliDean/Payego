@@ -1,16 +1,16 @@
+use crate::services::bank_service::BankService;
+use crate::AppState;
 use axum::{
-    extract::{State, Query},
-    Json,
+    extract::{Query, State},
     http::StatusCode,
+    Json,
 };
+use lazy_static::lazy_static;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use regex::Regex;
-use lazy_static::lazy_static;
 use tracing::info;
 use utoipa::ToSchema;
-use crate::AppState;
-use crate::services::bank_service::BankService;
 
 #[derive(Deserialize, ToSchema)]
 pub struct ResolveAccountRequest {
@@ -24,7 +24,8 @@ pub struct ResolveAccountResponse {
 }
 
 lazy_static! {
-    static ref ACCOUNT_NUMBER_RE: Regex = Regex::new(r"^\d{10}$").expect("Invalid account number regex");
+    static ref ACCOUNT_NUMBER_RE: Regex =
+        Regex::new(r"^\d{10}$").expect("Invalid account number regex");
 }
 
 #[utoipa::path(
@@ -42,10 +43,13 @@ lazy_static! {
     tag = "Verification"
 )]
 pub async fn resolve_account(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Query(req): Query<ResolveAccountRequest>,
 ) -> Result<Json<ResolveAccountResponse>, (StatusCode, String)> {
-    info!("Resolve account initiated for bank_code: {}, account_number: {}", req.bank_code, req.account_number);
+    info!(
+        "Resolve account initiated for bank_code: {}, account_number: {}",
+        req.bank_code, req.account_number
+    );
 
     // Validate input
     if !ACCOUNT_NUMBER_RE.is_match(&req.account_number) {
@@ -55,14 +59,18 @@ pub async fn resolve_account(
         ));
     }
 
-    let account_name = BankService::resolve_account_details(&req.bank_code, &req.account_number)
-        .await
-        .map_err(|e| {
-             let (status, msg) = e.into();
-             (status, msg)
-        })?;
+    let account_name =
+        BankService::resolve_account_details(&state, &req.bank_code, &req.account_number)
+            .await
+            .map_err(|e| {
+                let (status, msg) = e.into();
+                (status, msg)
+            })?;
 
-    info!("Account resolved: {} - {}", req.account_number, account_name);
+    info!(
+        "Account resolved: {} - {}",
+        req.account_number, account_name
+    );
 
     Ok(Json(ResolveAccountResponse { account_name }))
 }

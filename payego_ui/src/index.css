@@ -1,77 +1,409 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   DESIGN TOKENS - Modern Fintech Color Palette
+   ============================================ */
+:root {
+  /* Primary Colors - Deep Purple & Electric Blue */
+  --color-primary-50: #f5f3ff;
+  --color-primary-100: #ede9fe;
+  --color-primary-200: #ddd6fe;
+  --color-primary-300: #c4b5fd;
+  --color-primary-400: #a78bfa;
+  --color-primary-500: #8b5cf6;
+  --color-primary-600: #7c3aed;
+  --color-primary-700: #6d28d9;
+  --color-primary-800: #5b21b6;
+  --color-primary-900: #4c1d95;
+
+  /* Accent Colors - Electric Blue */
+  --color-accent-50: #eff6ff;
+  --color-accent-100: #dbeafe;
+  --color-accent-200: #bfdbfe;
+  --color-accent-300: #93c5fd;
+  --color-accent-400: #60a5fa;
+  --color-accent-500: #3b82f6;
+  --color-accent-600: #2563eb;
+  --color-accent-700: #1d4ed8;
+  --color-accent-800: #1e40af;
+  --color-accent-900: #1e3a8a;
+
+  /* Success - Emerald */
+  --color-success-50: #ecfdf5;
+  --color-success-500: #10b981;
+  --color-success-600: #059669;
+  --color-success-700: #047857;
+
+  /* Warning - Amber */
+  --color-warning-50: #fffbeb;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+
+  /* Error - Rose */
+  --color-error-50: #fff1f2;
+  --color-error-500: #f43f5e;
+  --color-error-600: #e11d48;
+  --color-error-700: #be123c;
+
+  /* Neutral Colors */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-accent: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --gradient-success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --gradient-purple-blue: linear-gradient(135deg, #667eea 0%, #2563eb 100%);
+  --gradient-ocean: linear-gradient(135deg, #2e3192 0%, #1bffff 100%);
+  --gradient-sunset: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+
+  /* Shadows - Elevation System */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-glow: 0 0 20px rgba(139, 92, 246, 0.3);
+  --shadow-glow-accent: 0 0 20px rgba(59, 130, 246, 0.3);
+
+  /* Spacing Scale */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Typography */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* Z-Index Scale */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
 @layer base {
   * {
     @apply border-gray-200;
   }
   
-  body {
-    @apply bg-gray-50 text-gray-900 font-sans;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-  
   html {
     scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+  
+  body {
+    @apply bg-gray-50 text-gray-900;
+    font-family: var(--font-family);
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold;
+    letter-spacing: -0.02em;
+  }
+
+  h1 { @apply text-4xl md:text-5xl; }
+  h2 { @apply text-3xl md:text-4xl; }
+  h3 { @apply text-2xl md:text-3xl; }
+  h4 { @apply text-xl md:text-2xl; }
+  h5 { @apply text-lg md:text-xl; }
+  h6 { @apply text-base md:text-lg; }
 }
 
+/* ============================================
+   COMPONENT STYLES - Buttons
+   ============================================ */
 @layer components {
+  .btn {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
   .btn-primary {
-    @apply bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 disabled:transform-none disabled:cursor-not-allowed;
+    @apply bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg hover:shadow-xl hover:from-purple-700 hover:to-blue-700 transform hover:-translate-y-0.5 focus:ring-purple-500;
+  }
+
+  .btn-primary-glow {
+    @apply btn-primary;
+    box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.4), 0 8px 10px -6px rgba(59, 130, 246, 0.3);
+  }
+
+  .btn-primary-glow:hover {
+    box-shadow: 0 20px 35px -5px rgba(139, 92, 246, 0.5), 0 10px 15px -6px rgba(59, 130, 246, 0.4);
   }
   
   .btn-secondary {
-    @apply bg-white text-gray-700 px-6 py-3 rounded-lg font-medium shadow-md hover:shadow-lg border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:bg-gray-50;
+    @apply bg-white text-gray-700 shadow-md hover:shadow-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 focus:ring-gray-300;
   }
-  
+
+  .btn-success {
+    @apply bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg hover:shadow-xl hover:from-emerald-600 hover:to-green-700 transform hover:-translate-y-0.5 focus:ring-emerald-500;
+  }
+
+  .btn-danger {
+    @apply bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-lg hover:shadow-xl hover:from-rose-600 hover:to-red-700 transform hover:-translate-y-0.5 focus:ring-rose-500;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-300;
+  }
+
+  .btn-sm {
+    @apply px-4 py-2 text-sm rounded-lg;
+  }
+
+  .btn-lg {
+    @apply px-8 py-4 text-lg rounded-2xl;
+  }
+
+  /* ============================================
+     COMPONENT STYLES - Cards
+     ============================================ */
   .card {
-    @apply bg-white rounded-2xl shadow-lg border border-gray-100 p-6 transition-all duration-200 hover:shadow-xl;
+    @apply bg-white rounded-2xl shadow-lg border border-gray-100 p-6 transition-all duration-300;
   }
-  
+
+  .card-hover {
+    @apply card hover:shadow-xl hover:-translate-y-1;
+  }
+
+  .card-glass {
+    @apply rounded-2xl p-6 backdrop-blur-xl bg-white/80 border border-white/20 shadow-xl;
+  }
+
+  .card-gradient {
+    @apply rounded-2xl p-6 bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 border border-purple-100 shadow-lg;
+  }
+
+  /* ============================================
+     COMPONENT STYLES - Inputs
+     ============================================ */
   .input-field {
-    @apply w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white;
+    @apply w-full px-4 py-3 border border-gray-300 rounded-xl bg-white text-gray-900 placeholder-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent;
   }
-  
-  .gradient-bg {
-    @apply bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50;
+
+  .input-field:hover {
+    @apply border-gray-400;
   }
-  
-  .nav-brand {
-    @apply flex items-center space-x-2;
+
+  .input-field-error {
+    @apply input-field border-red-300 focus:ring-red-500;
   }
-  
-  .nav-logo {
-    @apply w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center;
+
+  .input-field-success {
+    @apply input-field border-green-300 focus:ring-green-500;
   }
-  
-  .nav-title {
-    @apply text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent;
+
+  .input-label {
+    @apply block text-sm font-semibold text-gray-700 mb-2;
   }
-  
+
+  .input-group {
+    @apply relative;
+  }
+
+  .input-icon {
+    @apply absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400;
+  }
+
+  .input-with-icon {
+    @apply input-field pl-12;
+  }
+
+  /* ============================================
+     COMPONENT STYLES - Badges & Tags
+     ============================================ */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .badge-primary {
+    @apply badge bg-purple-100 text-purple-700;
+  }
+
+  .badge-success {
+    @apply badge bg-green-100 text-green-700;
+  }
+
+  .badge-warning {
+    @apply badge bg-amber-100 text-amber-700;
+  }
+
+  .badge-error {
+    @apply badge bg-red-100 text-red-700;
+  }
+
+  .badge-info {
+    @apply badge bg-blue-100 text-blue-700;
+  }
+
+  /* ============================================
+     COMPONENT STYLES - Alerts & Messages
+     ============================================ */
+  .alert {
+    @apply p-4 rounded-xl border flex items-start space-x-3;
+  }
+
+  .alert-success {
+    @apply alert bg-green-50 border-green-200 text-green-800;
+  }
+
+  .alert-error {
+    @apply alert bg-red-50 border-red-200 text-red-800;
+  }
+
+  .alert-warning {
+    @apply alert bg-amber-50 border-amber-200 text-amber-800;
+  }
+
+  .alert-info {
+    @apply alert bg-blue-50 border-blue-200 text-blue-800;
+  }
+
+  /* ============================================
+     COMPONENT STYLES - Wallet & Balance Cards
+     ============================================ */
   .wallet-card {
-    @apply bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100 transition-all duration-200 hover:from-blue-100 hover:to-indigo-100;
+    @apply relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-purple-600 to-blue-600 text-white shadow-xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-1;
   }
-  
+
+  .wallet-card::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 transition-opacity duration-300;
+  }
+
+  .wallet-card:hover::before {
+    @apply opacity-100;
+  }
+
+  .balance-card {
+    @apply card-gradient;
+  }
+
+  /* ============================================
+     COMPONENT STYLES - Action Cards
+     ============================================ */
   .action-card {
-    @apply group p-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 text-white;
+    @apply group relative overflow-hidden p-6 rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 cursor-pointer;
   }
-  
-  .error-message {
-    @apply p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-center text-sm;
+
+  .action-card-primary {
+    @apply action-card bg-gradient-to-br from-purple-500 to-blue-600 text-white;
   }
-  
-  .success-message {
-    @apply p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-center text-sm;
+
+  .action-card-success {
+    @apply action-card bg-gradient-to-br from-emerald-500 to-green-600 text-white;
   }
-  
+
+  .action-card-warning {
+    @apply action-card bg-gradient-to-br from-amber-500 to-orange-600 text-white;
+  }
+
+  /* ============================================
+     COMPONENT STYLES - Loading States
+     ============================================ */
   .loading-spinner {
-    @apply animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600;
+    @apply animate-spin rounded-full border-4 border-gray-200 border-t-purple-600;
+  }
+
+  .skeleton {
+    @apply animate-pulse bg-gray-200 rounded;
+  }
+
+  .skeleton-text {
+    @apply skeleton h-4 w-full mb-2;
+  }
+
+  .skeleton-circle {
+    @apply skeleton rounded-full;
+  }
+
+  /* ============================================
+     COMPONENT STYLES - Navigation
+     ============================================ */
+  .nav-link {
+    @apply flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-700 font-medium transition-all duration-200 hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 hover:text-purple-700;
+  }
+
+  .nav-link-active {
+    @apply nav-link bg-gradient-to-r from-purple-50 to-blue-50 text-purple-700;
+  }
+
+  /* ============================================
+     UTILITY CLASSES - Gradients
+     ============================================ */
+  .gradient-bg {
+    @apply bg-gradient-to-br from-slate-50 via-purple-50 to-blue-100;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent;
+  }
+
+  .gradient-text-success {
+    @apply bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent;
+  }
+
+  .gradient-border {
+    @apply relative;
+  }
+
+  .gradient-border::before {
+    content: '';
+    @apply absolute inset-0 rounded-2xl p-[2px] bg-gradient-to-r from-purple-600 to-blue-600;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
   }
 }
 
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
@@ -85,9 +417,21 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  .glass {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .glass-strong {
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
 }
 
-/* Custom animations */
+/* ============================================
+   ANIMATIONS
+   ============================================ */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -110,6 +454,50 @@
   }
 }
 
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @keyframes bounceSubtle {
   0%, 100% {
     transform: translateY(0);
@@ -119,6 +507,43 @@
   }
 }
 
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.6);
+  }
+}
+
+/* Animation Classes */
 .animate-fade-in {
   animation: fadeIn 0.5s ease-out;
 }
@@ -127,11 +552,47 @@
   animation: slideUp 0.3s ease-out;
 }
 
+.animate-slide-down {
+  animation: slideDown 0.3s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease-out;
+}
+
 .animate-bounce-subtle {
   animation: bounceSubtle 2s infinite;
 }
 
-/* Form styling improvements */
+.animate-pulse-slow {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* ============================================
+   FORM IMPROVEMENTS
+   ============================================ */
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -142,17 +603,60 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
-/* Focus improvements */
+/* Custom Select Styling */
+select {
+  @apply appearance-none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+
+/* ============================================
+   FOCUS IMPROVEMENTS
+   ============================================ */
 .focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2;
+}
+
+.focus-ring-accent {
   @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
 }
 
-/* Card hover effects */
+/* ============================================
+   HOVER EFFECTS
+   ============================================ */
 .hover-lift {
   @apply transition-all duration-200 hover:shadow-xl hover:-translate-y-1;
 }
 
-/* Gradient text */
-.gradient-text {
-  @apply bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent;
+.hover-glow {
+  @apply transition-all duration-300;
+}
+
+.hover-glow:hover {
+  box-shadow: var(--shadow-glow);
+}
+
+.hover-scale {
+  @apply transition-transform duration-200 hover:scale-105;
+}
+
+/* ============================================
+   RESPONSIVE UTILITIES
+   ============================================ */
+@media (max-width: 640px) {
+  .mobile-full {
+    @apply w-full;
+  }
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+@media print {
+  .no-print {
+    display: none !important;
+  }
 }

@@ -62,14 +62,21 @@ pub fn validate_password(password: &str) -> Result<(), ValidationError> {
 //     pub paypal_token_expiry: Mutex<Option<SystemTime>>,
 //     // ... other fields
 // }
-pub async fn get_paypal_access_token(client: &Client, client_id: &str, secret: &str) -> Result<String, ApiError> {
+pub async fn get_paypal_access_token(
+    client: &Client,
+    client_id: &str,
+    secret: &str,
+) -> Result<String, ApiError> {
     let resp = client
         .post("https://api-m.sandbox.paypal.com/v1/oauth2/token")
         .header("Content-Type", "application/x-www-form-urlencoded")
-        .header("Authorization", format!(
-            "Basic {}",
-            general_purpose::STANDARD.encode(format!("{}:{}", client_id, secret))
-        ))
+        .header(
+            "Authorization",
+            format!(
+                "Basic {}",
+                general_purpose::STANDARD.encode(format!("{}:{}", client_id, secret))
+            ),
+        )
         .form(&[("grant_type", "client_credentials")])
         .send()
         .await
@@ -86,10 +93,15 @@ pub async fn get_paypal_access_token(client: &Client, client_id: &str, secret: &
     })?;
 
     if !status.is_success() {
-        error!("PayPal token API error: status {}, response {:?}", status, json);
+        error!(
+            "PayPal token API error: status {}, response {:?}",
+            status, json
+        );
         return Err(ApiError::Payment(format!(
             "PayPal token API error: {}",
-            json["error_description"].as_str().unwrap_or("Unknown error")
+            json["error_description"]
+                .as_str()
+                .unwrap_or("Unknown error")
         )));
     }
 

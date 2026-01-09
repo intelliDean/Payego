@@ -1,18 +1,20 @@
-use payego::services::withdrawal_service::WithdrawalService;
-use payego::models::models::{AppState, Wallet, BankAccount};
-use payego::handlers::withdraw::WithdrawRequest;
-use diesel::{PgConnection, Connection};
-use std::sync::Arc;
-use wiremock::{MockServer, Mock, ResponseTemplate};
-use wiremock::matchers::{method, path};
-use uuid::Uuid;
-use serde_json::json;
-use payego::schema::{users, wallets, transactions, bank_accounts};
 use diesel::prelude::*;
+use diesel::{Connection, PgConnection};
+use payego::handlers::withdraw::WithdrawRequest;
+use payego::models::models::{AppState, BankAccount, Wallet};
+use payego::schema::{bank_accounts, transactions, users, wallets};
+use payego::services::withdrawal_service::WithdrawalService;
+use serde_json::json;
+use serial_test::serial;
+use std::sync::Arc;
+use uuid::Uuid;
+use wiremock::matchers::{method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 mod common;
 
 #[tokio::test]
+#[serial]
 async fn test_withdrawal_success() {
     // 1. Setup WireMock
     let mock_server = MockServer::start().await;
@@ -61,7 +63,6 @@ async fn test_withdrawal_success() {
         .mount(&mock_server)
         .await;
 
-
     // 2. Setup AppState
     let mut base_state = (*common::create_test_app_state()).clone();
     base_state.exchange_api_url = base_url.clone();
@@ -70,11 +71,11 @@ async fn test_withdrawal_success() {
 
     let pool = &state.db;
     let conn = &mut pool.get().unwrap();
-    
+
     let user_id = Uuid::new_v4();
     let email = format!("test_withdraw_{}@example.com", user_id);
     let bank_id = Uuid::new_v4();
-    
+
     // Insert User
     diesel::insert_into(users::table)
         .values((
@@ -115,7 +116,7 @@ async fn test_withdrawal_success() {
     unsafe {
         std::env::set_var("PAYSTACK_SECRET_KEY", "sk_test_paystack");
     }
-    
+
     let req = WithdrawRequest {
         amount: 10.0,
         currency: "USD".to_string(),
@@ -125,7 +126,7 @@ async fn test_withdrawal_success() {
     };
 
     let result = WithdrawalService::initiate_withdrawal(state, user_id, req).await;
-    
+
     if let Err(e) = &result {
         println!("Withdrawal failed: {:?}", e);
     }
@@ -139,23 +140,32 @@ async fn test_withdrawal_success() {
         .first::<Wallet>(conn)
         .unwrap();
     assert_eq!(wallet.balance, 1000);
-    
+
     // 6. Cleanup
-    diesel::delete(bank_accounts::table.filter(bank_accounts::user_id.eq(user_id))).execute(conn).unwrap();
-    diesel::delete(wallets::table.filter(wallets::user_id.eq(user_id))).execute(conn).unwrap();
-    diesel::delete(transactions::table.filter(transactions::user_id.eq(user_id))).execute(conn).unwrap();
-    diesel::delete(users::table.filter(users::id.eq(user_id))).execute(conn).unwrap();
+    diesel::delete(bank_accounts::table.filter(bank_accounts::user_id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
+    diesel::delete(wallets::table.filter(wallets::user_id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
+    diesel::delete(transactions::table.filter(transactions::user_id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
+    diesel::delete(users::table.filter(users::id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
 }
 
 #[tokio::test]
+#[serial]
 async fn test_withdrawal_insufficient_balance() {
     let state = common::create_test_app_state();
     let pool = &state.db;
     let conn = &mut pool.get().unwrap();
-    
+
     let user_id = Uuid::new_v4();
     let bank_id = Uuid::new_v4();
-    
+
     diesel::insert_into(users::table)
         .values((
             users::id.eq(user_id),
@@ -188,16 +198,19 @@ async fn test_withdrawal_insufficient_balance() {
     assert!(result.is_err());
 
     // Cleanup
-    diesel::delete(wallets::table.filter(wallets::user_id.eq(user_id))).execute(conn).unwrap();
-    diesel::delete(users::table.filter(users::id.eq(user_id))).execute(conn).unwrap();
-
+    diesel::delete(wallets::table.filter(wallets::user_id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
+    diesel::delete(users::table.filter(users::id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
 }
 
 #[tokio::test]
 async fn test_withdrawal_unsupported_currency() {
     let state = common::create_test_app_state();
     let user_id = Uuid::new_v4();
-    
+
     let req = WithdrawRequest {
         amount: 10.0,
         currency: "XXX".to_string(),

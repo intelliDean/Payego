@@ -1,14 +1,14 @@
 use crate::error::ApiError;
+use crate::handlers::bank::{BankRequest, BankResponse};
 use crate::models::models::NewBankAccount;
 use crate::schema::{bank_accounts, wallets};
+use crate::AppState;
 use diesel::prelude::*;
 use reqwest::Client;
 use serde_json::Value;
 use std::sync::Arc;
-use tracing::{error, debug, info};
+use tracing::{debug, error, info};
 use uuid::Uuid;
-use crate::AppState;
-use crate::handlers::bank::{BankRequest, BankResponse};
 
 pub struct BankService;
 
@@ -61,11 +61,18 @@ impl BankService {
         }
 
         // Verify bank account with Paystack
-        let account_name = Self::resolve_account_details(&req.bank_code, &req.account_number).await?;
+        let account_name =
+            Self::resolve_account_details(&state, &req.bank_code, &req.account_number).await?;
         debug!("Resolved account_name: {}", account_name);
 
         // Create Paystack transfer recipient
-        let recipient_code = Self::create_transfer_recipient(&req.bank_code, &req.account_number, &account_name).await?;
+        let recipient_code = Self::create_transfer_recipient(
+            &state,
+            &req.bank_code,
+            &req.account_number,
+            &account_name,
+        )
+        .await?;
 
         // Insert bank account
         let bank_account_id = Uuid::new_v4();
@@ -92,16 +99,18 @@ impl BankService {
         })
     }
 
-    pub async fn resolve_account_details(bank_code: &str, account_number: &str) -> Result<String, ApiError> {
-        let paystack_key = std::env::var("PAYSTACK_SECRET_KEY").map_err(|_| {
-            error!("PAYSTACK_SECRET_KEY not set");
-            ApiError::Payment("Paystack key not set".to_string())
-        })?;
+    pub async fn resolve_account_details(
+        state: &AppState,
+        bank_code: &str,
+        account_number: &str,
+    ) -> Result<String, ApiError> {
+        use secrecy::ExposeSecret;
+        let paystack_key = state.paystack_secret_key.expose_secret();
         let client = Client::new();
         let resolve_resp = client
             .get(format!(
-                "https://api.paystack.co/bank/resolve?account_number={}&bank_code={}",
-                account_number, bank_code
+                "{}/bank/resolve?account_number={}&bank_code={}",
+                state.paystack_api_url, account_number, bank_code
             ))
             .header("Authorization", format!("Bearer {}", paystack_key))
             .send()
@@ -112,40 +121,48 @@ impl BankService {
             })?;
 
         let resolve_status = resolve_resp.status();
-        let resolve_body = resolve_resp
-            .json::<Value>()
-            .await
-            .map_err(|e| {
-                error!("Paystack resolve response parsing error: {}", e);
-                ApiError::Payment("Paystack resolve response error".to_string())
-            })?;
+        let resolve_body = resolve_resp.json::<Value>().await.map_err(|e| {
+            error!("Paystack resolve response parsing error: {}", e);
+            ApiError::Payment("Paystack resolve response error".to_string())
+        })?;
 
-        if !resolve_status.is_success() || resolve_body["status"].as_bool().unwrap_or(false) == false {
+        if !resolve_status.is_success()
+            || resolve_body["status"].as_bool().unwrap_or(false) == false
+        {
             let message = resolve_body["message"]
                 .as_str()
                 .unwrap_or("Unknown Paystack resolve error")
                 .to_string();
-            return Err(ApiError::Payment(format!("Paystack account resolution failed: {}", message)));
+            return Err(ApiError::Payment(format!(
+                "Paystack account resolution failed: {}",
+                message
+            )));
         }
 
         let account_name = resolve_body["data"]["account_name"]
             .as_str()
             .ok_or_else(|| {
                 error!("Missing account_name in Paystack resolve response");
-                ApiError::Payment("Invalid Paystack resolve response: missing account_name".to_string())
+                ApiError::Payment(
+                    "Invalid Paystack resolve response: missing account_name".to_string(),
+                )
             })?
             .to_string();
-        
+
         Ok(account_name)
     }
 
-    async fn create_transfer_recipient(bank_code: &str, account_number: &str, account_name: &str) -> Result<String, ApiError> {
-        let paystack_key = std::env::var("PAYSTACK_SECRET_KEY").map_err(|_| {
-            ApiError::Payment("Paystack key not set".to_string())
-        })?;
+    async fn create_transfer_recipient(
+        state: &AppState,
+        bank_code: &str,
+        account_number: &str,
+        account_name: &str,
+    ) -> Result<String, ApiError> {
+        use secrecy::ExposeSecret;
+        let paystack_key = state.paystack_secret_key.expose_secret();
         let client = Client::new();
         let recipient_resp = client
-            .post("https://api.paystack.co/transferrecipient")
+            .post(format!("{}/transferrecipient", state.paystack_api_url))
             .header("Authorization", format!("Bearer {}", paystack_key))
             .json(&serde_json::json!({
                 "type": "nuban",
@@ -162,13 +179,10 @@ impl BankService {
             })?;
 
         let recipient_status = recipient_resp.status();
-        let recipient_body = recipient_resp
-            .json::<Value>()
-            .await
-            .map_err(|e| {
-                error!("Paystack transferrecipient response parsing error: {}", e);
-                ApiError::Payment("Paystack transferrecipient response error".to_string())
-            })?;
+        let recipient_body = recipient_resp.json::<Value>().await.map_err(|e| {
+            error!("Paystack transferrecipient response parsing error: {}", e);
+            ApiError::Payment("Paystack transferrecipient response error".to_string())
+        })?;
 
         if !recipient_status.is_success()
             || recipient_body["status"].as_bool().unwrap_or(false) == false
@@ -177,7 +191,10 @@ impl BankService {
                 .as_str()
                 .unwrap_or("Unknown Paystack transferrecipient error")
                 .to_string();
-            return Err(ApiError::Payment(format!("Paystack transferrecipient creation failed: {}", message)));
+            return Err(ApiError::Payment(format!(
+                "Paystack transferrecipient creation failed: {}",
+                message
+            )));
         }
 
         let recipient_code = recipient_body["data"]["recipient_code"]
@@ -187,7 +204,7 @@ impl BankService {
                 ApiError::Payment("Invalid Paystack response: missing recipient_code".to_string())
             })?
             .to_string();
-            
+
         Ok(recipient_code)
     }
 }

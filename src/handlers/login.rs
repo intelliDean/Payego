@@ -2,7 +2,7 @@ use crate::config::security_config::{create_token, is_token_blacklisted};
 use crate::error::ApiError;
 use crate::models::models::{AppState, LoginRequest, LoginResponse, User};
 use crate::services::auth_service::AuthService;
-use axum::{Json, extract::State, http::StatusCode};
+use axum::{extract::State, http::StatusCode, Json};
 use bcrypt::verify;
 use diesel::prelude::*;
 use std::sync::Arc;
@@ -26,10 +26,12 @@ pub async fn login(
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, (StatusCode, String)> {
     // Validate input
-    payload.validate().map_err(|e: validator::ValidationErrors| {
-        tracing::error!("Validation error for email {}: {}", payload.email, e);
-        ApiError::Validation(e)
-    })?;
+    payload
+        .validate()
+        .map_err(|e: validator::ValidationErrors| {
+            tracing::error!("Validation error for email {}: {}", payload.email, e);
+            ApiError::Validation(e)
+        })?;
 
     info!("Login attempt for email: {}", payload.email);
 
@@ -57,7 +59,7 @@ pub async fn login(
                 &payload.password,
                 "$2b$12$dummyhashdummyhashdummyhashdummyhashdummyhashdummyha",
             )
-                .map_err(ApiError::Bcrypt)?;
+            .map_err(ApiError::Bcrypt)?;
             tracing::warn!("No user found for email: {}", payload.email);
             return Err(ApiError::Auth("Invalid email or password".to_string()).into());
         }
@@ -78,13 +80,20 @@ pub async fn login(
 
     // Ensure token is not blacklisted (rare case)
     while is_token_blacklisted(&mut conn, &token)? && attempts < 3 {
-        tracing::warn!("Generated token is blacklisted, retrying for user {} (attempt {})", user.id, attempts + 1);
+        tracing::warn!(
+            "Generated token is blacklisted, retrying for user {} (attempt {})",
+            user.id,
+            attempts + 1
+        );
         token = create_token(&state, &user.id.to_string())?;
         attempts += 1;
     }
 
     if attempts >= 3 {
-        tracing::error!("Failed to generate non-blacklisted token for user {}", user.id);
+        tracing::error!(
+            "Failed to generate non-blacklisted token for user {}",
+            user.id
+        );
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed to generate valid token".to_string(),

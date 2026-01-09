@@ -5,12 +5,12 @@ use axum::{
     extract::{Extension, Json, State},
     http::StatusCode,
 };
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tracing::{error};
+use tracing::error;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::{Validate, ValidationError};
-use serde::{Deserialize, Serialize};
 
 const SUPPORTED_PROVIDERS: &[&str] = &["stripe", "paypal"];
 const SUPPORTED_CURRENCIES: &[&str] = &[
@@ -47,7 +47,9 @@ fn validate_provider(provider: &str) -> Result<(), ValidationError> {
     if SUPPORTED_PROVIDERS.contains(&provider) {
         Ok(())
     } else {
-        Err(ValidationError::new("Provider must be 'stripe' or 'paypal'"))
+        Err(ValidationError::new(
+            "Provider must be 'stripe' or 'paypal'",
+        ))
     }
 }
 
@@ -94,7 +96,8 @@ pub async fn top_up(
         state.clone(),
         user_id,
         req,
-    ).await?;
+    )
+    .await?;
 
     Ok(Json(response))
 }

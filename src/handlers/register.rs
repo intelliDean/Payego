@@ -2,7 +2,7 @@ use crate::config::security_config::create_token;
 use crate::error::ApiError;
 use crate::models::models::{AppState, NewUser, NewWallet, RegisterRequest, RegisterResponse};
 use crate::services::auth_service::AuthService;
-use axum::{Json, extract::State, http::StatusCode};
+use axum::{extract::State, http::StatusCode, Json};
 use bcrypt::hash;
 use diesel::prelude::*;
 use diesel::result::Error as DieselError;
@@ -57,7 +57,7 @@ pub async fn register(
                 .map(|count| count > 0)
                 .map_err(|e| {
                     tracing::error!("Failed to check existing user: {}", e);
-                    e  // Return DieselError to trigger transaction rollback
+                    e // Return DieselError to trigger transaction rollback
                 })?;
 
             if exists {
@@ -111,7 +111,10 @@ pub async fn register(
                 if email_exists {
                     (StatusCode::BAD_REQUEST, "Email already exists".to_string())
                 } else {
-                    (StatusCode::BAD_REQUEST, "Username already exists".to_string())
+                    (
+                        StatusCode::BAD_REQUEST,
+                        "Username already exists".to_string(),
+                    )
                 }
             }
             _ => (
@@ -133,7 +136,7 @@ pub async fn register(
         Json(RegisterResponse {
             token,
             refresh_token,
-            user_email: email
+            user_email: email,
         }),
     ))
 }

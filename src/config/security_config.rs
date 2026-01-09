@@ -8,12 +8,12 @@ use chrono::{Duration, Utc};
 use diesel::prelude::*;
 use http::HeaderMap;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::sync::Arc;
 use tracing::log::info;
 use tracing::{error, warn};
-use secrecy::ExposeSecret;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Claims {

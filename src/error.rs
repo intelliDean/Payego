@@ -1,7 +1,7 @@
 use diesel::r2d2;
 use http::StatusCode;
-use stripe::WebhookError;
 use std::fmt;
+use stripe::WebhookError;
 
 #[derive(Debug)]
 pub enum ApiError {
@@ -113,24 +113,23 @@ impl From<ApiError> for (StatusCode, String) {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Token creation error: {}", e),
             ),
-            ApiError::Auth(msg) => (
-                StatusCode::UNAUTHORIZED,
-                format!("Auth error: {}", msg),
-            ),
+            ApiError::Auth(msg) => (StatusCode::UNAUTHORIZED, format!("Auth error: {}", msg)),
             ApiError::Payment(msg) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Payment provider error: {}", msg),
             ),
             ApiError::Webhook(e) => match e {
-                WebhookError::BadSignature | WebhookError::BadTimestamp(_) => (
-                    StatusCode::BAD_REQUEST,
-                    format!("Webhook error: {}", e),
-                ),
+                WebhookError::BadSignature | WebhookError::BadTimestamp(_) => {
+                    (StatusCode::BAD_REQUEST, format!("Webhook error: {}", e))
+                }
                 WebhookError::BadKey => (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Webhook error: invalid secret key".to_string(),
                 ),
-                _ => {(StatusCode::UNAUTHORIZED, "Webhook error: Unauthorized".to_string())}
+                _ => (
+                    StatusCode::UNAUTHORIZED,
+                    "Webhook error: Unauthorized".to_string(),
+                ),
             },
         }
     }

@@ -1,18 +1,20 @@
 use crate::error::ApiError;
+use crate::handlers::withdraw::{WithdrawRequest, WithdrawResponse};
 use crate::models::models::{AppState, BankAccount, NewTransaction, Transaction, Wallet};
 use crate::schema::{bank_accounts, transactions, wallets};
 use diesel::prelude::*;
-use reqwest::Client;
-use serde_json::{Value, json};
-use std::sync::{Arc, LazyLock};
 use regex::Regex;
-use tracing::{error, debug, info};
+use reqwest::Client;
+use serde_json::{json, Value};
+use std::sync::{Arc, LazyLock};
+use tracing::{debug, error, info};
 use uuid::Uuid;
-use crate::handlers::withdraw::{WithdrawRequest, WithdrawResponse};
 
 static SUPPORTED_CURRENCIES: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(USD|NGN|GBP|EUR|CAD|AUD|JPY|CHF|CNY|SEK|NZD|MXN|SGD|HKD|NOK|KRW|TRY|INR|BRL|ZAR)$")
-        .expect("Invalid currency regex")
+    Regex::new(
+        r"^(USD|NGN|GBP|EUR|CAD|AUD|JPY|CHF|CNY|SEK|NZD|MXN|SGD|HKD|NOK|KRW|TRY|INR|BRL|ZAR)$",
+    )
+    .expect("Invalid currency regex")
 });
 
 pub struct WithdrawalService;
@@ -53,14 +55,20 @@ impl WithdrawalService {
 
         // Idempotency check with metadata
         let existing_transaction = transactions::table
-            .filter(diesel::dsl::sql::<diesel::sql_types::Bool>("metadata->>'idempotency_key' = ").bind::<diesel::sql_types::Text, _>(&req.idempotency_key))
+            .filter(
+                diesel::dsl::sql::<diesel::sql_types::Bool>("metadata->>'idempotency_key' = ")
+                    .bind::<diesel::sql_types::Text, _>(&req.idempotency_key),
+            )
             .filter(transactions::user_id.eq(user_id))
             .first::<Transaction>(&mut conn)
             .optional()
             .map_err(ApiError::Database)?;
 
         if let Some(tx) = existing_transaction {
-            info!("Idempotent request: transaction {} already exists for key {}", tx.reference, req.idempotency_key);
+            info!(
+                "Idempotent request: transaction {} already exists for key {}",
+                tx.reference, req.idempotency_key
+            );
             return Ok(WithdrawResponse {
                 transaction_id: tx.reference.to_string(),
             });
@@ -108,23 +116,26 @@ impl WithdrawalService {
         let amount_ngn_kobo = if req.currency == "NGN" {
             amount_cents
         } else {
-            let exchange_rate = Self::get_exchange_rate(&state.exchange_api_url, &req.currency, "NGN").await?;
+            let exchange_rate =
+                Self::get_exchange_rate(&state.exchange_api_url, &req.currency, "NGN").await?;
             ((amount_cents as f64) * exchange_rate).round() as i64
         };
 
         // Paystack interaction
         Self::handle_paystack_transfer(
-            &state, 
-            amount_ngn_kobo, 
-            &bank_account, 
-            req.reference, 
-            &req.currency
-        ).await?;
+            &state,
+            amount_ngn_kobo,
+            &bank_account,
+            req.reference,
+            &req.currency,
+        )
+        .await?;
 
         // Atomic DB transaction
-        let mut conn = state.db.get().map_err(|e| {
-             ApiError::DatabaseConnection(e.to_string())
-        })?;
+        let mut conn = state
+            .db
+            .get()
+            .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
         conn.transaction(|conn| {
             // Debit owner wallet
@@ -145,7 +156,10 @@ impl WithdrawalService {
                     currency: req.currency.to_uppercase(),
                     status: "pending".to_string(), // In reality, we might want to check Paystack status
                     provider: Some("paystack".to_string()),
-                    description: Some(format!("Withdrawal to bank {} in {}", bank_account.bank_code, req.currency)),
+                    description: Some(format!(
+                        "Withdrawal to bank {} in {}",
+                        bank_account.bank_code, req.currency
+                    )),
                     reference: req.reference,
                     metadata: Some(json!({
                         "idempotency_key": req.idempotency_key
@@ -172,7 +186,7 @@ impl WithdrawalService {
         amount_ngn_kobo: i64,
         bank_account: &BankAccount,
         reference: Uuid,
-        currency: &str
+        currency: &str,
     ) -> Result<(), ApiError> {
         let paystack_key = std::env::var("PAYSTACK_SECRET_KEY").map_err(|_| {
             error!("PAYSTACK_SECRET_KEY not set");
@@ -209,11 +223,15 @@ impl WithdrawalService {
             })?;
 
         // Fee logic
-        let paystack_fee = if amount_ngn_kobo < 500000 { 5000 } else { 10000 };
+        let paystack_fee = if amount_ngn_kobo < 500000 {
+            5000
+        } else {
+            10000
+        };
         let total_required = amount_ngn_kobo + paystack_fee;
 
         if ngn_balance < total_required {
-             return Err(ApiError::Payment(format!(
+            return Err(ApiError::Payment(format!(
                 "Insufficient Paystack balance: available ₦{:.2}, required ₦{:.2}",
                 ngn_balance as f64 / 100.0,
                 total_required as f64 / 100.0
@@ -242,24 +260,29 @@ impl WithdrawalService {
             .map_err(|e| ApiError::Payment(format!("Paystack response error: {}", e)))?;
 
         if !status.is_success() || body["status"].as_bool().unwrap_or(false) == false {
-             let message = body["message"]
+            let message = body["message"]
                 .as_str()
                 .unwrap_or("Unknown Paystack error")
                 .to_string();
-            return Err(ApiError::Payment(format!("Paystack withdrawal failed: {}", message)));
+            return Err(ApiError::Payment(format!(
+                "Paystack withdrawal failed: {}",
+                message
+            )));
         }
 
-        let transfer_code = body["data"]["transfer_code"]
-            .as_str()
-            .ok_or_else(|| {
-                 ApiError::Payment("Invalid Paystack response: missing transfer_code".to_string())
-            })?;
-        
+        let transfer_code = body["data"]["transfer_code"].as_str().ok_or_else(|| {
+            ApiError::Payment("Invalid Paystack response: missing transfer_code".to_string())
+        })?;
+
         debug!("Paystack transfer_code: {}", transfer_code);
         Ok(())
     }
 
-    async fn get_exchange_rate(base_url: &str, from_currency: &str, to_currency: &str) -> Result<f64, ApiError> {
+    async fn get_exchange_rate(
+        base_url: &str,
+        from_currency: &str,
+        to_currency: &str,
+    ) -> Result<f64, ApiError> {
         if from_currency == to_currency {
             return Ok(1.0);
         }

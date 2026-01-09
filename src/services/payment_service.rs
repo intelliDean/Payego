@@ -1,15 +1,19 @@
-use diesel::prelude::*;
-use uuid::Uuid;
-use std::sync::Arc;
 use crate::error::ApiError;
-use crate::models::models::{AppState, NewTransaction, Transaction};
 use crate::handlers::top_up::{TopUpRequest, TopUpResponse};
-use tracing::{error, info};
+use crate::models::models::{AppState, NewTransaction, Transaction};
+use diesel::prelude::*;
 use reqwest::Client;
-use stripe::{CheckoutSession, CheckoutSessionMode, Client as StripeClient, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreateCheckoutSessionLineItemsPriceData, CreateCheckoutSessionLineItemsPriceDataProductData, Currency};
-use std::str::FromStr;
-use serde_json;
 use secrecy::ExposeSecret;
+use serde_json;
+use std::str::FromStr;
+use std::sync::Arc;
+use stripe::{
+    CheckoutSession, CheckoutSessionMode, Client as StripeClient, CreateCheckoutSession,
+    CreateCheckoutSessionLineItems, CreateCheckoutSessionLineItemsPriceData,
+    CreateCheckoutSessionLineItemsPriceDataProductData, Currency,
+};
+use tracing::{error, info};
+use uuid::Uuid;
 
 pub struct PaymentService;
 
@@ -27,7 +31,10 @@ impl PaymentService {
         // 1. Idempotency check
         // 1. Idempotency check with metadata
         let existing_transaction = crate::schema::transactions::table
-            .filter(diesel::dsl::sql::<diesel::sql_types::Bool>("metadata->>'idempotency_key' = ").bind::<diesel::sql_types::Text, _>(&req.idempotency_key))
+            .filter(
+                diesel::dsl::sql::<diesel::sql_types::Bool>("metadata->>'idempotency_key' = ")
+                    .bind::<diesel::sql_types::Text, _>(&req.idempotency_key),
+            )
             .filter(crate::schema::transactions::user_id.eq(user_id))
             .first::<Transaction>(conn)
             .optional()
@@ -37,10 +44,17 @@ impl PaymentService {
             })?;
 
         if let Some(tx) = existing_transaction {
-            info!("Idempotent request: transaction {} already exists for key {}", tx.reference, req.idempotency_key);
+            info!(
+                "Idempotent request: transaction {} already exists for key {}",
+                tx.reference, req.idempotency_key
+            );
             return Ok(TopUpResponse {
                 session_url: None,
-                payment_id: tx.provider.as_ref().filter(|p| p.as_str() == "paypal").map(|_| tx.id.to_string()),
+                payment_id: tx
+                    .provider
+                    .as_ref()
+                    .filter(|p| p.as_str() == "paypal")
+                    .map(|_| tx.id.to_string()),
                 transaction_id: tx.reference.to_string(),
                 amount: (tx.amount as f64) / 100.0,
             });
@@ -80,7 +94,12 @@ impl PaymentService {
             "paypal" => {
                 Self::initiate_paypal_payment(&client, &state, &req, transaction_id).await?
             }
-            _ => return Err(ApiError::Payment(format!("Unsupported provider: {}", req.provider))),
+            _ => {
+                return Err(ApiError::Payment(format!(
+                    "Unsupported provider: {}",
+                    req.provider
+                )))
+            }
         };
 
         info!(
@@ -106,13 +125,15 @@ impl PaymentService {
         let line_item = CreateCheckoutSessionLineItems {
             quantity: Some(1),
             price_data: Some(CreateCheckoutSessionLineItemsPriceData {
-                currency: Currency::from_str(&req.currency.to_lowercase()).map_err(|e| {
-                    ApiError::Payment(format!("Invalid currency: {}", e))
-                })?,
+                currency: Currency::from_str(&req.currency.to_lowercase())
+                    .map_err(|e| ApiError::Payment(format!("Invalid currency: {}", e)))?,
                 unit_amount: Some(amount_cents),
                 product_data: Some(CreateCheckoutSessionLineItemsPriceDataProductData {
                     name: "Account Top-Up".to_string(),
-                    description: Some(format!("Add {} {} to your account", req.amount, req.currency)),
+                    description: Some(format!(
+                        "Add {} {} to your account",
+                        req.amount, req.currency
+                    )),
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -124,7 +145,10 @@ impl PaymentService {
         metadata.insert("transaction_id".to_string(), transaction_id.to_string());
 
         let session_params = CreateCheckoutSession {
-            success_url: Some(&format!("{}/success?transaction_id={}", state.app_url, transaction_id)),
+            success_url: Some(&format!(
+                "{}/success?transaction_id={}",
+                state.app_url, transaction_id
+            )),
             cancel_url: Some(&format!("{}/top-up", state.app_url)),
             mode: Some(CheckoutSessionMode::Payment),
             line_items: Some(vec![line_item]),
@@ -148,9 +172,9 @@ impl PaymentService {
         req: &TopUpRequest,
         transaction_id: Uuid,
     ) -> Result<(Option<String>, Option<String>), ApiError> {
-        let client_id = std::env::var("PAYPAL_CLIENT_ID").map_err(|_| ApiError::Payment("PayPal ID missing".into()))?;
-        let secret = std::env::var("PAYPAL_SECRET").map_err(|_| ApiError::Payment("PayPal secret missing".into()))?;
-        let app_url = std::env::var("APP_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
+        let client_id = &state.paypal_client_id;
+        let secret = state.paypal_secret.expose_secret();
+        let app_url = &state.app_url;
         let base_url = &state.paypal_api_url;
 
         let token_resp = client
@@ -162,8 +186,13 @@ impl PaymentService {
             .await
             .map_err(|e| ApiError::Payment(format!("PayPal auth error: {}", e)))?;
 
-        let token_json = token_resp.json::<serde_json::Value>().await.map_err(|_| ApiError::Payment("PayPal token parse error".into()))?;
-        let access_token = token_json["access_token"].as_str().ok_or_else(|| ApiError::Payment("PayPal token missing".into()))?;
+        let token_json = token_resp
+            .json::<serde_json::Value>()
+            .await
+            .map_err(|_| ApiError::Payment("PayPal token parse error".into()))?;
+        let access_token = token_json["access_token"]
+            .as_str()
+            .ok_or_else(|| ApiError::Payment("PayPal token missing".into()))?;
 
         let resp = client
             .post(format!("{}/v2/checkout/orders", base_url))
@@ -190,9 +219,24 @@ impl PaymentService {
             .await
             .map_err(|e| ApiError::Payment(format!("PayPal order error: {}", e)))?;
 
-        let json = resp.json::<serde_json::Value>().await.map_err(|_| ApiError::Payment("PayPal response parse error".into()))?;
-        let payment_id = json["id"].as_str().ok_or_else(|| ApiError::Payment("PayPal ID missing".into()))?;
+        let json = resp
+            .json::<serde_json::Value>()
+            .await
+            .map_err(|_| ApiError::Payment("PayPal response parse error".into()))?;
+        let payment_id = json["id"]
+            .as_str()
+            .ok_or_else(|| ApiError::Payment("PayPal ID missing".into()))?;
 
-        Ok((None, Some(payment_id.to_string())))
+        let session_url = json["links"]
+            .as_array()
+            .and_then(|links| {
+                links
+                    .iter()
+                    .find(|l| l["rel"] == "approve")
+                    .and_then(|l| l["href"].as_str())
+            })
+            .map(|s| s.to_string());
+
+        Ok((session_url, Some(payment_id.to_string())))
     }
 }

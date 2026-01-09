@@ -1,29 +1,31 @@
-use payego::services::payment_service::PaymentService;
-use payego::models::models::{AppState, Wallet};
-use payego::handlers::top_up::TopUpRequest;
-use diesel::{r2d2, PgConnection, Connection};
+use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
+use diesel::{r2d2, Connection, PgConnection};
 use dotenvy::dotenv;
+use payego::handlers::top_up::TopUpRequest;
+use payego::models::models::{AppState, Wallet};
+use payego::schema::{transactions, users};
+use payego::services::payment_service::PaymentService;
+use serde_json::json;
+use serial_test::serial;
 use std::env;
 use std::sync::Arc;
-use wiremock::{MockServer, Mock, ResponseTemplate};
-use wiremock::matchers::{method, path};
 use uuid::Uuid;
-use serde_json::json;
-use payego::schema::{users, transactions};
-use diesel::prelude::*;
+use wiremock::matchers::{method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn get_test_pool() -> r2d2::Pool<ConnectionManager<PgConnection>> {
     dotenv().ok();
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let manager = ConnectionManager::<PgConnection>::new(db_url);
     r2d2::Pool::builder()
-        .max_size(5) 
+        .max_size(5)
         .build(manager)
         .expect("Failed to create pool")
 }
 
 #[tokio::test]
+#[serial]
 async fn test_top_up_paypal_init_success() {
     // 1. Setup WireMock
     let mock_server = MockServer::start().await;
@@ -59,10 +61,10 @@ async fn test_top_up_paypal_init_success() {
     // 2. Setup DB
     let pool = get_test_pool();
     let conn = &mut pool.get().unwrap();
-    
+
     let user_id = Uuid::new_v4();
     let email = format!("test_topup_{}@example.com", user_id);
-    
+
     // Insert User
     diesel::insert_into(users::table)
         .values((
@@ -73,15 +75,20 @@ async fn test_top_up_paypal_init_success() {
         .execute(conn)
         .unwrap();
 
+    use secrecy::SecretString;
     // 3. Setup AppState
     let state = Arc::new(AppState {
         db: pool.clone(),
-        jwt_secret: "secret".to_string(),
-        stripe_secret_key: "sk_test".to_string(),
+        jwt_secret: SecretString::from("secret"),
+        stripe_secret_key: SecretString::from("sk_test"),
         app_url: "http://localhost:8080".to_string(),
         exchange_api_url: "http://unused".to_string(),
-        paypal_api_url: base_url.clone(), 
+        paypal_api_url: base_url.clone(),
+        stripe_api_url: "http://unused".to_string(),
         paystack_api_url: "http://unused".to_string(),
+        paystack_secret_key: SecretString::from("sk_test_paystack"),
+        paypal_client_id: "test_client_id".to_string(),
+        paypal_secret: SecretString::from("test_secret"),
     });
 
     // 4. Call Service
@@ -100,13 +107,13 @@ async fn test_top_up_paypal_init_success() {
     }
 
     let result = PaymentService::initiate_top_up(state, user_id, req).await;
-    
+
     if let Err(e) = &result {
         println!("TopUp failed: {:?}", e);
     }
     assert!(result.is_ok());
     let response = result.unwrap();
-    
+
     assert!(response.session_url.is_some());
     assert_eq!(response.session_url.unwrap(), "https://approval.url");
 
@@ -124,6 +131,10 @@ async fn test_top_up_paypal_init_success() {
     assert_eq!(tx.status, "pending");
 
     // 6. Cleanup
-    diesel::delete(transactions::table.filter(transactions::user_id.eq(user_id))).execute(conn).unwrap();
-    diesel::delete(users::table.filter(users::id.eq(user_id))).execute(conn).unwrap();
+    diesel::delete(transactions::table.filter(transactions::user_id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
+    diesel::delete(users::table.filter(users::id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
 }

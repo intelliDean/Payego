@@ -1,20 +1,19 @@
 use crate::config::security_config::Claims;
-use crate::models::models::{PayoutRequest};
-use crate::{AppState, error::ApiError};
+use crate::models::models::PayoutRequest;
+use crate::{error::ApiError, AppState};
 use axum::{
-    Json,
     extract::{Extension, State},
     http::StatusCode,
+    Json,
 };
-use std::sync::{Arc, LazyLock};
 use regex::Regex;
+use std::sync::{Arc, LazyLock};
 use tracing::{error, info};
 use uuid::Uuid;
 
 // Static regex for account number validation
-static ACCOUNT_NUMBER_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^\d{10}$").expect("Invalid account number regex")
-});
+static ACCOUNT_NUMBER_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\d{10}$").expect("Invalid account number regex"));
 
 #[utoipa::path(
     post,
@@ -36,7 +35,7 @@ pub async fn external_transfer(
         claims.sub, req.account_number, req.amount, req.currency
     );
 
-    // Validate input (account_number)    
+    // Validate input (account_number)
     if !ACCOUNT_NUMBER_RE.is_match(&req.account_number) {
         error!("Invalid account number: {}", req.account_number);
         return Err(ApiError::Payment("Account number must be 10 digits".to_string()).into());
@@ -56,9 +55,7 @@ pub async fn external_transfer(
 
     // Delegate to Service
     crate::services::transfer_service::TransferService::execute_external_transfer(
-        state,
-        user_id,
-        req,
+        state, user_id, req,
     )
     .await
     .map_err(|e| e.into())

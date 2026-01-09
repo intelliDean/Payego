@@ -1,23 +1,25 @@
-
-
-use axum::{extract::{State, Extension}, Json, http::StatusCode};
+use crate::config::security_config::Claims;
+use crate::error::ApiError;
+use crate::AppState;
+use axum::{
+    extract::{Extension, State},
+    http::StatusCode,
+    Json,
+};
 use diesel::prelude::*;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, LazyLock};
-use uuid::Uuid;
-use validator::Validate;
-use regex::Regex;
-use crate::AppState;
-use crate::error::ApiError;
-use crate::config::security_config::Claims;
 use tracing::{error, info};
 use utoipa::ToSchema;
+use uuid::Uuid;
+use validator::Validate;
 
 static SUPPORTED_CURRENCIES: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"^(USD|NGN|GBP|EUR|CAD|AUD|JPY|CHF|CNY|SEK|NZD|MXN|SGD|HKD|NOK|KRW|TRY|INR|BRL|ZAR)$",
     )
-        .expect("Invalid currency")
+    .expect("Invalid currency")
 });
 
 #[derive(Deserialize, ToSchema, Validate)]
@@ -85,26 +87,22 @@ pub async fn internal_transfer(
     })?;
 
     // Get database connection
-    let mut conn = state
-        .db
-        .get()
-        .map_err(|e| {
-            error!("Database connection error: {}", e);
-            ApiError::DatabaseConnection(e.to_string())
-        })?;
+    let mut conn = state.db.get().map_err(|e| {
+        error!("Database connection error: {}", e);
+        ApiError::DatabaseConnection(e.to_string())
+    })?;
 
     // Execute transfer via service
-    let transaction_id = crate::services::transfer_service::TransferService::execute_internal_transfer(
-        &mut conn,
-        sender_id,
-        &req.recipient_email,
-        req.amount,
-        &req.currency,
-        req.reference,
-        &req.idempotency_key,
-    )?;
+    let transaction_id =
+        crate::services::transfer_service::TransferService::execute_internal_transfer(
+            &mut conn,
+            sender_id,
+            &req.recipient_email,
+            req.amount,
+            &req.currency,
+            req.reference,
+            &req.idempotency_key,
+        )?;
 
-    Ok(Json(TransferResponse {
-        transaction_id,
-    }))
+    Ok(Json(TransferResponse { transaction_id }))
 }

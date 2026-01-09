@@ -1,18 +1,17 @@
+use crate::config::security_config::Claims;
+use crate::schema::wallets;
+use crate::{error::ApiError, AppState};
 use axum::{
-    extract::{State, Extension},
-    Json,
+    extract::{Extension, State},
     http::StatusCode,
+    Json,
 };
 use diesel::prelude::*;
 use serde::Serialize;
 use std::sync::Arc;
-use uuid::Uuid;
 use tracing::{error, info};
 use utoipa::ToSchema;
-use crate::{AppState, error::ApiError};
-use crate::config::security_config::Claims;
-use crate::schema::wallets;
-
+use uuid::Uuid;
 
 #[derive(Queryable, Selectable, Serialize, ToSchema)]
 #[diesel(table_name = wallets)]
@@ -20,8 +19,6 @@ pub struct Wallet {
     pub balance: i64, // BIGINT for cents (e.g., 100 = $1.00)
     pub currency: String,
 }
-
-
 
 #[derive(Serialize, ToSchema)]
 pub struct WalletResponse {

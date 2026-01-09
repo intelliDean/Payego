@@ -1,10 +1,10 @@
 use crate::schema::*;
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
-use uuid::Uuid;
-use serde_json::Value as JsonValue;
 use serde::{Deserialize, Serialize}; // Kept for mixed usage if needed, but aiming for separation
+use serde_json::Value as JsonValue;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 #[derive(Queryable, Insertable, Selectable, Identifiable, Debug, Clone)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -26,7 +26,9 @@ pub struct NewUser {
     pub username: Option<String>,
 }
 
-#[derive(Queryable, Insertable, Selectable, Identifiable, Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(
+    Queryable, Insertable, Selectable, Identifiable, Debug, Clone, Serialize, Deserialize, ToSchema,
+)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(table_name = crate::schema::banks)]
 pub struct Bank {

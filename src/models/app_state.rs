@@ -13,6 +13,9 @@ pub struct AppState {
     pub app_url: String,
     pub exchange_api_url: String,
     pub paypal_api_url: String,
+    pub stripe_api_url: String,
     pub paystack_api_url: String,
     pub paystack_secret_key: SecretString,
+    pub paypal_client_id: String,
+    pub paypal_secret: SecretString,
 }

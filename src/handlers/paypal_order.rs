@@ -1,9 +1,13 @@
-use axum::{extract::{State, Path}, Json, http::StatusCode};
+use crate::error::ApiError;
+use crate::models::models::AppState;
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
 use serde::Serialize;
 use std::sync::Arc;
 use utoipa::ToSchema;
-use crate::models::models::AppState;
-use crate::error::ApiError;
 
 #[derive(Serialize, ToSchema)]
 pub struct OrderResponse {
@@ -26,12 +30,10 @@ pub async fn get_paypal_order(
     Path(order_id): Path<String>,
 ) -> Result<Json<OrderResponse>, (StatusCode, String)> {
     let client = reqwest::Client::new();
-    let paypal_client_id = std::env::var("PAYPAL_CLIENT_ID").map_err(|e| {
-        ApiError::Payment("PAYPAL_CLIENT_ID not set".to_string())
-    })?;
-    let paypal_secret = std::env::var("PAYPAL_SECRET").map_err(|e| {
-        ApiError::Payment("PAYPAL_SECRET not set".to_string())
-    })?;
+    let paypal_client_id = std::env::var("PAYPAL_CLIENT_ID")
+        .map_err(|e| ApiError::Payment("PAYPAL_CLIENT_ID not set".to_string()))?;
+    let paypal_secret = std::env::var("PAYPAL_SECRET")
+        .map_err(|e| ApiError::Payment("PAYPAL_SECRET not set".to_string()))?;
 
     // Get PayPal access token
     let token_response = client
@@ -52,7 +54,10 @@ pub async fn get_paypal_order(
 
     // Get order details
     let order_response = client
-        .get(&format!("https://api-m.sandbox.paypal.com/v2/checkout/orders/{}", order_id))
+        .get(&format!(
+            "https://api-m.sandbox.paypal.com/v2/checkout/orders/{}",
+            order_id
+        ))
         .bearer_auth(access_token)
         .send()
         .await
@@ -70,5 +75,3 @@ pub async fn get_paypal_order(
 
     Ok(Json(OrderResponse { status }))
 }
-
-

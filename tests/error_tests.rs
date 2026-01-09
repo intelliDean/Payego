@@ -1,8 +1,8 @@
 mod common;
 
-use payego::error::ApiError;
-use http::StatusCode;
 use diesel::result::Error as DieselError;
+use http::StatusCode;
+use payego::error::ApiError;
 use validator::ValidationErrors;
 
 #[test]

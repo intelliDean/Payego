@@ -1,35 +1,30 @@
-use axum::{
-    middleware,
-    Router,
-    response::IntoResponse,
-};
+use axum::{middleware, response::IntoResponse, Router};
 use std::sync::Arc;
-use utoipa_swagger_ui::SwaggerUi;
 use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 use crate::config::security_config::auth_middleware;
 use crate::config::swagger_config::ApiDoc;
 use crate::handlers::internal_conversion::convert_currency;
+use crate::handlers::logout::logout;
 use crate::handlers::resolve_account::resolve_account;
+use crate::handlers::transaction::get_user_transaction;
 use crate::handlers::user_bank_accounts::user_bank_accounts;
 use crate::handlers::user_wallets::get_wallets;
 use crate::handlers::{
     all_banks::all_banks, bank::add_bank_account, current_user::current_user_details,
-    get_transaction::get_transactions, login::login, paypal_capture::paypal_capture,
-    paystack_webhook::paystack_webhook, register::register,
-    stripe_webhook::stripe_webhook, top_up::top_up, transfer_external::external_transfer,
-    transfer_internal::internal_transfer, withdraw::withdraw,
-    initialize_banks::initialize_banks, health::health_check,
+    get_transaction::get_transactions, health::health_check, initialize_banks::initialize_banks,
+    login::login, paypal_capture::paypal_capture, paystack_webhook::paystack_webhook,
+    register::register, stripe_webhook::stripe_webhook, top_up::top_up,
+    transfer_external::external_transfer, transfer_internal::internal_transfer, withdraw::withdraw,
 };
-use crate::handlers::logout::logout;
-use crate::handlers::transaction::get_user_transaction;
 use crate::models::models::AppState;
 
-use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tower::ServiceBuilder;
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tower_http::{
-    trace::TraceLayer,
     request_id::{MakeRequestUuid, SetRequestIdLayer},
+    trace::TraceLayer,
 };
 
 pub fn create_router(state: Arc<AppState>) -> Router {
@@ -47,7 +42,10 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/api/register", axum::routing::post(register))
         .route("/api/login", axum::routing::post(login))
-        .route("/api/auth/refresh", axum::routing::post(crate::handlers::refresh_token::refresh_token))
+        .route(
+            "/api/auth/refresh",
+            axum::routing::post(crate::handlers::refresh_token::refresh_token),
+        )
         .route("/api/webhook/stripe", axum::routing::post(stripe_webhook))
         .route("/webhooks/paystack", axum::routing::post(paystack_webhook))
         .route("/api/bank/init", axum::routing::post(initialize_banks))
@@ -64,7 +62,10 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/bank_accounts", axum::routing::get(user_bank_accounts))
         .route("/api/wallets", axum::routing::get(get_wallets))
         .route("/api/transactions", axum::routing::get(get_transactions))
-        .route("/api/transactions/{transaction_id}", axum::routing::get(get_user_transaction))
+        .route(
+            "/api/transactions/{transaction_id}",
+            axum::routing::get(get_user_transaction),
+        )
         .route("/api/top_up", axum::routing::post(top_up))
         .route("/api/logout", axum::routing::post(logout))
         .route(
@@ -87,7 +88,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             auth_middleware,
         ));
 
-    Router::new()
+    let mut router = Router::new()
         .merge(public_router)
         .merge(protected_router)
         .layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)) // 2MB limit
@@ -95,10 +96,15 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .layer(
             ServiceBuilder::new()
                 .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
-                .layer(TraceLayer::new_for_http())
-                .layer(GovernorLayer::new(governor_conf))
-        )
-        .with_state(state)
+                .layer(TraceLayer::new_for_http()),
+        );
+
+    // Disable rate limiting in test environment to avoid "Unable To Extract Key!" errors
+    if std::env::var("APP_ENV").unwrap_or_default() != "test" {
+        router = router.layer(GovernorLayer::new(governor_conf));
+    }
+
+    router.with_state(state)
 }
 
 async fn https_redirect_middleware(
@@ -107,7 +113,7 @@ async fn https_redirect_middleware(
 ) -> Result<axum::response::Response, (axum::http::StatusCode, String)> {
     // Check if we are in production
     let env = std::env::var("ENV").unwrap_or_else(|_| "development".to_string());
-    
+
     if env == "production" {
         let headers = req.headers();
         let proto = headers
@@ -119,7 +125,7 @@ async fn https_redirect_middleware(
                 .get("host")
                 .and_then(|h| h.to_str().ok())
                 .unwrap_or("localhost");
-            
+
             let uri = req.uri();
             let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("");
             let redirect_url = format!("https://{}{}", host, path_and_query);

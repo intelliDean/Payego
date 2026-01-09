@@ -1,7 +1,7 @@
-use axum::{extract::State, http::StatusCode};
-use std::sync::Arc;
 use crate::models::models::AppState;
+use axum::{extract::State, http::StatusCode};
 use diesel::prelude::*;
+use std::sync::Arc;
 
 #[utoipa::path(
     get,
@@ -12,9 +12,7 @@ use diesel::prelude::*;
     ),
     tag = "Health"
 )]
-pub async fn health_check(
-    State(state): State<Arc<AppState>>,
-) -> StatusCode {
+pub async fn health_check(State(state): State<Arc<AppState>>) -> StatusCode {
     match state.db.get() {
         Ok(mut conn) => {
             // Check if we can execute a simple query

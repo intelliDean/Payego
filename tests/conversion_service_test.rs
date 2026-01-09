@@ -1,18 +1,20 @@
-use payego::services::conversion_service::ConversionService;
-use payego::models::models::{AppState, Wallet};
-use payego::handlers::internal_conversion::ConvertRequest;
-use diesel::{PgConnection, Connection};
-use std::sync::Arc;
-use wiremock::{MockServer, Mock, ResponseTemplate};
-use wiremock::matchers::{method, path};
-use uuid::Uuid;
-use serde_json::json;
-use payego::schema::{users, wallets, transactions};
 use diesel::prelude::*;
+use diesel::{Connection, PgConnection};
+use payego::handlers::internal_conversion::ConvertRequest;
+use payego::models::models::{AppState, Wallet};
+use payego::schema::{transactions, users, wallets};
+use payego::services::conversion_service::ConversionService;
+use serde_json::json;
+use serial_test::serial;
+use std::sync::Arc;
+use uuid::Uuid;
+use wiremock::matchers::{method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 mod common;
 
 #[tokio::test]
+#[serial]
 async fn test_convert_currency_success() {
     // 1. Setup WireMock
     let mock_server = MockServer::start().await;
@@ -32,14 +34,14 @@ async fn test_convert_currency_success() {
     let mut base_state = (*common::create_test_app_state()).clone();
     base_state.exchange_api_url = exchange_api_url;
     let state = Arc::new(base_state);
-    
+
     let pool = &state.db;
     let conn = &mut pool.get().unwrap();
-    
+
     // 3. Setup Data
     let user_id = Uuid::new_v4();
     let email = format!("test_convert_success_{}@example.com", user_id);
-    
+
     diesel::insert_into(users::table)
         .values((
             users::id.eq(user_id),
@@ -68,15 +70,15 @@ async fn test_convert_currency_success() {
     };
 
     let result = ConversionService::convert_currency(state.clone(), user_id, req).await;
-    
+
     assert!(result.is_ok());
     let response = result.unwrap();
-    
+
     // 5. Assertions
     // Amount: 10 * 1500 = 15000 NGN
     // Fee: 1% = 150 NGN
     // Net: 14850 NGN
-    
+
     assert_eq!(response.converted_amount, 14850.0);
     assert_eq!(response.fee, 150.0);
 
@@ -98,12 +100,16 @@ async fn test_convert_currency_success() {
     assert_eq!(wallet_ngn.balance, 1485000);
 
     // Cleanup
-    diesel::delete(wallets::table.filter(wallets::user_id.eq(user_id))).execute(conn).unwrap();
-    diesel::delete(users::table.filter(users::id.eq(user_id))).execute(conn).unwrap();
-
+    diesel::delete(wallets::table.filter(wallets::user_id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
+    diesel::delete(users::table.filter(users::id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
 }
 
 #[tokio::test]
+#[serial]
 async fn test_convert_currency_insufficient_balance() {
     // 1. Setup WireMock
     let mock_server = MockServer::start().await;
@@ -166,23 +172,26 @@ async fn test_convert_currency_insufficient_balance() {
     assert!(err_msg.contains("Insufficient balance") || err_msg.contains("Payment error"));
 
     // Cleanup
-    diesel::delete(wallets::table.filter(wallets::user_id.eq(user_id))).execute(conn).unwrap();
-    diesel::delete(users::table.filter(users::id.eq(user_id))).execute(conn).unwrap();
-
+    diesel::delete(wallets::table.filter(wallets::user_id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
+    diesel::delete(users::table.filter(users::id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
 }
 
 #[tokio::test]
 async fn test_convert_currency_same_currency() {
     let state = common::create_test_app_state();
     let user_id = Uuid::new_v4();
-    
+
     let req = ConvertRequest {
         amount: 10.0,
         from_currency: "USD".to_string(),
         to_currency: "USD".to_string(),
         idempotency_key: "any".to_string(),
     };
-    
+
     let result = ConversionService::convert_currency(state, user_id, req).await;
     assert!(result.is_err());
 }

@@ -1,15 +1,15 @@
-use diesel::prelude::*;
-use reqwest::Client;
-use serde_json::Value;
-use std::sync::Arc;
-use axum::extract::State;
-use http::StatusCode;
-use tracing::{error, info};
 use crate::error::ApiError;
 use crate::models::models::Bank;
 use crate::schema::banks;
 use crate::AppState;
+use axum::extract::State;
+use diesel::prelude::*;
+use http::StatusCode;
+use reqwest::Client;
 use secrecy::ExposeSecret;
+use serde_json::Value;
+use std::sync::Arc;
+use tracing::{error, info};
 
 #[utoipa::path(
     post,
@@ -23,28 +23,29 @@ use secrecy::ExposeSecret;
 )]
 pub async fn initialize_banks(
     State(state): State<Arc<AppState>>,
-) -> Result<StatusCode, (StatusCode, String)>  {
-    let mut conn = state
-        .db
-        .get()
-        .map_err(|e: diesel::r2d2::PoolError| {
-            error!("Database connection failed: {}", e);
-            ApiError::DatabaseConnection(e.to_string())
-        })?;
+) -> Result<StatusCode, (StatusCode, String)> {
+    let mut conn = state.db.get().map_err(|e: diesel::r2d2::PoolError| {
+        error!("Database connection failed: {}", e);
+        ApiError::DatabaseConnection(e.to_string())
+    })?;
 
     // Check if banks table is populated
-    let bank_count: i64 = banks::table
-        .count()
-        .get_result(&mut conn)
-        .map_err(|e: diesel::result::Error| {
-            error!("Failed to count banks: {}", e);
-            ApiError::Database(e)
-        })?;
+    let bank_count: i64 =
+        banks::table
+            .count()
+            .get_result(&mut conn)
+            .map_err(|e: diesel::result::Error| {
+                error!("Failed to count banks: {}", e);
+                ApiError::Database(e)
+            })?;
 
     // Assume at least 10 banks for a valid population (Paystack typically returns ~25 banks for Nigeria)
     const MIN_BANKS: i64 = 10;
     if bank_count >= MIN_BANKS {
-        info!("Banks table already populated with {} banks, skipping Paystack fetch", bank_count);
+        info!(
+            "Banks table already populated with {} banks, skipping Paystack fetch",
+            bank_count
+        );
         return Ok(StatusCode::OK);
     }
 

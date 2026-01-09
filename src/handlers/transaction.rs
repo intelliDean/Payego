@@ -64,7 +64,6 @@ pub async fn get_user_transaction(
     Extension(claims): Extension<Claims>,
     Path(transaction_id): Path<String>,
 ) -> Result<Json<TransactionResponse>, (StatusCode, String)> {
-
     let usr_id = Uuid::parse_str(&claims.sub).map_err(|e: uuid::Error| {
         error!("Invalid user ID in JWT: {}", e);
         ApiError::Auth("Invalid user ID".to_string())

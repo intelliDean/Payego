@@ -1,16 +1,12 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    Json,
-};
+use crate::models::models::Bank;
+use crate::schema::banks;
+use crate::{error::ApiError, AppState};
+use axum::{extract::State, http::StatusCode, Json};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{error, info};
 use utoipa::ToSchema;
-use crate::{AppState, error::ApiError};
-use crate::models::models::Bank;
-use crate::schema::banks;
 
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct BankListResponse {
@@ -29,9 +25,8 @@ pub struct BankListResponse {
     tag = "Banks"
 )]
 pub async fn all_banks(
-    State(state): State<Arc<AppState>>
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<BankListResponse>, (StatusCode, String)> {
-
     let mut conn = state.db.get().map_err(|e: diesel::r2d2::PoolError| {
         error!("Database connection failed: {}", e);
         ApiError::DatabaseConnection(e.to_string())

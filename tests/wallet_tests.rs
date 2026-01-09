@@ -1,8 +1,8 @@
 mod common;
 
 use payego::handlers::transfer_internal::TransferRequest;
-use validator::Validate;
 use serde_json::json;
+use validator::Validate;
 
 #[test]
 fn test_transfer_request_validation() {
@@ -12,7 +12,8 @@ fn test_transfer_request_validation() {
         "recipient_email": "test@example.com",
         "currency": "USD",
         "reference": uuid::Uuid::new_v4()
-    })).unwrap();
+    }))
+    .unwrap();
     assert!(req.validate().is_ok());
 
     // Invalid amount (too low)
@@ -21,7 +22,8 @@ fn test_transfer_request_validation() {
         "recipient_email": "test@example.com",
         "currency": "USD",
         "reference": uuid::Uuid::new_v4()
-    })).unwrap();
+    }))
+    .unwrap();
     assert!(req.validate().is_err());
 
     // Invalid amount (too high)
@@ -30,7 +32,8 @@ fn test_transfer_request_validation() {
         "recipient_email": "test@example.com",
         "currency": "USD",
         "reference": uuid::Uuid::new_v4()
-    })).unwrap();
+    }))
+    .unwrap();
     assert!(req.validate().is_err());
 
     // Invalid email
@@ -39,7 +42,8 @@ fn test_transfer_request_validation() {
         "recipient_email": "not-an-email",
         "currency": "USD",
         "reference": uuid::Uuid::new_v4()
-    })).unwrap();
+    }))
+    .unwrap();
     assert!(req.validate().is_err());
 
     // Invalid currency
@@ -48,7 +52,8 @@ fn test_transfer_request_validation() {
         "recipient_email": "test@example.com",
         "currency": "UNKNOWN",
         "reference": uuid::Uuid::new_v4()
-    })).unwrap();
+    }))
+    .unwrap();
     assert!(req.validate().is_err());
 }
 

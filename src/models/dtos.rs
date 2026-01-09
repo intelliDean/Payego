@@ -1,8 +1,8 @@
+use crate::utility::validate_password;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
-use validator::Validate;
 use uuid::Uuid;
-use crate::utility::validate_password;
+use validator::Validate;
 
 // Request DTOs
 
@@ -24,13 +24,13 @@ pub struct RegisterRequest {
 pub struct LoginRequest {
     #[validate(email(message = "Invalid email format"))]
     pub email: String,
-    #[validate(length( min = 8), custom(function = "validate_password"))]
+    #[validate(length(min = 8), custom(function = "validate_password"))]
     pub password: String,
 }
 
 #[derive(Deserialize, ToSchema, Debug)]
 pub struct PayoutRequest {
-    pub amount: f64, // Amount in NGN
+    pub amount: f64,      // Amount in NGN
     pub currency: String, // Currency to deduct from (e.g., "USD")
     pub bank_code: String,
     pub account_number: String,

@@ -2,7 +2,7 @@ use crate::config::security_config::create_token;
 use crate::error::ApiError;
 use crate::models::models::{AppState, LoginResponse};
 use crate::services::auth_service::AuthService;
-use axum::{Json, extract::State, http::StatusCode};
+use axum::{extract::State, http::StatusCode, Json};
 use diesel::prelude::*;
 use serde::Deserialize;
 use std::sync::Arc;

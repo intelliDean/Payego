@@ -7,9 +7,9 @@ use axum::{
     http::StatusCode,
     Json,
 };
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, LazyLock};
-use regex::Regex;
 use tracing::error;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -71,8 +71,8 @@ pub async fn add_bank_account(
     let response = BankService::add_bank_account(state, user_id, req)
         .await
         .map_err(|e| {
-             let (status, msg) = e.into();
-             (status, msg)
+            let (status, msg) = e.into();
+            (status, msg)
         })?;
 
     Ok(Json(response))

@@ -287,14 +287,12 @@
 
 //=================
 
-
-
-use crate::AppState;
 use crate::error::ApiError;
 use crate::schema::{transactions, wallets};
+use crate::AppState;
 use axum::{
     extract::{Json, State},
-    http::{StatusCode},
+    http::StatusCode,
 };
 use diesel::prelude::*;
 use reqwest::Client;
@@ -372,19 +370,14 @@ pub async fn paypal_capture(
             ApiError::Payment(format!("Failed to get PayPal token: {}", e))
         })?;
 
-    let token: serde_json::Value = token_response
-        .json()
-        .await
-        .map_err(|e| {
-            error!("Failed to parse PayPal token: {}", e);
-            ApiError::Payment(format!("Failed to parse PayPal token: {}", e))
-        })?;
-    let access_token = token["access_token"]
-        .as_str()
-        .ok_or_else(|| {
-            error!("Missing access_token in PayPal response");
-            ApiError::Payment("Missing access_token".to_string())
-        })?;
+    let token: serde_json::Value = token_response.json().await.map_err(|e| {
+        error!("Failed to parse PayPal token: {}", e);
+        ApiError::Payment(format!("Failed to parse PayPal token: {}", e))
+    })?;
+    let access_token = token["access_token"].as_str().ok_or_else(|| {
+        error!("Missing access_token in PayPal response");
+        ApiError::Payment("Missing access_token".to_string())
+    })?;
 
     // Capture the order
     let capture_response = client
@@ -402,32 +395,36 @@ pub async fn paypal_capture(
         })?;
 
     let status = capture_response.status();
-    let capture_result: serde_json::Value = capture_response
-        .json()
-        .await
-        .map_err(|e| {
-            error!("Failed to parse capture response: {}", e);
-            ApiError::Payment(format!("Failed to parse capture response: {}", e))
-        })?;
+    let capture_result: serde_json::Value = capture_response.json().await.map_err(|e| {
+        error!("Failed to parse capture response: {}", e);
+        ApiError::Payment(format!("Failed to parse capture response: {}", e))
+    })?;
 
-    info!("Capture response status: {}, result: {}", status, capture_result);
+    info!(
+        "Capture response status: {}, result: {}",
+        status, capture_result
+    );
 
     if !status.is_success() {
         let error_message = capture_result["details"]
             .as_array()
             .and_then(|details| details.get(0))
             .and_then(|detail| detail["description"].as_str())
-            .unwrap_or(capture_result["message"].as_str().unwrap_or("Unknown PayPal error"))
+            .unwrap_or(
+                capture_result["message"]
+                    .as_str()
+                    .unwrap_or("Unknown PayPal error"),
+            )
             .to_string();
-        error!("PayPal capture failed with status {}: {}", status, error_message);
+        error!(
+            "PayPal capture failed with status {}: {}",
+            status, error_message
+        );
 
-        let conn = &mut state
-            .db
-            .get()
-            .map_err(|e| {
-                error!("Database connection error: {}", e);
-                ApiError::DatabaseConnection(e.to_string())
-            })?;
+        let conn = &mut state.db.get().map_err(|e| {
+            error!("Database connection error: {}", e);
+            ApiError::DatabaseConnection(e.to_string())
+        })?;
 
         let trans_id = Uuid::parse_str(&payload.transaction_id).map_err(|e| {
             error!("Invalid transaction ID: {}", e);
@@ -454,13 +451,10 @@ pub async fn paypal_capture(
         }));
     }
 
-    let conn = &mut state
-        .db
-        .get()
-        .map_err(|e| {
-            error!("Database connection error: {}", e);
-            ApiError::DatabaseConnection(e.to_string())
-        })?;
+    let conn = &mut state.db.get().map_err(|e| {
+        error!("Database connection error: {}", e);
+        ApiError::DatabaseConnection(e.to_string())
+    })?;
 
     let trans_id = Uuid::parse_str(&payload.transaction_id).map_err(|e| {
         error!("Invalid transaction ID: {}", e);
@@ -483,7 +477,8 @@ pub async fn paypal_capture(
         })?;
 
     // Validate currency
-    let paypal_currency = capture_result["purchase_units"][0]["payments"]["captures"][0]["amount"]["currency_code"]
+    let paypal_currency = capture_result["purchase_units"][0]["payments"]["captures"][0]["amount"]
+        ["currency_code"]
         .as_str()
         .map(|s| s.to_uppercase())
         .unwrap_or_default();
@@ -496,7 +491,7 @@ pub async fn paypal_capture(
             "Currency mismatch: expected {}, got {}",
             transaction.currency, paypal_currency
         ))
-            .into());
+        .into());
     }
 
     let capture_status = capture_result["status"]
@@ -541,7 +536,7 @@ pub async fn paypal_capture(
 
                 Ok::<(), ApiError>(())
             })
-                .map_err(|e| e)?;
+            .map_err(|e| e)?;
 
             info!("PayPal payment captured for transaction: {}", trans_id);
             Ok(Json(CaptureResponse {
@@ -562,7 +557,8 @@ pub async fn paypal_capture(
                 .filter(transactions::reference.eq(trans_id))
                 .set((
                     transactions::status.eq("failed"),
-                    transactions::description.eq(format!("PayPal top-up failed: {}", error_message)),
+                    transactions::description
+                        .eq(format!("PayPal top-up failed: {}", error_message)),
                 ))
                 .execute(conn)
                 .map_err(|e| {
@@ -602,7 +598,8 @@ pub async fn paypal_capture(
                 .filter(transactions::reference.eq(trans_id))
                 .set((
                     transactions::status.eq("failed"),
-                    transactions::description.eq(format!("PayPal top-up failed: {}", error_message)),
+                    transactions::description
+                        .eq(format!("PayPal top-up failed: {}", error_message)),
                 ))
                 .execute(conn)
                 .map_err(|e| {

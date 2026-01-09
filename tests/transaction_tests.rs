@@ -8,7 +8,7 @@ fn test_new_transaction_creation() {
     let user_id = Uuid::new_v4();
     let recipient_id = Some(Uuid::new_v4());
     let reference = Uuid::new_v4();
-    
+
     let tx = NewTransaction {
         user_id,
         recipient_id,
@@ -21,7 +21,7 @@ fn test_new_transaction_creation() {
         reference,
         metadata: None,
     };
-    
+
     assert_eq!(tx.user_id, user_id);
     assert_eq!(tx.recipient_id, recipient_id);
     assert_eq!(tx.amount, 1000);
@@ -33,7 +33,7 @@ fn test_new_transaction_creation() {
 #[test]
 fn test_transaction_reference_uniqueness() {
     let user_id = Uuid::new_v4();
-    
+
     let tx1 = NewTransaction {
         user_id,
         recipient_id: None,
@@ -46,7 +46,7 @@ fn test_transaction_reference_uniqueness() {
         reference: Uuid::new_v4(),
         metadata: None,
     };
-    
+
     let tx2 = NewTransaction {
         user_id,
         recipient_id: None,
@@ -59,6 +59,6 @@ fn test_transaction_reference_uniqueness() {
         reference: Uuid::new_v4(),
         metadata: None,
     };
-    
+
     assert_ne!(tx1.reference, tx2.reference);
 }

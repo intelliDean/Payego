@@ -228,14 +228,12 @@
 //     Ok(StatusCode::OK)
 // }
 
-
 //===
 
-
-use crate::AppState;
 use crate::error::ApiError;
 use crate::handlers::paypal_capture::Transaction;
 use crate::schema::{transactions, wallets};
+use crate::AppState;
 use axum::extract::State;
 use diesel::prelude::*;
 use http::{HeaderMap, StatusCode};
@@ -307,14 +305,19 @@ pub async fn stripe_webhook(
                     .as_ref()
                     .ok_or(ApiError::Auth("Missing metadata in session".to_string()))?
                     .get("transaction_id")
-                    .ok_or(ApiError::Auth("Missing transaction_id in metadata".to_string()))?;
+                    .ok_or(ApiError::Auth(
+                        "Missing transaction_id in metadata".to_string(),
+                    ))?;
 
                 let transaction_id = Uuid::parse_str(transaction_id_str).map_err(|e| {
                     error!("Invalid transaction_id: {}", e);
                     ApiError::Auth(format!("Invalid transaction_id: {}", e))
                 })?;
 
-                info!("Processing checkout.session.completed for transaction {}", transaction_id);
+                info!(
+                    "Processing checkout.session.completed for transaction {}",
+                    transaction_id
+                );
 
                 // Check for idempotency
                 let existing = transactions::table
@@ -348,17 +351,17 @@ pub async fn stripe_webhook(
                     })?;
 
                 // Validate currency
-                let payment_currency = session.currency.as_ref().map(|c| c.to_string().to_uppercase());
+                let payment_currency = session
+                    .currency
+                    .as_ref()
+                    .map(|c| c.to_string().to_uppercase());
                 if let Some(curr) = payment_currency {
                     if transaction.currency != curr {
                         error!(
                             "Currency mismatch: transaction currency {}, session currency {}",
                             transaction.currency, curr
                         );
-                        return Err((
-                            StatusCode::BAD_REQUEST,
-                            "Currency mismatch".to_string(),
-                        ));
+                        return Err((StatusCode::BAD_REQUEST, "Currency mismatch".to_string()));
                     }
                 }
 
@@ -383,7 +386,10 @@ pub async fn stripe_webhook(
                             }
                         })?;
 
-                    info!("Updating wallet for user {} in {}", updated_transaction.user_id, updated_transaction.currency);
+                    info!(
+                        "Updating wallet for user {} in {}",
+                        updated_transaction.user_id, updated_transaction.currency
+                    );
                     diesel::insert_into(wallets::table)
                         .values((
                             wallets::user_id.eq(updated_transaction.user_id),
@@ -406,7 +412,10 @@ pub async fn stripe_webhook(
                     Ok::<(), ApiError>(())
                 })?;
 
-                info!("Stripe payment succeeded for transaction: {}", transaction_id);
+                info!(
+                    "Stripe payment succeeded for transaction: {}",
+                    transaction_id
+                );
             } else {
                 info!("Unexpected event object for checkout.session.completed");
             }

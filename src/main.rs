@@ -1,21 +1,21 @@
-use payego::config::security_config::JWTSecret;
-use payego::logging::setup_logging;
-use payego::models::models::AppState;
-use payego::handlers::initialize_banks::initialize_banks;
 use axum::extract::State;
+use chrono::Utc;
 use diesel::{
     prelude::*,
     r2d2::{ConnectionManager, Pool},
 };
 use dotenvy::dotenv;
 use http::HeaderValue;
-use std::{env, sync::Arc, net::SocketAddr};
-use tokio::{signal, net::TcpListener};
+use payego::config::security_config::JWTSecret;
+use payego::handlers::initialize_banks::initialize_banks;
+use payego::logging::setup_logging;
+use payego::models::models::AppState;
+use secrecy::SecretString;
+use std::{env, net::SocketAddr, sync::Arc};
+use tokio::time::{interval, Duration};
+use tokio::{net::TcpListener, signal};
 use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, info, warn};
-use tokio::time::{interval, Duration};
-use chrono::Utc;
-use secrecy::SecretString;
 
 #[tokio::main]
 async fn main() -> Result<(), eyre::Error> {
@@ -38,7 +38,7 @@ async fn main() -> Result<(), eyre::Error> {
 
     // database connection pool
     let manager = ConnectionManager::<PgConnection>::new(db_url);
-    
+
     let pool = Pool::builder()
         .max_size(50)
         .min_idle(Some(10))
@@ -55,20 +55,33 @@ async fn main() -> Result<(), eyre::Error> {
     let state = Arc::new(AppState {
         db: pool,
         jwt_secret: SecretString::new(JWTSecret::new().jwt_secret.into()),
-        stripe_secret_key: SecretString::new(env::var("STRIPE_SECRET_KEY")
-            .map_err(|e| {
-                error!("STRIPE_SECRET_KEY environment variable not set: {}", e);
-                eyre::eyre!("STRIPE_SECRET_KEY environment variable must be set")
-            })?.into()),
-        paystack_secret_key: SecretString::new(env::var("PAYSTACK_SECRET_KEY")
-             .map_err(|e| {
-                 error!("PAYSTACK_SECRET_KEY environment variable not set: {}", e);
-                 eyre::eyre!("PAYSTACK_SECRET_KEY environment variable must be set")
-             })?.into()),
+        stripe_secret_key: SecretString::new(
+            env::var("STRIPE_SECRET_KEY")
+                .map_err(|e| {
+                    error!("STRIPE_SECRET_KEY environment variable not set: {}", e);
+                    eyre::eyre!("STRIPE_SECRET_KEY environment variable must be set")
+                })?
+                .into(),
+        ),
+        paystack_secret_key: SecretString::new(
+            env::var("PAYSTACK_SECRET_KEY")
+                .map_err(|e| {
+                    error!("PAYSTACK_SECRET_KEY environment variable not set: {}", e);
+                    eyre::eyre!("PAYSTACK_SECRET_KEY environment variable must be set")
+                })?
+                .into(),
+        ),
         app_url: env::var("APP_URL").unwrap_or_else(|_| "http://localhost:8080".to_string()),
-        exchange_api_url: env::var("EXCHANGE_API_URL").unwrap_or_else(|_| "https://api.exchangerate-api.com/v4/latest".to_string()),
-        paypal_api_url: env::var("PAYPAL_API_URL").unwrap_or_else(|_| "https://api-m.sandbox.paypal.com".to_string()),
-        paystack_api_url: env::var("PAYSTACK_API_URL").unwrap_or_else(|_| "https://api.paystack.co".to_string()),
+        exchange_api_url: env::var("EXCHANGE_API_URL")
+            .unwrap_or_else(|_| "https://api.exchangerate-api.com/v4/latest".to_string()),
+        paypal_api_url: env::var("PAYPAL_API_URL")
+            .unwrap_or_else(|_| "https://api-m.sandbox.paypal.com".to_string()),
+        stripe_api_url: env::var("STRIPE_API_URL")
+            .unwrap_or_else(|_| "https://api.stripe.com".to_string()),
+        paystack_api_url: env::var("PAYSTACK_API_URL")
+            .unwrap_or_else(|_| "https://api.paystack.co".to_string()),
+        paypal_client_id: env::var("PAYPAL_CLIENT_ID").unwrap_or_default(),
+        paypal_secret: SecretString::new(env::var("PAYPAL_SECRET").unwrap_or_default().into()),
     });
 
     // Initialize banks
@@ -92,8 +105,7 @@ async fn main() -> Result<(), eyre::Error> {
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
-    let app = payego::app::create_router(state.clone())
-        .layer(cors);
+    let app = payego::app::create_router(state.clone()).layer(cors);
 
     let addr = format!("{}:{}", host, port).parse::<SocketAddr>()?;
     let listener = TcpListener::bind(&addr).await?;
@@ -143,19 +155,19 @@ async fn cleanup_expired_tokens(state: Arc<AppState>) {
         // Assuming simplified loop logic here for brevity as main.rs content
         // The previous implementation was correct
         let mut conn = match state.db.get() {
-             Ok(conn) => conn,
-             Err(e) => {
-                 error!("Failed to get DB connection: {}", e);
-                 continue;
-             }
-         };
-         if let Err(e) = diesel::delete(
-             payego::schema::blacklisted_tokens::table
-                 .filter(payego::schema::blacklisted_tokens::expires_at.lt(Utc::now())),
-         )
-             .execute(&mut conn)
-         {
-             error!("Cleanup failed: {}", e);
-         }
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("Failed to get DB connection: {}", e);
+                continue;
+            }
+        };
+        if let Err(e) = diesel::delete(
+            payego::schema::blacklisted_tokens::table
+                .filter(payego::schema::blacklisted_tokens::expires_at.lt(Utc::now())),
+        )
+        .execute(&mut conn)
+        {
+            error!("Cleanup failed: {}", e);
+        }
     }
 }

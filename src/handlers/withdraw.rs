@@ -1,22 +1,22 @@
+use crate::config::security_config::Claims;
+use crate::services::withdrawal_service::WithdrawalService;
+use crate::{error::ApiError, AppState};
 use axum::{
-    extract::{State, Extension},
-    Json,
+    extract::{Extension, State},
     http::StatusCode,
+    Json,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use uuid::Uuid;
 use tracing::info;
 use utoipa::ToSchema;
-use crate::{AppState, error::ApiError};
-use crate::config::security_config::Claims;
-use crate::services::withdrawal_service::WithdrawalService;
+use uuid::Uuid;
 
 #[derive(Deserialize, ToSchema)]
 pub struct WithdrawRequest {
-    pub amount: f64, // Amount in the selected currency
+    pub amount: f64,      // Amount in the selected currency
     pub currency: String, // Currency to withdraw from (e.g., "USD", "NGN")
-    pub bank_id: String, // Bank account ID from /api/bank_accounts
+    pub bank_id: String,  // Bank account ID from /api/bank_accounts
     pub reference: Uuid,
     pub idempotency_key: String,
 }
@@ -58,8 +58,8 @@ pub async fn withdraw(
     let response = WithdrawalService::initiate_withdrawal(state, user_id, req)
         .await
         .map_err(|e| {
-             let (status, msg) = e.into();
-             (status, msg)
+            let (status, msg) = e.into();
+            (status, msg)
         })?;
 
     Ok(Json(response))

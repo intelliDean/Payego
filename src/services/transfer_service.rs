@@ -1,14 +1,14 @@
-use diesel::prelude::*;
-use uuid::Uuid;
 use crate::error::ApiError;
-use crate::schema::{users, wallets, transactions};
-use crate::models::models::{NewTransaction, Transaction, Wallet, AppState};
-use tracing::{error, info, debug};
-use serde_json::json;
-use reqwest::{Client, StatusCode};
-use std::sync::Arc;
 use crate::models::models::PayoutRequest;
+use crate::models::models::{AppState, NewTransaction, Transaction, Wallet};
+use crate::schema::{transactions, users, wallets};
+use diesel::prelude::*;
+use reqwest::{Client, StatusCode};
 use secrecy::ExposeSecret;
+use serde_json::json;
+use std::sync::Arc;
+use tracing::{debug, error, info};
+use uuid::Uuid;
 
 pub struct TransferService;
 
@@ -48,7 +48,10 @@ impl TransferService {
 
         // 4. Idempotency check with metadata
         let existing_transaction = transactions::table
-            .filter(diesel::dsl::sql::<diesel::sql_types::Bool>("metadata->>'idempotency_key' = ").bind::<diesel::sql_types::Text, _>(idempotency_key))
+            .filter(
+                diesel::dsl::sql::<diesel::sql_types::Bool>("metadata->>'idempotency_key' = ")
+                    .bind::<diesel::sql_types::Text, _>(idempotency_key),
+            )
             .filter(transactions::user_id.eq(sender_id))
             .first::<Transaction>(conn)
             .optional()
@@ -58,7 +61,10 @@ impl TransferService {
             })?;
 
         if let Some(tx) = existing_transaction {
-            info!("Idempotent request: transaction {} already exists for key {}", tx.reference, idempotency_key);
+            info!(
+                "Idempotent request: transaction {} already exists for key {}",
+                tx.reference, idempotency_key
+            );
             return Ok(tx.reference.to_string());
         }
 
@@ -78,7 +84,10 @@ impl TransferService {
             })?;
 
         if sender_balance < amount_cents {
-            error!("Insufficient balance: available={}, required={}", sender_balance, amount_cents);
+            error!(
+                "Insufficient balance: available={}, required={}",
+                sender_balance, amount_cents
+            );
             return Err(ApiError::Payment("Insufficient balance".to_string()));
         }
 
@@ -101,7 +110,10 @@ impl TransferService {
                     transaction_type: "internal_transfer_send".to_string(),
                     status: "completed".to_string(),
                     provider: Some("internal".to_string()),
-                    description: Some(format!("Transfer to {} in {}", recipient_email, currency_upper)),
+                    description: Some(format!(
+                        "Transfer to {} in {}",
+                        recipient_email, currency_upper
+                    )),
                     reference,
                     currency: currency_upper.clone(),
                     metadata: Some(json!({
@@ -144,7 +156,10 @@ impl TransferService {
             Ok::<(), ApiError>(())
         })?;
 
-        info!("Internal transfer completed: {} to {} from {} to {}", amount, recipient_email, sender_id, recipient_id);
+        info!(
+            "Internal transfer completed: {} to {} from {} to {}",
+            amount, recipient_email, sender_id, recipient_id
+        );
         Ok(reference.to_string())
     }
 
@@ -153,7 +168,7 @@ impl TransferService {
         user_id: Uuid,
         req: PayoutRequest,
     ) -> Result<StatusCode, ApiError> {
-         let amount_ngn_cents = (req.amount * 100.0).round() as i64; // Amount in NGN cents
+        let amount_ngn_cents = (req.amount * 100.0).round() as i64; // Amount in NGN cents
 
         let mut conn = state.db.get().map_err(|e| {
             error!("Database connection failed: {}", e);
@@ -169,17 +184,22 @@ impl TransferService {
             .map_err(|e| {
                 error!("Sender wallet lookup failed: {}", e);
                 if e == diesel::result::Error::NotFound {
-                    ApiError::Payment(format!("Sender wallet not found for currency {}", req.currency))
+                    ApiError::Payment(format!(
+                        "Sender wallet not found for currency {}",
+                        req.currency
+                    ))
                 } else {
                     ApiError::Database(e).into()
                 }
             })?;
 
         // Fetch current exchange rate (use a tool or API)
-        let exchange_rate = Self::get_exchange_rate(&state.exchange_api_url, &req.currency, "NGN").await.map_err(|e| {
-            // error!("Exchange rate fetch failed: {}", e);
-            ApiError::Payment("Exchange rate fetch failed".to_string())
-        })?;
+        let exchange_rate = Self::get_exchange_rate(&state.exchange_api_url, &req.currency, "NGN")
+            .await
+            .map_err(|e| {
+                // error!("Exchange rate fetch failed: {}", e);
+                ApiError::Payment("Exchange rate fetch failed".to_string())
+            })?;
 
         let amount_to_deduct = (amount_ngn_cents as f64 / exchange_rate).round() as i64;
 
@@ -192,12 +212,14 @@ impl TransferService {
             return Err(ApiError::Auth("Insufficient balance".to_string()).into());
         }
 
-
         // Create temporary Paystack recipient
         let paystack_key = state.paystack_secret_key.expose_secret();
         let client = Client::new();
-        let account_name = req.account_name.clone().unwrap_or("External Transfer Recipient".to_string());
-        
+        let account_name = req
+            .account_name
+            .clone()
+            .unwrap_or("External Transfer Recipient".to_string());
+
         // PAYSTACK CALLS (RECIPIENT)
         let resp = client
             .post("https://api.paystack.co/transferrecipient")
@@ -228,12 +250,19 @@ impl TransferService {
                 .unwrap_or("Unknown Paystack error")
                 .to_string();
             error!("Paystack recipient creation failed: {}", message);
-            return Err(ApiError::Payment(format!("Paystack recipient creation failed: {}", message)).into());
+            return Err(ApiError::Payment(format!(
+                "Paystack recipient creation failed: {}",
+                message
+            ))
+            .into());
         }
 
         // Idempotency check with metadata
         let existing_transaction = transactions::table
-            .filter(diesel::dsl::sql::<diesel::sql_types::Bool>("metadata->>'idempotency_key' = ").bind::<diesel::sql_types::Text, _>(&req.idempotency_key))
+            .filter(
+                diesel::dsl::sql::<diesel::sql_types::Bool>("metadata->>'idempotency_key' = ")
+                    .bind::<diesel::sql_types::Text, _>(&req.idempotency_key),
+            )
             .filter(transactions::user_id.eq(user_id))
             .first::<Transaction>(&mut conn)
             .optional()
@@ -243,7 +272,10 @@ impl TransferService {
             })?;
 
         if let Some(tx) = existing_transaction {
-            info!("Idempotent request: transaction {} already exists for key {}", tx.reference, req.idempotency_key);
+            info!(
+                "Idempotent request: transaction {} already exists for key {}",
+                tx.reference, req.idempotency_key
+            );
             return Ok(StatusCode::OK);
         }
 
@@ -299,7 +331,6 @@ impl TransferService {
             .to_string();
         debug!("Paystack transfer_code: {}", transfer_code);
 
-
         // Atomic transaction
         conn.transaction(|conn| {
             // Debit sender wallet
@@ -329,8 +360,8 @@ impl TransferService {
                     provider: Some("paystack".to_string()),
                     description: Some(format!("External transfer in {} to bank", &req.currency)),
                     reference,
-                    metadata: Some(json!({ 
-                        "transfer_code": transfer_code, 
+                    metadata: Some(json!({
+                        "transfer_code": transfer_code,
                         "exchange_rate": exchange_rate,
                         "idempotency_key": req.idempotency_key
                     })),
@@ -351,29 +382,27 @@ impl TransferService {
         Ok(StatusCode::OK)
     }
 
-    async fn get_exchange_rate(base_url: &str, from_currency: &str, to_currency: &str) -> Result<f64, ApiError> {
+    async fn get_exchange_rate(
+        base_url: &str,
+        from_currency: &str,
+        to_currency: &str,
+    ) -> Result<f64, ApiError> {
         let url = format!("{}/{}", base_url, from_currency);
         let client = Client::new();
-        let resp = client
-            .get(url)
-            .send()
-            .await
-            .map_err(|e| {
-                error!("Exchange rate API error: {}", e);
-                ApiError::Payment(format!("Exchange rate API error: {}", e))
-            })?;
+        let resp = client.get(url).send().await.map_err(|e| {
+            error!("Exchange rate API error: {}", e);
+            ApiError::Payment(format!("Exchange rate API error: {}", e))
+        })?;
 
         let body = resp.json::<serde_json::Value>().await.map_err(|e| {
             error!("Exchange rate response parsing error: {}", e);
             ApiError::Payment(format!("Exchange rate response error: {}", e))
         })?;
 
-        let rate = body["rates"][to_currency]
-            .as_f64()
-            .ok_or_else(|| {
-                error!("Invalid exchange rate response");
-                ApiError::Payment("Invalid exchange rate response".to_string())
-            })?;
+        let rate = body["rates"][to_currency].as_f64().ok_or_else(|| {
+            error!("Invalid exchange rate response");
+            ApiError::Payment("Invalid exchange rate response".to_string())
+        })?;
 
         Ok(rate)
     }

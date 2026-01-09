@@ -1,9 +1,9 @@
 mod common;
 
 use axum_test::TestServer;
-use serde_json::json;
 use common::{create_test_app, create_test_app_state};
 use http::StatusCode;
+use serde_json::json;
 
 #[tokio::test]
 async fn test_rate_limiting() {
@@ -13,7 +13,7 @@ async fn test_rate_limiting() {
 
     // The rate limit is set to 2 requests per second with a burst of 10.
     // We'll send 15 requests quickly to trigger the limit.
-    
+
     let mut successes = 0;
     let mut limited = 0;
 
@@ -30,8 +30,11 @@ async fn test_rate_limiting() {
     }
 
     println!("Successes: {}, Limited: {}", successes, limited);
-    
+
     // We expect at least some to be limited if the burst is 10 and we send 15.
     assert!(limited > 0, "Expected some requests to be rate limited");
-    assert!(successes >= 10, "Expected at least 10 requests (burst) to succeed");
+    assert!(
+        successes >= 10,
+        "Expected at least 10 requests (burst) to succeed"
+    );
 }

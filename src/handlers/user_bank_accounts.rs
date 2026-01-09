@@ -1,18 +1,17 @@
+use crate::config::security_config::Claims;
+use crate::schema::bank_accounts;
+use crate::{error::ApiError, AppState};
 use axum::{
-    extract::{State, Extension},
-    Json,
+    extract::{Extension, State},
     http::StatusCode,
+    Json,
 };
 use diesel::prelude::*;
 use serde::Serialize;
 use std::sync::Arc;
-use uuid::Uuid;
 use tracing::{error, info};
 use utoipa::ToSchema;
-use crate::{AppState, error::ApiError};
-use crate::config::security_config::Claims;
-use crate::schema::bank_accounts;
-
+use uuid::Uuid;
 
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = bank_accounts)]
@@ -22,7 +21,7 @@ pub struct BankAccount {
     pub bank_code: String,
     pub account_number: String,
     pub account_name: Option<String>,
-    pub bank_name: Option<String>
+    pub bank_name: Option<String>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -31,7 +30,7 @@ pub struct Account {
     pub bank_code: String,
     pub account_number: String,
     pub account_name: Option<String>,
-    pub bank_name: Option<String>
+    pub bank_name: Option<String>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -54,7 +53,6 @@ pub async fn user_bank_accounts(
     State(state): State<Arc<AppState>>,
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<BankResponse>, (StatusCode, String)> {
-
     let user_id = Uuid::parse_str(&claims.sub).map_err(|e| {
         error!("Invalid user ID: {}", e);
         ApiError::Auth("Invalid user ID".to_string())
@@ -83,7 +81,11 @@ pub async fn user_bank_accounts(
         })
         .collect::<Vec<Account>>();
 
-    info!("Fetched {} banks accounts for user_id={}", bank_accounts.len(), user_id);
+    info!(
+        "Fetched {} banks accounts for user_id={}",
+        bank_accounts.len(),
+        user_id
+    );
 
     Ok(Json(BankResponse { bank_accounts }))
 }

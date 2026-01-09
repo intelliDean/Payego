@@ -1,15 +1,14 @@
 use crate::error::ApiError;
-use crate::models::models::{AppState};
-use axum::{Json, extract::State, http::StatusCode};
+use crate::models::models::AppState;
+use axum::{extract::State, http::StatusCode, Json};
 use diesel::prelude::*;
+use hmac::KeyInit;
 use hmac::{Hmac, Mac};
 use serde_json::Value;
 use sha2::Sha256;
 use std::sync::Arc;
 use tracing::{debug, error, info};
 use uuid::Uuid;
-use hmac::KeyInit;
-
 
 // https://e02e3895d11f.ngrok-free.app/webhooks/paystack
 // Type alias for HMAC-SHA256
@@ -140,7 +139,10 @@ pub async fn paystack_webhook(
                 diesel::update(crate::schema::wallets::table)
                     .filter(crate::schema::wallets::user_id.eq(user_id))
                     .filter(crate::schema::wallets::currency.eq(currency))
-                    .set(crate::schema::wallets::balance.eq(crate::schema::wallets::balance + amount))
+                    .set(
+                        crate::schema::wallets::balance
+                            .eq(crate::schema::wallets::balance + amount),
+                    )
                     .execute(conn)
                     .map_err(|e: diesel::result::Error| {
                         error!("Wallet update failed: {}", e);
@@ -161,7 +163,6 @@ pub async fn paystack_webhook(
 
     Ok(StatusCode::OK)
 }
-
 
 #[derive(Queryable, Selectable, Debug)]
 #[diesel(table_name = crate::schema::transactions)]

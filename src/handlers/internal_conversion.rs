@@ -1,29 +1,33 @@
-use axum::{
-    extract::{State, Extension},
-    Json,
-    http::StatusCode,
-};
-use serde::{Deserialize, Serialize};
-use std::sync::{Arc, LazyLock};
-use uuid::Uuid;
-use validator::Validate;
-use regex::Regex;
-use tracing::{error, info};
-use utoipa::ToSchema;
-use crate::{AppState, error::ApiError};
 use crate::config::security_config::Claims;
 use crate::services::conversion_service::ConversionService;
+use crate::{error::ApiError, AppState};
+use axum::{
+    extract::{Extension, State},
+    http::StatusCode,
+    Json,
+};
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+use std::sync::{Arc, LazyLock};
+use tracing::{error, info};
+use utoipa::ToSchema;
+use uuid::Uuid;
+use validator::Validate;
 
 static SUPPORTED_CURRENCIES: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"^(USD|NGN|GBP|EUR|CAD|AUD|JPY|CHF|CNY|SEK|NZD|MXN|SGD|HKD|NOK|KRW|TRY|INR|BRL|ZAR)$",
     )
-        .expect("Invalid currency")
+    .expect("Invalid currency")
 });
 
 #[derive(Deserialize, ToSchema, Validate)]
 pub struct ConvertRequest {
-    #[validate(range(min = 1.0, max = 10000.0, message = "Amount must be between 1 and 10,000"))]
+    #[validate(range(
+        min = 1.0,
+        max = 10000.0,
+        message = "Amount must be between 1 and 10,000"
+    ))]
     pub amount: f64,
     #[validate(regex(path = "SUPPORTED_CURRENCIES", message = "Invalid from currency"))]
     pub from_currency: String,
@@ -40,7 +44,6 @@ pub struct ConvertResponse {
     pub exchange_rate: f64,
     pub fee: f64,
 }
-
 
 #[utoipa::path(
     post,
@@ -77,8 +80,8 @@ pub async fn convert_currency(
     let response = ConversionService::convert_currency(state, user_id, req)
         .await
         .map_err(|e| {
-             let (status, msg) = e.into();
-             (status, msg)
+            let (status, msg) = e.into();
+            (status, msg)
         })?;
 
     Ok(Json(response))
