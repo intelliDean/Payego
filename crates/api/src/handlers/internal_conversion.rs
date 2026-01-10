@@ -1,8 +1,8 @@
+use axum::extract::{Extension, Json, State};
+use payego_core::services::conversion_service::ConversionService;
 use payego_primitives::config::security_config::Claims;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::{AppState, ConvertRequest, ConvertResponse};
-use payego_core::services::conversion_service::ConversionService;
-use axum::extract::{Extension, Json, State};
 use std::sync::Arc;
 use tracing::error;
 use uuid::Uuid;
@@ -39,8 +39,7 @@ pub async fn convert_currency(
     })?;
 
     // 3. Call ConversionService
-    let response = ConversionService::convert_currency(&*state, user_id, req)
-        .await?;
+    let response = ConversionService::convert_currency(&*state, user_id, req).await?;
 
     Ok(Json(response))
 }

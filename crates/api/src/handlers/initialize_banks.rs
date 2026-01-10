@@ -1,10 +1,10 @@
-use payego_primitives::error::ApiError;
-use payego_primitives::models::Bank;
-use payego_primitives::schema::banks;
-use payego_primitives::models::AppState;
 use axum::extract::State;
 use diesel::prelude::*;
 use http::StatusCode;
+use payego_primitives::error::ApiError;
+use payego_primitives::models::AppState;
+use payego_primitives::models::Bank;
+use payego_primitives::schema::banks;
 use reqwest::Client;
 use secrecy::ExposeSecret;
 use serde_json::Value;
@@ -21,9 +21,7 @@ use tracing::{error, info};
     ),
     tag = "Auth"
 )]
-pub async fn initialize_banks(
-    State(state): State<Arc<AppState>>,
-) -> Result<StatusCode, ApiError> {
+pub async fn initialize_banks(State(state): State<Arc<AppState>>) -> Result<StatusCode, ApiError> {
     let mut conn = state.db.get().map_err(|e: diesel::r2d2::PoolError| {
         error!("Database connection failed: {}", e);
         ApiError::DatabaseConnection(e.to_string())
@@ -75,7 +73,10 @@ pub async fn initialize_banks(
             .unwrap_or("Unknown Paystack error")
             .to_string();
         error!("Paystack banks fetch failed: {}", message);
-        return Err(ApiError::Payment(format!("Paystack banks fetch failed: {}", message)));
+        return Err(ApiError::Payment(format!(
+            "Paystack banks fetch failed: {}",
+            message
+        )));
     }
 
     let banks_data = body["data"].as_array().ok_or_else(|| {
@@ -117,7 +118,9 @@ pub async fn initialize_banks(
 
     if banks.is_empty() {
         error!("No valid banks fetched from Paystack");
-        return Err(ApiError::Payment("No valid banks fetched from Paystack".to_string()));
+        return Err(ApiError::Payment(
+            "No valid banks fetched from Paystack".to_string(),
+        ));
     }
 
     // Insert banks into database with ON CONFLICT DO NOTHING

@@ -1,11 +1,11 @@
-use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::{AppState, BankAccount, BankRequest};
-use payego_core::services::bank_service::BankService;
 use axum::{
     extract::{Extension, Json, State},
     http::StatusCode,
 };
+use payego_core::services::bank_service::BankService;
+use payego_primitives::config::security_config::Claims;
+use payego_primitives::error::ApiError;
+use payego_primitives::models::{AppState, BankAccount, BankRequest};
 use std::sync::Arc;
 use tracing::error;
 use uuid::Uuid;
@@ -42,8 +42,7 @@ pub async fn add_bank_account(
     })?;
 
     // 3. Call BankService
-    let account = BankService::add_bank_account(&state, user_id, req)
-        .await?;
+    let account = BankService::add_bank_account(&state, user_id, req).await?;
 
     Ok((StatusCode::CREATED, Json(account)))
 }

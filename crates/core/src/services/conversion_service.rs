@@ -1,8 +1,10 @@
-use diesel::prelude::*;
 use diesel::dsl::sql;
+use diesel::prelude::*;
 use diesel::sql_types::BigInt;
 use payego_primitives::error::ApiError;
-use payego_primitives::models::{AppState, NewTransaction, Transaction, Wallet, ConvertRequest, ConvertResponse};
+use payego_primitives::models::{
+    AppState, ConvertRequest, ConvertResponse, NewTransaction, Transaction, Wallet,
+};
 use payego_primitives::schema::{transactions, wallets};
 use regex::Regex;
 use reqwest::Client;
@@ -112,7 +114,10 @@ impl ConversionService {
 
             diesel::update(wallets::table)
                 .filter(wallets::id.eq(from_wallet.id))
-                .set(wallets::balance.eq(sql::<BigInt>("balance - ").bind::<BigInt, _>(amount_cents)))
+                .set(
+                    wallets::balance
+                        .eq(sql::<BigInt>("balance - ").bind::<BigInt, _>(amount_cents)),
+                )
                 .execute(conn)
                 .map_err(|e: diesel::result::Error| {
                     error!("Source wallet debit failed: {}", e);
@@ -121,7 +126,9 @@ impl ConversionService {
 
             diesel::update(wallets::table)
                 .filter(wallets::id.eq(to_wallet.id))
-                .set(wallets::balance.eq(sql::<BigInt>("balance + ").bind::<BigInt, _>(final_converted_amount_cents)))
+                .set(wallets::balance.eq(
+                    sql::<BigInt>("balance + ").bind::<BigInt, _>(final_converted_amount_cents),
+                ))
                 .execute(conn)
                 .map_err(|e: diesel::result::Error| {
                     error!("Destination wallet credit failed: {}", e);
@@ -181,17 +188,14 @@ impl ConversionService {
         }
         let url = format!("{}/{}", base_url, from_currency);
         let client = Client::new();
-        let resp = client
-            .get(url)
-            .send()
-            .await
-            .map_err(|e: reqwest::Error| ApiError::Payment(format!("Exchange rate API error: {}", e)))?;
+        let resp = client.get(url).send().await.map_err(|e: reqwest::Error| {
+            ApiError::Payment(format!("Exchange rate API error: {}", e))
+        })?;
 
         let status = resp.status();
-        let body = resp
-            .json::<Value>()
-            .await
-            .map_err(|e: reqwest::Error| ApiError::Payment(format!("Invalid exchange rate response: {}", e)))?;
+        let body = resp.json::<Value>().await.map_err(|e: reqwest::Error| {
+            ApiError::Payment(format!("Invalid exchange rate response: {}", e))
+        })?;
 
         if !status.is_success() {
             return Err(ApiError::Payment(format!(

@@ -1,5 +1,5 @@
-use diesel::r2d2;
 use axum::response::{IntoResponse, Response};
+use diesel::r2d2;
 use http::StatusCode;
 use std::fmt;
 use stripe::WebhookError;
@@ -95,10 +95,10 @@ impl From<ApiError> for (StatusCode, String) {
                     StatusCode::UNAUTHORIZED,
                     "Invalid email or password".to_string(),
                 ),
-                diesel::result::Error::DatabaseError(diesel::result::DatabaseErrorKind::UniqueViolation, _) => (
-                    StatusCode::BAD_REQUEST,
-                    format!("Database error: {}", e),
-                ),
+                diesel::result::Error::DatabaseError(
+                    diesel::result::DatabaseErrorKind::UniqueViolation,
+                    _,
+                ) => (StatusCode::BAD_REQUEST, format!("Database error: {}", e)),
                 _ => (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Database error: {}", e),
@@ -138,7 +138,10 @@ impl From<ApiError> for (StatusCode, String) {
                     "Webhook error: Unauthorized".to_string(),
                 ),
             },
-            ApiError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Internal error: {}", msg)),
+            ApiError::Internal(msg) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Internal error: {}", msg),
+            ),
         }
     }
 }

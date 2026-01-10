@@ -1,9 +1,9 @@
-use payego_primitives::error::ApiError;
-use payego_primitives::models::AppState;
 use axum::{
     extract::{Path, State},
     Json,
 };
+use payego_primitives::error::ApiError;
+use payego_primitives::models::AppState;
 use serde::Serialize;
 use std::sync::Arc;
 use utoipa::ToSchema;

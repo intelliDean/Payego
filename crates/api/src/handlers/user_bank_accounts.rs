@@ -1,11 +1,11 @@
-use payego_primitives::config::security_config::Claims;
-use payego_primitives::schema::bank_accounts;
-use payego_primitives::{error::ApiError, models::AppState};
 use axum::{
     extract::{Extension, State},
     Json,
 };
 use diesel::prelude::*;
+use payego_primitives::config::security_config::Claims;
+use payego_primitives::schema::bank_accounts;
+use payego_primitives::{error::ApiError, models::AppState};
 use serde::Serialize;
 use std::sync::Arc;
 use tracing::{error, info};

@@ -230,13 +230,13 @@
 
 //===
 
-use payego_primitives::error::ApiError;
 use crate::handlers::paypal_capture::Transaction;
-use payego_primitives::schema::{transactions, wallets};
-use payego_primitives::models::AppState;
 use axum::extract::State;
 use diesel::prelude::*;
 use http::{HeaderMap, StatusCode};
+use payego_primitives::error::ApiError;
+use payego_primitives::models::AppState;
+use payego_primitives::schema::{transactions, wallets};
 use std::sync::Arc;
 use stripe::{Event, EventObject, EventType, Webhook};
 use tracing::{error, info};
@@ -264,13 +264,10 @@ pub async fn stripe_webhook(
         .get("stripe-signature")
         .ok_or(ApiError::Auth("Missing stripe-signature".to_string()))?
         .to_str()
-        .map_err(|_| {
-            ApiError::Auth("Invalid stripe-signature header".to_string())
-        })?;
+        .map_err(|_| ApiError::Auth("Invalid stripe-signature header".to_string()))?;
 
-    let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET").map_err(|_| {
-        ApiError::Internal("STRIPE_WEBHOOK_SECRET not set".to_string())
-    })?;
+    let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET")
+        .map_err(|_| ApiError::Internal("STRIPE_WEBHOOK_SECRET not set".to_string()))?;
 
     let sent_event: Event = Webhook::construct_event(&payload, signature, &webhook_secret)
         .map_err(|e| {
@@ -389,7 +386,12 @@ pub async fn stripe_webhook(
                         ))
                         .on_conflict((wallets::user_id, wallets::currency))
                         .do_update()
-                        .set(wallets::balance.eq(diesel::dsl::sql::<diesel::sql_types::BigInt>("balance + ").bind::<diesel::sql_types::BigInt, _>(updated_transaction.amount)))
+                        .set(
+                            wallets::balance.eq(diesel::dsl::sql::<diesel::sql_types::BigInt>(
+                                "balance + ",
+                            )
+                            .bind::<diesel::sql_types::BigInt, _>(updated_transaction.amount)),
+                        )
                         .execute(conn)
                         .map_err(|e: diesel::result::Error| {
                             error!("Wallet update failed: {}", e);

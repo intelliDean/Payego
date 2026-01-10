@@ -1,8 +1,8 @@
+use axum::{extract::State, Json};
+use diesel::prelude::*;
 use payego_primitives::models::Bank;
 use payego_primitives::schema::banks;
 use payego_primitives::{error::ApiError, models::AppState};
-use axum::{extract::State, Json};
-use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{error, info};

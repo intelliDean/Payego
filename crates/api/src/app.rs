@@ -3,7 +3,6 @@ use std::sync::Arc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use payego_primitives::config::security_config::auth_middleware;
 use crate::config::swagger_config::ApiDoc;
 use crate::handlers::internal_conversion::convert_currency;
 use crate::handlers::logout::logout;
@@ -18,6 +17,7 @@ use crate::handlers::{
     register::register, stripe_webhook::stripe_webhook, top_up::top_up,
     transfer_external::transfer_external, transfer_internal::transfer_internal, withdraw::withdraw,
 };
+use payego_primitives::config::security_config::auth_middleware;
 use payego_primitives::models::AppState;
 
 use tower::ServiceBuilder;

@@ -87,10 +87,13 @@ pub async fn get_paypal_access_token(
 
     let status = resp.status();
 
-    let json = resp.json::<serde_json::Value>().await.map_err(|e: reqwest::Error| {
-        error!("PayPal token response parsing failed: {}", e);
-        ApiError::Payment(format!("Failed to parse PayPal token response: {}", e))
-    })?;
+    let json = resp
+        .json::<serde_json::Value>()
+        .await
+        .map_err(|e: reqwest::Error| {
+            error!("PayPal token response parsing failed: {}", e);
+            ApiError::Payment(format!("Failed to parse PayPal token response: {}", e))
+        })?;
 
     if !status.is_success() {
         error!(

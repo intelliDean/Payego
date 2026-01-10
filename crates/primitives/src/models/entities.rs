@@ -98,7 +98,16 @@ pub struct NewTransaction {
 }
 
 // Bank Accounts
-#[derive(Queryable, Insertable, Selectable, Identifiable, Debug, Clone, serde::Serialize, utoipa::ToSchema)]
+#[derive(
+    Queryable,
+    Insertable,
+    Selectable,
+    Identifiable,
+    Debug,
+    Clone,
+    serde::Serialize,
+    utoipa::ToSchema,
+)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(table_name = bank_accounts)]
 pub struct BankAccount {

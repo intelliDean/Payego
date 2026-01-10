@@ -1,6 +1,6 @@
 use diesel::prelude::*;
 use payego_primitives::error::ApiError;
-use payego_primitives::models::{AppState, BankAccount, NewBankAccount, BankRequest};
+use payego_primitives::models::{AppState, BankAccount, BankRequest, NewBankAccount};
 use payego_primitives::schema::bank_accounts;
 use reqwest::Client;
 use secrecy::ExposeSecret;
@@ -21,7 +21,8 @@ impl BankService {
             ApiError::DatabaseConnection(e.to_string())
         })?;
 
-        let account_details = Self::resolve_account_details(state, &req.bank_code, &req.account_number).await?;
+        let account_details =
+            Self::resolve_account_details(state, &req.bank_code, &req.account_number).await?;
         let account_name = account_details["account_name"]
             .as_str()
             .ok_or_else(|| ApiError::Payment("Missing account name".to_string()))?
@@ -42,9 +43,14 @@ impl BankService {
             }))
             .send()
             .await
-            .map_err(|e: reqwest::Error| ApiError::Payment(format!("Recipient creation failed: {}", e)))?;
+            .map_err(|e: reqwest::Error| {
+                ApiError::Payment(format!("Recipient creation failed: {}", e))
+            })?;
 
-        let r_body = recipient_resp.json::<Value>().await.map_err(|e: reqwest::Error| ApiError::Payment(format!("Parsing failed: {}", e)))?;
+        let r_body = recipient_resp
+            .json::<Value>()
+            .await
+            .map_err(|e: reqwest::Error| ApiError::Payment(format!("Parsing failed: {}", e)))?;
         let recipient_code = r_body["data"]["recipient_code"]
             .as_str()
             .ok_or_else(|| ApiError::Payment("Missing recipient code".to_string()))?
@@ -86,13 +92,20 @@ impl BankService {
             .header("Authorization", format!("Bearer {}", paystack_key))
             .send()
             .await
-            .map_err(|e: reqwest::Error| ApiError::Payment(format!("Paystack resolve failed: {}", e)))?;
+            .map_err(|e: reqwest::Error| {
+                ApiError::Payment(format!("Paystack resolve failed: {}", e))
+            })?;
 
         let status = resp.status();
-        let body = resp.json::<Value>().await.map_err(|e: reqwest::Error| ApiError::Payment(format!("Parsing failed: {}", e)))?;
+        let body = resp
+            .json::<Value>()
+            .await
+            .map_err(|e: reqwest::Error| ApiError::Payment(format!("Parsing failed: {}", e)))?;
 
         if !status.is_success() || body["status"].as_bool().unwrap_or(false) == false {
-            return Err(ApiError::Payment("Invalid bank account details".to_string()));
+            return Err(ApiError::Payment(
+                "Invalid bank account details".to_string(),
+            ));
         }
 
         Ok(body["data"].clone())
@@ -102,7 +115,10 @@ impl BankService {
         state: &AppState,
         user_id_val: Uuid,
     ) -> Result<Vec<BankAccount>, ApiError> {
-        let mut conn = state.db.get().map_err(|e: r2d2::Error| ApiError::DatabaseConnection(e.to_string()))?;
+        let mut conn = state
+            .db
+            .get()
+            .map_err(|e: r2d2::Error| ApiError::DatabaseConnection(e.to_string()))?;
 
         let accounts = bank_accounts::table
             .filter(bank_accounts::user_id.eq(user_id_val))

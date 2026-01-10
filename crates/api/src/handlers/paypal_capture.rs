@@ -287,11 +287,11 @@
 
 //=================
 
-use payego_primitives::error::ApiError;
-use payego_primitives::schema::{transactions, wallets};
-use payego_primitives::models::AppState;
 use axum::extract::{Json, State};
 use diesel::prelude::*;
+use payego_primitives::error::ApiError;
+use payego_primitives::models::AppState;
+use payego_primitives::schema::{transactions, wallets};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -487,8 +487,7 @@ pub async fn paypal_capture(
         return Err(ApiError::Payment(format!(
             "Currency mismatch: expected {}, got {}",
             transaction.currency, paypal_currency
-        ))
-        );
+        )));
     }
 
     let capture_status = capture_result["status"]
@@ -524,7 +523,11 @@ pub async fn paypal_capture(
                     ))
                     .on_conflict((wallets::user_id, wallets::currency))
                     .do_update()
-                    .set(wallets::balance.eq(diesel::dsl::sql::<diesel::sql_types::BigInt>("balance + ").bind::<diesel::sql_types::BigInt, _>(updated_transaction.amount)))
+                    .set(
+                        wallets::balance
+                            .eq(diesel::dsl::sql::<diesel::sql_types::BigInt>("balance + ")
+                                .bind::<diesel::sql_types::BigInt, _>(updated_transaction.amount)),
+                    )
                     .execute(conn)
                     .map_err(|e| {
                         error!("Wallet update failed: {}", e);

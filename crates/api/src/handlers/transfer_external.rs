@@ -1,11 +1,11 @@
-use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::{AppState, TransferRequest};
-use payego_core::services::transfer_service::TransferService;
 use axum::{
     extract::{Extension, Json, State},
     http::StatusCode,
 };
+use payego_core::services::transfer_service::TransferService;
+use payego_primitives::config::security_config::Claims;
+use payego_primitives::error::ApiError;
+use payego_primitives::models::{AppState, TransferRequest};
 use std::sync::Arc;
 use tracing::error;
 use uuid::Uuid;
@@ -42,8 +42,7 @@ pub async fn transfer_external(
     })?;
 
     // 3. Call TransferService
-    let status = TransferService::transfer_external(state, user_id, req)
-        .await?;
+    let status = TransferService::transfer_external(state, user_id, req).await?;
 
     Ok(status)
 }

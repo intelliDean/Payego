@@ -1,6 +1,8 @@
 use diesel::prelude::*;
 use payego_primitives::error::ApiError;
-use payego_primitives::models::{AppState, NewTransaction, Transaction, TopUpRequest, TopUpResponse};
+use payego_primitives::models::{
+    AppState, NewTransaction, TopUpRequest, TopUpResponse, Transaction,
+};
 use reqwest::Client;
 use secrecy::ExposeSecret;
 use std::str::FromStr;
@@ -119,7 +121,10 @@ impl PaymentService {
     ) -> Result<(Option<String>, Option<String>), ApiError> {
         let mut stripe_client = StripeClient::new(state.stripe_secret_key.expose_secret());
         if !state.stripe_api_url.is_empty() && state.stripe_api_url != "https://api.stripe.com" {
-            stripe_client = StripeClient::from_url(state.stripe_api_url.as_str(), state.stripe_secret_key.expose_secret());
+            stripe_client = StripeClient::from_url(
+                state.stripe_api_url.as_str(),
+                state.stripe_secret_key.expose_secret(),
+            );
         }
         let currency_val = Currency::from_str(&req.currency.to_lowercase())
             .map_err(|_| ApiError::Payment(format!("Invalid currency: {}", req.currency)))?;

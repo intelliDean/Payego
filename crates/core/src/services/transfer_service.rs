@@ -1,16 +1,18 @@
-use diesel::prelude::*;
 use diesel::dsl::sql;
+use diesel::prelude::*;
 use diesel::sql_types::BigInt;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::{AppState, NewTransaction, Wallet, TransferRequest, WalletTransferRequest};
-use payego_primitives::schema::{transactions, wallets};
 use http::StatusCode;
+use payego_primitives::error::ApiError;
+use payego_primitives::models::{
+    AppState, NewTransaction, TransferRequest, Wallet, WalletTransferRequest,
+};
+use payego_primitives::schema::{transactions, wallets};
 use reqwest::Client;
+use secrecy::ExposeSecret;
 use serde_json::{json, Value};
 use std::sync::Arc;
 use tracing::{error, info};
 use uuid::Uuid;
-use secrecy::ExposeSecret;
 
 pub struct TransferService;
 
@@ -76,7 +78,10 @@ impl TransferService {
 
             diesel::update(wallets::table)
                 .filter(wallets::id.eq(sender_wallet.id))
-                .set(wallets::balance.eq(sql::<BigInt>("balance - ").bind::<BigInt, _>(amount_cents)))
+                .set(
+                    wallets::balance
+                        .eq(sql::<BigInt>("balance - ").bind::<BigInt, _>(amount_cents)),
+                )
                 .execute(conn)
                 .map_err(|e: diesel::result::Error| {
                     error!("Sender debit failed: {}", e);
@@ -85,7 +90,10 @@ impl TransferService {
 
             diesel::update(wallets::table)
                 .filter(wallets::id.eq(recipient_wallet.id))
-                .set(wallets::balance.eq(sql::<BigInt>("balance + ").bind::<BigInt, _>(amount_cents)))
+                .set(
+                    wallets::balance
+                        .eq(sql::<BigInt>("balance + ").bind::<BigInt, _>(amount_cents)),
+                )
                 .execute(conn)
                 .map_err(|e: diesel::result::Error| {
                     error!("Recipient credit failed: {}", e);
@@ -100,7 +108,10 @@ impl TransferService {
                     transaction_type: "internal_transfer_send".to_string(),
                     status: "completed".to_string(),
                     provider: None,
-                    description: Some(req.description.unwrap_or_else(|| "Internal transfer".to_string())),
+                    description: Some(
+                        req.description
+                            .unwrap_or_else(|| "Internal transfer".to_string()),
+                    ),
                     reference: req.reference,
                     currency: req.currency.clone(),
                     metadata: Some(json!({
@@ -172,7 +183,10 @@ impl TransferService {
 
         let paystack_key = state.paystack_secret_key.expose_secret();
         let client = Client::new();
-        let account_name = req.account_name.clone().unwrap_or_else(|| "External Recipient".to_string());
+        let account_name = req
+            .account_name
+            .clone()
+            .unwrap_or_else(|| "External Recipient".to_string());
 
         let resp = client
             .post(format!("{}/transferrecipient", state.paystack_api_url))
@@ -189,13 +203,21 @@ impl TransferService {
             .map_err(|e: reqwest::Error| ApiError::Payment(format!("Paystack error: {}", e)))?;
 
         let status = resp.status();
-        let body = resp.json::<Value>().await.map_err(|e: reqwest::Error| ApiError::Payment(format!("Parsing error: {}", e)))?;
+        let body = resp
+            .json::<Value>()
+            .await
+            .map_err(|e: reqwest::Error| ApiError::Payment(format!("Parsing error: {}", e)))?;
 
         if !status.is_success() || body["status"].as_bool().unwrap_or(false) == false {
-            return Err(ApiError::Payment("Paystack recipient creation failed".to_string()));
+            return Err(ApiError::Payment(
+                "Paystack recipient creation failed".to_string(),
+            ));
         }
 
-        let recipient_code = body["data"]["recipient_code"].as_str().ok_or_else(|| ApiError::Payment("Missing code".to_string()))?.to_string();
+        let recipient_code = body["data"]["recipient_code"]
+            .as_str()
+            .ok_or_else(|| ApiError::Payment("Missing code".to_string()))?
+            .to_string();
 
         let resp = client
             .post(format!("{}/transfer", state.paystack_api_url))
@@ -211,18 +233,27 @@ impl TransferService {
             .map_err(|e: reqwest::Error| ApiError::Payment(format!("Transfer error: {}", e)))?;
 
         let status = resp.status();
-        let body = resp.json::<Value>().await.map_err(|e: reqwest::Error| ApiError::Payment(format!("Parsing error: {}", e)))?;
+        let body = resp
+            .json::<Value>()
+            .await
+            .map_err(|e: reqwest::Error| ApiError::Payment(format!("Parsing error: {}", e)))?;
 
         if !status.is_success() || body["status"].as_bool().unwrap_or(false) == false {
             return Err(ApiError::Payment("Paystack transfer failed".to_string()));
         }
 
-        let transfer_code = body["data"]["transfer_code"].as_str().unwrap_or("").to_string();
+        let transfer_code = body["data"]["transfer_code"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
 
         conn.transaction::<StatusCode, ApiError, _>(|conn| {
             diesel::update(wallets::table)
                 .filter(wallets::id.eq(sender_wallet.id))
-                .set(wallets::balance.eq(sql::<BigInt>("balance - ").bind::<BigInt, _>(amount_to_deduct)))
+                .set(
+                    wallets::balance
+                        .eq(sql::<BigInt>("balance - ").bind::<BigInt, _>(amount_to_deduct)),
+                )
                 .execute(conn)
                 .map_err(|e: diesel::result::Error| ApiError::from(e))?;
 
@@ -249,10 +280,23 @@ impl TransferService {
         })
     }
 
-    async fn get_exchange_rate(base_url: &str, from_currency: &str, to_currency: &str) -> Result<f64, ApiError> {
+    async fn get_exchange_rate(
+        base_url: &str,
+        from_currency: &str,
+        to_currency: &str,
+    ) -> Result<f64, ApiError> {
         let client = Client::new();
-        let resp = client.get(format!("{}/{}", base_url, from_currency)).send().await.map_err(|e: reqwest::Error| ApiError::Payment(e.to_string()))?;
-        let body = resp.json::<Value>().await.map_err(|e: reqwest::Error| ApiError::Payment(e.to_string()))?;
-        body["rates"][to_currency].as_f64().ok_or_else(|| ApiError::Payment("Invalid rate".to_string()))
+        let resp = client
+            .get(format!("{}/{}", base_url, from_currency))
+            .send()
+            .await
+            .map_err(|e: reqwest::Error| ApiError::Payment(e.to_string()))?;
+        let body = resp
+            .json::<Value>()
+            .await
+            .map_err(|e: reqwest::Error| ApiError::Payment(e.to_string()))?;
+        body["rates"][to_currency]
+            .as_f64()
+            .ok_or_else(|| ApiError::Payment("Invalid rate".to_string()))
     }
 }

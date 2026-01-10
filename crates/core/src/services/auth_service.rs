@@ -1,9 +1,9 @@
+use chrono::{Duration, Utc};
 use diesel::prelude::*;
+use hex;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::{NewRefreshToken, RefreshToken};
 use payego_primitives::schema::refresh_tokens::dsl::*;
-use chrono::{Duration, Utc};
-use hex;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use sha2::{Digest, Sha256};

@@ -1,11 +1,11 @@
-use payego_core::services::bank_service::BankService;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::AppState;
 use axum::{
     extract::{Query, State},
     Json,
 };
 use lazy_static::lazy_static;
+use payego_core::services::bank_service::BankService;
+use payego_primitives::error::ApiError;
+use payego_primitives::models::AppState;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -53,12 +53,13 @@ pub async fn resolve_account(
 
     // Validate input
     if !ACCOUNT_NUMBER_RE.is_match(&req.account_number) {
-        return Err(ApiError::Auth("Account number must be 10 digits".to_string()));
+        return Err(ApiError::Auth(
+            "Account number must be 10 digits".to_string(),
+        ));
     }
 
     let account_details =
-        BankService::resolve_account_details(&state, &req.bank_code, &req.account_number)
-            .await?;
+        BankService::resolve_account_details(&state, &req.bank_code, &req.account_number).await?;
 
     let account_name = account_details["account_name"]
         .as_str()

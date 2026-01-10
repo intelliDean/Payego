@@ -1,14 +1,14 @@
 use payego_primitives::error::ApiError;
-use payego_primitives::models::{AppState, RegisterRequest, RegisterResponse, NewUser, User};
+use payego_primitives::models::{AppState, NewUser, RegisterRequest, RegisterResponse, User};
 // Token generation now handled by JWTSecret::encode_token()
-use payego_primitives::config::security_config::create_token;
-use payego_core::services::auth_service::AuthService;
 use axum::{
     extract::{Json, State},
     http::StatusCode,
 };
 use bcrypt::{hash, DEFAULT_COST};
 use diesel::prelude::*;
+use payego_core::services::auth_service::AuthService;
+use payego_primitives::config::security_config::create_token;
 use std::sync::Arc;
 use tracing::error;
 use validator::Validate;
@@ -28,19 +28,22 @@ use validator::Validate;
 pub async fn register(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<RegisterRequest>,
-) -> Result<(StatusCode, Json<payego_primitives::models::RegisterResponse>), ApiError> {
+) -> Result<
+    (
+        StatusCode,
+        Json<payego_primitives::models::RegisterResponse>,
+    ),
+    ApiError,
+> {
     payload.validate().map_err(|e| {
         error!("Validation error: {}", e);
         ApiError::Validation(e)
     })?;
 
-    let mut conn = state
-        .db
-        .get()
-        .map_err(|e| {
-            error!("Database connection error: {}", e);
-            ApiError::DatabaseConnection(e.to_string())
-        })?;
+    let mut conn = state.db.get().map_err(|e| {
+        error!("Database connection error: {}", e);
+        ApiError::DatabaseConnection(e.to_string())
+    })?;
 
     let password_hash = hash(&payload.password, DEFAULT_COST).map_err(|e| {
         error!("Bcrypt hashing error: {}", e);

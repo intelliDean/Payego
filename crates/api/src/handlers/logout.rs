@@ -1,6 +1,3 @@
-use payego_primitives::config::security_config::{verify_token, Claims};
-use payego_primitives::error::ApiError;
-use payego_primitives::models::AppState;
 use axum::{
     extract::{Extension, State},
     http::StatusCode,
@@ -8,6 +5,9 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
+use payego_primitives::config::security_config::{verify_token, Claims};
+use payego_primitives::error::ApiError;
+use payego_primitives::models::AppState;
 use serde::Serialize;
 use std::sync::Arc;
 use tracing::{error, info, warn};

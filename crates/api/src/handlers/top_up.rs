@@ -1,8 +1,8 @@
+use axum::extract::{Extension, Json, State};
+use payego_core::services::payment_service::PaymentService;
 use payego_primitives::config::security_config::Claims;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::{AppState, TopUpRequest, TopUpResponse};
-use payego_core::services::payment_service::PaymentService;
-use axum::extract::{Extension, Json, State};
 use std::sync::Arc;
 use tracing::error;
 use uuid::Uuid;
@@ -39,8 +39,7 @@ pub async fn top_up(
     })?;
 
     // 3. Call PaymentService
-    let response = PaymentService::initiate_top_up(&state, user_id, req)
-        .await?;
+    let response = PaymentService::initiate_top_up(&state, user_id, req).await?;
 
     Ok(Json(response))
 }

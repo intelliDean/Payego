@@ -1,8 +1,8 @@
 use diesel::prelude::*;
 use diesel::{Connection, PgConnection};
+use payego_core::services::withdrawal_service::WithdrawalService;
 use payego_primitives::models::{AppState, BankAccount, Wallet, WithdrawRequest, WithdrawResponse};
 use payego_primitives::schema::{bank_accounts, transactions, users, wallets};
-use payego_core::services::withdrawal_service::WithdrawalService;
 use serde_json::json;
 use serial_test::serial;
 use std::sync::Arc;

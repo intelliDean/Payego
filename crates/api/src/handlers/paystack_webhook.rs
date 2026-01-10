@@ -1,9 +1,9 @@
-use payego_primitives::error::ApiError;
-use payego_primitives::models::AppState;
 use axum::{extract::State, http::StatusCode, Json};
 use diesel::prelude::*;
 use hmac::KeyInit;
 use hmac::{Hmac, Mac};
+use payego_primitives::error::ApiError;
+use payego_primitives::models::AppState;
 use serde_json::Value;
 use sha2::Sha256;
 use std::sync::Arc;
@@ -140,8 +140,12 @@ pub async fn paystack_webhook(
                     .filter(payego_primitives::schema::wallets::user_id.eq(user_id))
                     .filter(payego_primitives::schema::wallets::currency.eq(currency))
                     .set(
-                        payego_primitives::schema::wallets::balance
-                            .eq(diesel::dsl::sql::<diesel::sql_types::BigInt>("balance + ").bind::<diesel::sql_types::BigInt, _>(amount)),
+                        payego_primitives::schema::wallets::balance.eq(diesel::dsl::sql::<
+                            diesel::sql_types::BigInt,
+                        >(
+                            "balance + "
+                        )
+                        .bind::<diesel::sql_types::BigInt, _>(amount)),
                     )
                     .execute(conn)
                     .map_err(|e: diesel::result::Error| {

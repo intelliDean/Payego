@@ -1,13 +1,15 @@
-use diesel::prelude::*;
 use diesel::dsl::sql;
+use diesel::prelude::*;
 use diesel::sql_types::BigInt;
-use payego_primitives::schema::{wallets, transactions, bank_accounts};
-use payego_primitives::models::{AppState, Wallet, BankAccount, NewTransaction, WithdrawRequest, WithdrawResponse};
 use payego_primitives::error::ApiError;
-use uuid::Uuid;
-use tracing::{info, error, debug};
-use serde_json::{json, Value};
+use payego_primitives::models::{
+    AppState, BankAccount, NewTransaction, Wallet, WithdrawRequest, WithdrawResponse,
+};
+use payego_primitives::schema::{bank_accounts, transactions, wallets};
 use reqwest::Client;
+use serde_json::{json, Value};
+use tracing::{debug, error, info};
+use uuid::Uuid;
 
 pub struct WithdrawalService;
 
@@ -81,7 +83,10 @@ impl WithdrawalService {
             diesel::update(wallets::table)
                 .filter(wallets::user_id.eq(user_id))
                 .filter(wallets::currency.eq(&req.currency))
-                .set(wallets::balance.eq(sql::<BigInt>("balance - ").bind::<BigInt, _>(amount_cents)))
+                .set(
+                    wallets::balance
+                        .eq(sql::<BigInt>("balance - ").bind::<BigInt, _>(amount_cents)),
+                )
                 .execute(conn)
                 .map_err(|e: diesel::result::Error| ApiError::from(e))?;
 
@@ -126,10 +131,11 @@ impl WithdrawalService {
         reference: Uuid,
         currency: &str,
     ) -> Result<(), ApiError> {
-        let paystack_key = std::env::var("PAYSTACK_SECRET_KEY").map_err(|e: std::env::VarError| {
-            error!("PAYSTACK_SECRET_KEY not set: {}", e);
-            ApiError::Payment("Paystack key not set".to_string())
-        })?;
+        let paystack_key =
+            std::env::var("PAYSTACK_SECRET_KEY").map_err(|e: std::env::VarError| {
+                error!("PAYSTACK_SECRET_KEY not set: {}", e);
+                ApiError::Payment("Paystack key not set".to_string())
+            })?;
 
         let client = Client::new();
         let base_url = &state.paystack_api_url;
@@ -144,7 +150,9 @@ impl WithdrawalService {
         let balance_body = balance_resp
             .json::<Value>()
             .await
-            .map_err(|e: reqwest::Error| ApiError::Payment(format!("Paystack response error: {}", e)))?;
+            .map_err(|e: reqwest::Error| {
+                ApiError::Payment(format!("Paystack response error: {}", e))
+            })?;
 
         let ngn_balance = balance_body["data"]
             .as_array()
@@ -188,10 +196,9 @@ impl WithdrawalService {
             .map_err(|e: reqwest::Error| ApiError::Payment(format!("Paystack API error: {}", e)))?;
 
         let status = resp.status();
-        let body = resp
-            .json::<Value>()
-            .await
-            .map_err(|e: reqwest::Error| ApiError::Payment(format!("Paystack response error: {}", e)))?;
+        let body = resp.json::<Value>().await.map_err(|e: reqwest::Error| {
+            ApiError::Payment(format!("Paystack response error: {}", e))
+        })?;
 
         if !status.is_success() || body["status"].as_bool().unwrap_or(false) == false {
             let message = body["message"]

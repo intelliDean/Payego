@@ -1,9 +1,9 @@
+use axum::{extract::State, Json};
+use diesel::prelude::*;
+use payego_core::services::auth_service::AuthService;
 use payego_primitives::config::security_config::create_token;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::{AppState, LoginResponse};
-use payego_core::services::auth_service::AuthService;
-use axum::{extract::State, Json};
-use diesel::prelude::*;
 use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::ToSchema;

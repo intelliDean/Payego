@@ -1,8 +1,8 @@
+use axum::extract::{Extension, Json, Path, State};
+use payego_core::services::withdrawal_service::WithdrawalService;
 use payego_primitives::config::security_config::Claims;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::{AppState, WithdrawRequest, WithdrawResponse};
-use payego_core::services::withdrawal_service::WithdrawalService;
-use axum::extract::{Extension, Json, Path, State};
 use std::sync::Arc;
 use tracing::error;
 use uuid::Uuid;
@@ -43,8 +43,7 @@ pub async fn withdraw(
     })?;
 
     // 3. Call WithdrawalService
-    let response = WithdrawalService::withdraw(&*state, user_id, bank_account_id, req)
-        .await?;
+    let response = WithdrawalService::withdraw(&*state, user_id, bank_account_id, req).await?;
 
     Ok(Json(response))
 }
