@@ -1,0 +1,31 @@
+[package]
+name = "payego"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+payego-primitives.workspace = true
+payego-core.workspace = true
+payego-api.workspace = true
+tokio.workspace = true
+axum.workspace = true
+dotenvy.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tower-http.workspace = true
+eyre.workspace = true
+diesel.workspace = true
+http.workspace = true
+secrecy.workspace = true
+chrono.workspace = true
+serde_json.workspace = true
+wiremock = { version = "0.6.2", default-features = false }
+
+[dev-dependencies]
+axum-test = "18.5.0"
+diesel_migrations = { version = "2.3.1", features = ["postgres"] }
+serial_test = "3.3.1"
+uuid.workspace = true
+fake = { version = "2.9", features = ["derive"] }
+validator.workspace = true
+bcrypt.workspace = true

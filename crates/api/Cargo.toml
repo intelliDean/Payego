@@ -1,0 +1,33 @@
+[package]
+name = "payego-api"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+payego-primitives.workspace = true
+payego-core.workspace = true
+axum.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+utoipa.workspace = true
+utoipa-swagger-ui.workspace = true
+validator.workspace = true
+tower-http.workspace = true
+tower.workspace = true
+tower_governor.workspace = true
+uuid.workspace = true
+reqwest.workspace = true
+bcrypt.workspace = true
+chrono.workspace = true
+jsonwebtoken.workspace = true
+http.workspace = true
+r2d2 = "0.8.10"
+secrecy.workspace = true
+diesel.workspace = true
+stripe.workspace = true
+hex.workspace = true
+sha2.workspace = true
+regex.workspace = true
+lazy_static.workspace = true
+hmac.workspace = true

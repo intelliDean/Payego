@@ -40,4 +40,6 @@ success_report.md
 
 # Build logs
 check_output*.txt
+check_detailed.txt
+api_check_detailed.txt
 
