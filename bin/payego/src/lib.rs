@@ -9,20 +9,15 @@ pub mod tasks;
 pub use payego_primitives::error::ApiError;
 pub use payego_primitives::models::AppState;
 
-use tokio::signal;
 use tracing::info;
 
 use crate::logging::setup_logging;
 use crate::tasks::{cleanup_expired_tokens, db_connection, shutdown_signal};
 use axum::extract::State;
-use diesel::{
-    prelude::*,
-    r2d2::{ConnectionManager, Pool},
-};
+use diesel::r2d2;
 use dotenvy::dotenv;
 use http::HeaderValue;
-use secrecy::{ExposeSecret, SecretString};
-use std::{env, net::SocketAddr, sync::Arc};
+use std::{env, net::SocketAddr};
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::{error, warn};
@@ -83,7 +78,7 @@ pub async fn run() -> Result<(), eyre::Error> {
         addr
     );
 
-    axum::serve(listener, app)
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 

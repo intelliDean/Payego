@@ -1,6 +1,8 @@
 use axum::{middleware, response::IntoResponse, Router};
 use std::sync::Arc;
+use axum::routing::post;
 use utoipa::OpenApi;
+
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::config::swagger_config::ApiDoc;
@@ -40,7 +42,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     // Public routes (no authentication)
     let public_router = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-        .route("/api/register", axum::routing::post(register))
+        .route("/api/register", post(register))
         .route("/api/login", axum::routing::post(login))
         .route(
             "/api/auth/refresh",
@@ -112,7 +114,7 @@ async fn https_redirect_middleware(
     next: middleware::Next,
 ) -> Result<axum::response::Response, (axum::http::StatusCode, String)> {
     // Check if we are in production
-    let env = std::env::var("ENV").unwrap_or_else(|_| "development".to_string());
+    let env = std::env::var("APP_ENV").unwrap_or_else(|_| "development".to_string());
 
     if env == "production" {
         let headers = req.headers();

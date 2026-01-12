@@ -2,7 +2,10 @@ use payego_primitives::error::ApiError;
 use payego_primitives::models::{AppState, LoginRequest, LoginResponse, User};
 // Token generation now handled by JWTSecret::encode_token()
 use axum::extract::{Json, State};
-use bcrypt::verify;
+use argon2::{
+    password_hash::{PasswordHash, PasswordVerifier},
+    Argon2,
+};
 use diesel::prelude::*;
 use payego_core::services::auth_service::AuthService;
 use payego_primitives::config::security_config::create_token;
@@ -11,7 +14,7 @@ use tracing::error;
 
 #[utoipa::path(
     post,
-    path = "/api/auth/login",
+    path = "/api/login",
     request_body = LoginRequest,
     responses(
         (status = 200, description = "Login successful", body = LoginResponse),
@@ -42,10 +45,15 @@ pub async fn login(
             ApiError::Auth("Invalid credentials".to_string())
         })?;
 
-    if !verify(&payload.password, &user.password_hash).map_err(|e| {
-        error!("Bcrypt verification error: {}", e);
+    let parsed_hash = PasswordHash::new(&user.password_hash).map_err(|e| {
+        error!("Argon2 hash parsing error: {}", e);
         ApiError::Internal("Encryption error".to_string())
-    })? {
+    })?;
+
+    if Argon2::default()
+        .verify_password(payload.password.as_bytes(), &parsed_hash)
+        .is_err()
+    {
         return Err(ApiError::Auth("Invalid credentials".to_string()));
     }
 

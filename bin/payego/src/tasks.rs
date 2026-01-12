@@ -9,6 +9,7 @@ use payego_primitives::models::AppState;
 use secrecy::{ExposeSecret, SecretString};
 use std::sync::Arc;
 use tokio::signal;
+use tokio::signal::unix::{signal, SignalKind};
 use tokio::time::{interval, Duration};
 use tracing::{error, info};
 
@@ -68,7 +69,7 @@ pub async fn shutdown_signal() {
 
     #[cfg(unix)]
     let terminate = async {
-        signal::unix::signal(signal::unix::SignalKind::terminate())
+        signal(SignalKind::terminate())
             .expect("Failed to install SIGTERM handler")
             .recv()
             .await;
@@ -78,7 +79,15 @@ pub async fn shutdown_signal() {
     let terminate = std::future::pending::<()>();
 
     tokio::select! {
-        _ = ctrl_c => info!("Received Ctrl+C, shutting down"),
-        _ = terminate => info!("Received SIGTERM, shutting down"),
+        _ = ctrl_c => {
+            info!("Received Ctrl+C");
+        }
+        _ = terminate => {
+            info!("Received SIGTERM");
+        }
     }
+
+    info!("Shutdown signal received, starting graceful shutdown");
 }
+
+

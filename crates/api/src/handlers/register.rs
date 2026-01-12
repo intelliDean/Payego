@@ -5,7 +5,10 @@ use axum::{
     extract::{Json, State},
     http::StatusCode,
 };
-use bcrypt::{hash, DEFAULT_COST};
+use argon2::{
+    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
+    Argon2,
+};
 use diesel::prelude::*;
 use payego_core::services::auth_service::AuthService;
 use payego_primitives::config::security_config::create_token;
@@ -15,7 +18,7 @@ use validator::Validate;
 
 #[utoipa::path(
     post,
-    path = "/api/auth/register",
+    path = "/api/register",
     request_body = RegisterRequest,
     responses(
         (status = 201, description = "User registered successfully", body = RegisterResponse),
@@ -28,13 +31,8 @@ use validator::Validate;
 pub async fn register(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<RegisterRequest>,
-) -> Result<
-    (
-        StatusCode,
-        Json<payego_primitives::models::RegisterResponse>,
-    ),
-    ApiError,
-> {
+) -> Result<(StatusCode, Json<RegisterResponse>), ApiError> {
+
     payload.validate().map_err(|e| {
         error!("Validation error: {}", e);
         ApiError::Validation(e)
@@ -45,11 +43,18 @@ pub async fn register(
         ApiError::DatabaseConnection(e.to_string())
     })?;
 
-    let password_hash = hash(&payload.password, DEFAULT_COST).map_err(|e| {
-        error!("Bcrypt hashing error: {}", e);
-        ApiError::Internal("Encryption error".to_string())
-    })?;
+    //hash the password
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+    let password_hash = argon2
+        .hash_password(payload.password.as_bytes(), &salt)
+        .map_err(|e| {
+            error!("Argon2 hashing error: {}", e);
+            ApiError::Internal("Encryption error".to_string())
+        })?
+        .to_string();
 
+    //create the user
     let new_user = NewUser {
         email: payload.email.clone(),
         password_hash,

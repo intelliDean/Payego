@@ -18,7 +18,7 @@ serde = { version = "1.0.225", features = ["derive"] }
 headers = "0.4.1"
 chrono = { version = "0.4.20", default-features = false, features = ["clock", "std"] }
 jsonwebtoken = "9.3.1"
-bcrypt = "0.17.1"
+argon2 = { version = "0.5", features = ["std"] }
 utoipa = { version = "5.4.0", features = ["axum_extras", "uuid", "chrono"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
 dotenvy = "0.15.7"

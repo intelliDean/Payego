@@ -7,7 +7,7 @@ use stripe::WebhookError;
 #[derive(Debug)]
 pub enum ApiError {
     Database(diesel::result::Error),
-    Bcrypt(bcrypt::BcryptError),
+    Argon2(argon2::password_hash::Error),
     Validation(validator::ValidationErrors),
     DatabaseConnection(String),
     Token(String),
@@ -21,7 +21,7 @@ impl fmt::Display for ApiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ApiError::Database(e) => write!(f, "Database error: {}", e),
-            ApiError::Bcrypt(e) => write!(f, "Bcrypt error: {}", e),
+            ApiError::Argon2(e) => write!(f, "Argon2 error: {}", e),
             ApiError::Validation(e) => write!(f, "Validation error: {}", e),
             ApiError::DatabaseConnection(e) => write!(f, "Database connection error: {}", e),
             ApiError::Token(e) => write!(f, "Token error: {}", e),
@@ -37,7 +37,7 @@ impl std::error::Error for ApiError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             ApiError::Database(e) => Some(e),
-            ApiError::Bcrypt(e) => Some(e),
+            ApiError::Argon2(e) => Some(e),
             ApiError::Validation(e) => Some(e),
             ApiError::Webhook(e) => Some(e),
             _ => None,
@@ -57,9 +57,9 @@ impl From<diesel::result::Error> for ApiError {
     }
 }
 
-impl From<bcrypt::BcryptError> for ApiError {
-    fn from(err: bcrypt::BcryptError) -> Self {
-        ApiError::Bcrypt(err)
+impl From<argon2::password_hash::Error> for ApiError {
+    fn from(err: argon2::password_hash::Error) -> Self {
+        ApiError::Argon2(err)
     }
 }
 
@@ -104,7 +104,7 @@ impl From<ApiError> for (StatusCode, String) {
                     format!("Database error: {}", e),
                 ),
             },
-            ApiError::Bcrypt(_) => (
+            ApiError::Argon2(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Password verification error".to_string(),
             ),
