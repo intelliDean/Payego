@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use http::StatusCode;
 use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::ApiError;
+use payego_primitives::error::{ApiError, AuthError};
 use payego_primitives::models::AppState;
 use payego_primitives::schema::transactions;
 use serde::Serialize;
@@ -57,7 +57,7 @@ pub async fn get_transactions(
     // Validate JWT token
     let usr_id = Uuid::parse_str(&claims.sub).map_err(|e| {
         error!("Invalid user ID: {}", e);
-        ApiError::Auth("Invalid user ID".to_string())
+        ApiError::Auth(AuthError::InvalidToken("Invalid user ID".to_string()))
     })?;
 
     let conn = &mut state.db.get().map_err(|e: r2d2::Error| {

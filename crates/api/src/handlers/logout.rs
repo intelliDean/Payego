@@ -6,7 +6,7 @@ use axum::{
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use payego_primitives::config::security_config::{verify_token, Claims};
-use payego_primitives::error::ApiError;
+use payego_primitives::error::{ApiError, AuthError};
 use payego_primitives::models::AppState;
 use serde::Serialize;
 use std::sync::Arc;
@@ -47,7 +47,7 @@ pub async fn logout(
         .and_then(|h| h.strip_prefix("Bearer ").map(|t| t.trim()))
         .ok_or_else(|| {
             error!("Missing or invalid Authorization header");
-            ApiError::Auth("Missing or invalid Authorization header".to_string())
+            ApiError::Auth(AuthError::InvalidToken("Missing or invalid Authorization header".to_string()))
         })?;
 
     let verified_claims = verify_token(&state, token).map_err(|e| {
@@ -56,7 +56,7 @@ pub async fn logout(
             token.chars().rev().take(8).collect::<String>(),
             e
         );
-        ApiError::Auth("Invalid token".to_string())
+        ApiError::Auth(AuthError::InvalidToken("Invalid token".to_string()))
     })?;
 
     if verified_claims.sub != claims.sub {
@@ -64,7 +64,7 @@ pub async fn logout(
             "Token user mismatch: expected {}, got {}",
             claims.sub, verified_claims.sub
         );
-        return Err(ApiError::Auth("Token user mismatch".to_string()));
+        return Err(ApiError::Auth(AuthError::InvalidToken("Token user mismatch".to_string())));
     }
 
     let mut conn = state.db.get().map_err(|e: r2d2::Error| {
@@ -75,7 +75,7 @@ pub async fn logout(
     let expires_at =
         chrono::DateTime::<Utc>::from_timestamp(claims.exp as i64, 0).ok_or_else(|| {
             error!("Invalid expiration timestamp: {}", claims.exp);
-            ApiError::Auth("Invalid expiration timestamp".to_string())
+            ApiError::Auth(AuthError::InvalidToken("Invalid expiration timestamp".to_string()))
         })?;
 
     let result = diesel::insert_into(payego_primitives::schema::blacklisted_tokens::table)

@@ -37,6 +37,9 @@ pub fn create_test_app_state() -> Arc<AppState> {
     let state_arc = Arc::new(AppState {
         db: create_test_db_pool(),
         jwt_secret: SecretString::from("test_secret_key_minimum_32_characters_long_for_testing"),
+        jwt_expiration_hours: 2,
+        jwt_issuer: "paye".to_string(),
+        jwt_audience: "paye_api".to_string(),
         stripe_secret_key: SecretString::from("sk_test_fake_key_for_testing_only"),
         app_url: "http://localhost:8080".to_string(),
         exchange_api_url: "http://localhost:8080/mock/exchange".to_string(),

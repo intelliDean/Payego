@@ -78,14 +78,26 @@ CREATE TABLE banks
     is_active     BOOLEAN
 );
 
+
+
 CREATE TABLE blacklisted_tokens
 (
-    token      VARCHAR     NOT NULL,
-    expires_at TIMESTAMPTZ NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (token)
+    jti        TEXT PRIMARY KEY,
+    expires_at TIMESTAMPTZ NOT NULL
 );
 
+CREATE TABLE refresh_tokens
+(
+    id         UUID PRIMARY KEY                  DEFAULT gen_random_uuid(),
+    user_id    UUID                     NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    token_hash TEXT                     NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    revoked    BOOLEAN                  NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+SELECT diesel_manage_updated_at('refresh_tokens');
 
 
 -- Create indexes
@@ -94,6 +106,7 @@ CREATE INDEX idx_transactions_recipient_id ON transactions (recipient_id);
 CREATE INDEX idx_transactions_reference ON transactions (reference);
 CREATE INDEX idx_bank_accounts_user_id ON bank_accounts (user_id);
 CREATE INDEX idx_blacklisted_tokens_expires_at ON blacklisted_tokens (expires_at);
+CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens (user_id);
 
 -- Create function to update updated_at column
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -101,7 +114,7 @@ CREATE OR REPLACE FUNCTION update_updated_at_column()
 $$
 BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
-RETURN NEW;
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -110,22 +123,22 @@ CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE
     ON users
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_wallets_updated_at
     BEFORE UPDATE
     ON wallets
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_transactions_updated_at
     BEFORE UPDATE
     ON transactions
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_bank_accounts_updated_at
     BEFORE UPDATE
     ON bank_accounts
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+EXECUTE FUNCTION update_updated_at_column();

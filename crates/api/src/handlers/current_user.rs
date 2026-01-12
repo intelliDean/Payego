@@ -4,7 +4,7 @@ use axum::{
 };
 use diesel::prelude::*;
 use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::ApiError;
+use payego_primitives::error::{ApiError, AuthError};
 use payego_primitives::models::AppState;
 use payego_primitives::schema::{users, wallets};
 use serde::Serialize;
@@ -43,7 +43,7 @@ pub async fn current_user_details(
     // Parse user ID from JWT claims
     let user_id = Uuid::parse_str(&claims.sub).map_err(|e: uuid::Error| {
         error!("Invalid user ID in JWT: {}", e);
-        ApiError::Auth("Invalid user ID".to_string())
+        ApiError::Auth(AuthError::InvalidToken("Invalid user ID".to_string()))
     })?;
 
     let conn = &mut state.db.get().map_err(|e: diesel::r2d2::PoolError| {

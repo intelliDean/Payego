@@ -83,6 +83,9 @@ async fn test_add_bank_account_success() {
     let state = Arc::new(AppState {
         db: pool.clone(),
         jwt_secret: SecretString::from("secret"),
+        jwt_expiration_hours: 2,
+        jwt_issuer: "paye".to_string(),
+        jwt_audience: "paye_api".to_string(),
         stripe_secret_key: SecretString::from("sk_test"),
         app_url: "http://localhost:8080".to_string(),
         exchange_api_url: "http://unused".to_string(),

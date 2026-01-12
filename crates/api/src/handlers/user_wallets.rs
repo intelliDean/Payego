@@ -5,7 +5,7 @@ use axum::{
 use diesel::prelude::*;
 use payego_primitives::config::security_config::Claims;
 use payego_primitives::schema::wallets;
-use payego_primitives::{error::ApiError, models::AppState};
+use payego_primitives::{error::{ApiError, AuthError}, models::AppState};
 use serde::Serialize;
 use std::sync::Arc;
 use tracing::{error, info};
@@ -41,7 +41,7 @@ pub async fn get_wallets(
 ) -> Result<Json<WalletResponse>, ApiError> {
     let user_id = Uuid::parse_str(&claims.sub).map_err(|e| {
         error!("Invalid user ID: {}", e);
-        ApiError::Auth("Invalid user ID".to_string())
+        ApiError::Auth(AuthError::InvalidToken("Invalid user ID".to_string()))
     })?;
 
     let conn = &mut state.db.get().map_err(|e: r2d2::Error| {

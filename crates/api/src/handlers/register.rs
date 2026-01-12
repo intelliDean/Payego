@@ -7,12 +7,13 @@ use axum::{
 };
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
-    Argon2,
+    Argon2, Params
 };
 use diesel::prelude::*;
 use payego_core::services::auth_service::AuthService;
 use payego_primitives::config::security_config::create_token;
 use std::sync::Arc;
+use secrecy::{ExposeSecret, SecretBox, SecretString};
 use tracing::error;
 use validator::Validate;
 
@@ -38,21 +39,14 @@ pub async fn register(
         ApiError::Validation(e)
     })?;
 
+    let password = SecretString::new(payload.password.into());
+
     let mut conn = state.db.get().map_err(|e| {
         error!("Database connection error: {}", e);
         ApiError::DatabaseConnection(e.to_string())
     })?;
 
-    //hash the password
-    let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
-    let password_hash = argon2
-        .hash_password(payload.password.as_bytes(), &salt)
-        .map_err(|e| {
-            error!("Argon2 hashing error: {}", e);
-            ApiError::Internal("Encryption error".to_string())
-        })?
-        .to_string();
+    let password_hash = argon2id_hash_password(password)?;
 
     //create the user
     let new_user = NewUser {
@@ -87,4 +81,31 @@ pub async fn register(
             user_email: user.email,
         }),
     ))
+}
+
+fn argon2id_hash_password(password: SecretBox<str>) -> Result<String, ApiError> {
+    //hash the password
+    let salt = SaltString::generate(&mut OsRng);
+    let params = Params::new(
+        65536, // 64 MiB memory
+        3,     // iterations
+        1,     // parallelism
+        None,
+    ).map_err(|e| {
+        error!("Argon2 params error: {}", e);
+        ApiError::Internal("Encryption configuration error".to_string())
+    })?;
+    let argon2 = Argon2::new(
+        argon2::Algorithm::Argon2id,
+        argon2::Version::V0x13,
+        params,
+    );
+    let password_hash = argon2
+        .hash_password(password.expose_secret().as_bytes(), &salt)
+        .map_err(|e| {
+            error!("Argon2 hashing error: {}", e);
+            ApiError::Internal("Encryption error".to_string())
+        })?
+        .to_string();
+    Ok(password_hash)
 }

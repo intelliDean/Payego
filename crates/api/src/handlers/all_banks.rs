@@ -43,7 +43,7 @@ pub async fn all_banks(
 
     if banks.is_empty() {
         error!("No banks found in database");
-        return Err(ApiError::Auth("No banks found in database".to_string()));
+        return Err(ApiError::Internal("No banks found in database".to_string()));
     }
 
     info!("Returning {} banks from database", banks.len());

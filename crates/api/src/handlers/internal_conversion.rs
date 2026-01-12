@@ -1,7 +1,7 @@
 use axum::extract::{Extension, Json, State};
 use payego_core::services::conversion_service::ConversionService;
 use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::ApiError;
+use payego_primitives::error::{ApiError, AuthError};
 use payego_primitives::models::{AppState, ConvertRequest, ConvertResponse};
 use std::sync::Arc;
 use tracing::error;
@@ -35,7 +35,7 @@ pub async fn convert_currency(
     // 2. Parse user ID from claims
     let user_id = Uuid::parse_str(&claims.sub).map_err(|e| {
         error!("Invalid user ID in claims: {}", e);
-        ApiError::Auth("Invalid user ID".to_string())
+        ApiError::Auth(AuthError::InvalidToken("Invalid user ID".to_string()))
     })?;
 
     // 3. Call ConversionService

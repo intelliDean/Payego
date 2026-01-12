@@ -1,4 +1,4 @@
-use payego_primitives::error::ApiError;
+use payego_primitives::error::{ApiError, AuthError};
 use payego_primitives::models::{AppState, LoginRequest, LoginResponse, User};
 // Token generation now handled by JWTSecret::encode_token()
 use axum::extract::{Json, State};
@@ -42,7 +42,7 @@ pub async fn login(
         })?
         .ok_or_else(|| {
             error!("User not found: {}", payload.email);
-            ApiError::Auth("Invalid credentials".to_string())
+            ApiError::Auth(AuthError::InvalidCredentials)
         })?;
 
     let parsed_hash = PasswordHash::new(&user.password_hash).map_err(|e| {
@@ -54,7 +54,7 @@ pub async fn login(
         .verify_password(payload.password.as_bytes(), &parsed_hash)
         .is_err()
     {
-        return Err(ApiError::Auth("Invalid credentials".to_string()));
+        return Err(ApiError::Auth(AuthError::InvalidCredentials));
     }
 
     let token = create_token(&state, &user.id.to_string()).map_err(|e| {

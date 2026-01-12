@@ -1,3 +1,4 @@
+use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;

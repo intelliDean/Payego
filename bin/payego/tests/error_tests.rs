@@ -2,7 +2,7 @@ mod common;
 
 use diesel::result::Error as DieselError;
 use http::StatusCode;
-use payego_primitives::error::ApiError;
+use payego_primitives::error::{ApiError, AuthError};
 use validator::ValidationErrors;
 
 #[test]
@@ -23,7 +23,7 @@ fn test_api_error_to_status_code_mapping() {
     assert_eq!(status, StatusCode::BAD_REQUEST);
 
     // Auth error -> 401 Unauthorized
-    let err = ApiError::Auth("Token expired".to_string());
+    let err = ApiError::Auth(AuthError::InvalidToken("Token expired".to_string()));
     let (status, _): (StatusCode, String) = err.into();
     assert_eq!(status, StatusCode::UNAUTHORIZED);
 
@@ -36,7 +36,7 @@ fn test_api_error_to_status_code_mapping() {
 
 #[test]
 fn test_api_error_display() {
-    let err = ApiError::Auth("Unauthorized access".to_string());
+    let err = ApiError::Auth(AuthError::InvalidToken("Unauthorized access".to_string()));
     let display = format!("{}", err);
     assert!(display.contains("Authentication error"));
     assert!(display.contains("Unauthorized access"));

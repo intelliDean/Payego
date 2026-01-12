@@ -1,11 +1,12 @@
-use std::env;
-use std::sync::Arc;
 use diesel::r2d2::{self, ConnectionManager, Pool};
 use diesel::PgConnection;
 use eyre::Report;
+use std::env;
+use std::sync::Arc;
 
 type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
+use crate::error::ApiError;
 use secrecy::SecretString;
 use tracing::error;
 
@@ -13,6 +14,9 @@ use tracing::error;
 pub struct AppState {
     pub db: DbPool,
     pub jwt_secret: SecretString,
+    pub jwt_expiration_hours: i64,
+    pub jwt_issuer: String,
+    pub jwt_audience: String,
     pub stripe_secret_key: SecretString,
     pub app_url: String,
     pub exchange_api_url: String,
@@ -33,6 +37,27 @@ impl AppState {
                     .jwt_secret
                     .into(),
             ),
+            jwt_expiration_hours: env::var("JWT_EXPIRATION_HOURS")
+                .unwrap_or_else(|_| "2".to_string())
+                .parse()
+                .map_err(|e| {
+                    error!("JWT expiration config error: {}", e);
+                    ApiError::Token(format!("Invalid JWT expiration configuration: {}", e))
+                })?,
+            jwt_issuer: env::var("ISSUER")
+                .unwrap_or_else(|_| "2".to_string())
+                .parse()
+                .map_err(|e| {
+                    error!("Issuer environment variable not set: {}", e);
+                    ApiError::Token(format!("Issuer environment variable not set: {}", e))
+                })?,
+            jwt_audience: env::var("AUDIENCE")
+                .unwrap_or_else(|_| "2".to_string())
+                .parse()
+                .map_err(|e| {
+                    error!("Audience environment variable not set: {}", e);
+                    ApiError::Token(format!("Audience environment variable not set: {}", e))
+                })?,
             stripe_secret_key: SecretString::new(
                 env::var("STRIPE_SECRET_KEY")
                     .map_err(|e| {
@@ -63,5 +88,4 @@ impl AppState {
         });
         Ok(state)
     }
-
 }

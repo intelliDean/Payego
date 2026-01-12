@@ -234,7 +234,7 @@ use crate::handlers::paypal_capture::Transaction;
 use axum::extract::State;
 use diesel::prelude::*;
 use http::{HeaderMap, StatusCode};
-use payego_primitives::error::ApiError;
+use payego_primitives::error::{ApiError, AuthError};
 use payego_primitives::models::AppState;
 use payego_primitives::schema::{transactions, wallets};
 use std::sync::Arc;
@@ -262,9 +262,9 @@ pub async fn stripe_webhook(
 
     let signature = headers
         .get("stripe-signature")
-        .ok_or(ApiError::Auth("Missing stripe-signature".to_string()))?
+        .ok_or(ApiError::Auth(AuthError::MissingHeader))?
         .to_str()
-        .map_err(|_| ApiError::Auth("Invalid stripe-signature header".to_string()))?;
+        .map_err(|_| ApiError::Auth(AuthError::InvalidFormat))?;
 
     let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET")
         .map_err(|_| ApiError::Internal("STRIPE_WEBHOOK_SECRET not set".to_string()))?;
@@ -291,15 +291,15 @@ pub async fn stripe_webhook(
                 let transaction_id_str = session
                     .metadata
                     .as_ref()
-                    .ok_or(ApiError::Auth("Missing metadata in session".to_string()))?
+                    .ok_or(ApiError::Auth(AuthError::InvalidToken("Missing metadata in session".to_string())))?
                     .get("transaction_id")
-                    .ok_or(ApiError::Auth(
+                    .ok_or(ApiError::Auth(AuthError::InvalidToken(
                         "Missing transaction_id in metadata".to_string(),
-                    ))?;
+                    )))?;
 
                 let transaction_id = Uuid::parse_str(transaction_id_str).map_err(|e| {
                     error!("Invalid transaction_id: {}", e);
-                    ApiError::Auth(format!("Invalid transaction_id: {}", e))
+                    ApiError::Auth(AuthError::InvalidToken(format!("Invalid transaction_id: {}", e)))
                 })?;
 
                 info!(
@@ -349,7 +349,7 @@ pub async fn stripe_webhook(
                             "Currency mismatch: transaction currency {}, session currency {}",
                             transaction.currency, curr
                         );
-                        return Err(ApiError::Auth("Currency mismatch".to_string()));
+                        return Err(ApiError::Auth(AuthError::InvalidToken("Currency mismatch".to_string())));
                     }
                 }
 

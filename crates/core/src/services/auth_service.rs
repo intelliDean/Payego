@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
 use diesel::prelude::*;
 use hex;
-use payego_primitives::error::ApiError;
+use payego_primitives::error::{ApiError, AuthError};
 use payego_primitives::models::{NewRefreshToken, RefreshToken};
 use payego_primitives::schema::refresh_tokens::dsl::*;
 use rand::distributions::Alphanumeric;
@@ -52,7 +52,7 @@ impl AuthService {
             .first::<RefreshToken>(conn)
             .optional()
             .map_err(ApiError::from)?
-            .ok_or_else(|| ApiError::Auth("Invalid or expired refresh token".into()))?;
+            .ok_or_else(|| ApiError::Auth(AuthError::InvalidToken("Invalid or expired refresh token".into())))?;
 
         diesel::update(refresh_tokens.find(token_record.id))
             .set(revoked.eq(true))

@@ -11,3 +11,4 @@ DROP TABLE IF EXISTS transactions;
 DROP TABLE IF EXISTS wallets;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS banks;
+DROP TABLE refresh_tokens;

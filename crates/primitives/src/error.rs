@@ -11,7 +11,7 @@ pub enum ApiError {
     Validation(validator::ValidationErrors),
     DatabaseConnection(String),
     Token(String),
-    Auth(String),
+    Auth(AuthError),
     Payment(String),
     Webhook(WebhookError),
     Internal(String),
@@ -120,7 +120,31 @@ impl From<ApiError> for (StatusCode, String) {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Token creation error: {}", e),
             ),
-            ApiError::Auth(msg) => (StatusCode::UNAUTHORIZED, format!("Auth error: {}", msg)),
+            ApiError::Auth(e) => match e {
+                AuthError::MissingHeader => (
+                    StatusCode::UNAUTHORIZED,
+                    "Authorization header required".to_string(),
+                ),
+                AuthError::InvalidFormat => (
+                    StatusCode::BAD_REQUEST,
+                    "Invalid Authorization format".to_string(),
+                ),
+                AuthError::InvalidToken(msg) => {
+                    (StatusCode::UNAUTHORIZED, format!("Invalid token: {}", msg))
+                }
+                AuthError::InvalidCredentials => (
+                    StatusCode::UNAUTHORIZED,
+                    "Invalid credentials".to_string(),
+                ),
+                AuthError::BlacklistedToken => (
+                    StatusCode::UNAUTHORIZED,
+                    "Token has been invalidated".to_string(),
+                ),
+                AuthError::InternalError(msg) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Internal server error: {}", msg),
+                ),
+            },
             ApiError::Payment(msg) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Payment provider error: {}", msg),
@@ -152,3 +176,33 @@ impl IntoResponse for ApiError {
         (status, body).into_response()
     }
 }
+
+#[derive(Debug)]
+pub enum AuthError {
+    MissingHeader,
+    InvalidFormat,
+    InvalidToken(String),
+    InvalidCredentials,
+    BlacklistedToken,
+    InternalError(String),
+}
+
+impl fmt::Display for AuthError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AuthError::MissingHeader => write!(f, "Authorization header required"),
+            AuthError::InvalidFormat => write!(f, "Invalid Authorization format"),
+            AuthError::InvalidToken(msg) => write!(f, "Invalid token: {}", msg),
+            AuthError::InvalidCredentials => write!(f, "Invalid credentials"),
+            AuthError::BlacklistedToken => write!(f, "Token has been invalidated"),
+            AuthError::InternalError(msg) => write!(f, "Internal error: {}", msg),
+        }
+    }
+}
+
+impl From<AuthError> for ApiError {
+    fn from(err: AuthError) -> Self {
+        ApiError::Auth(err)
+    }
+}
+
