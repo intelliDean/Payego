@@ -108,6 +108,11 @@ CREATE INDEX idx_bank_accounts_user_id ON bank_accounts (user_id);
 CREATE INDEX idx_blacklisted_tokens_expires_at ON blacklisted_tokens (expires_at);
 CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens (user_id);
 
+CREATE INDEX idx_refresh_tokens_hash ON refresh_tokens (token_hash);
+CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens (expires_at);
+CREATE INDEX idx_refresh_tokens_revoked ON refresh_tokens (revoked);
+
+
 -- Create function to update updated_at column
 CREATE OR REPLACE FUNCTION update_updated_at_column()
     RETURNS TRIGGER AS
@@ -142,5 +147,4 @@ CREATE TRIGGER update_bank_accounts_updated_at
     ON bank_accounts
     FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
-
 

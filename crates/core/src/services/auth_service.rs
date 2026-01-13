@@ -24,7 +24,6 @@ impl AuthService {
             .map(char::from)
             .collect();
 
-
         let hashed_token = Self::hash_token(&raw_token);
         let expiry = Utc::now() + Duration::days(7);
 
@@ -46,33 +45,48 @@ impl AuthService {
     ) -> Result<RefreshResult, ApiError> {
         let hashed_token = Self::hash_token(raw_token);
 
-        let token_record = refresh_tokens
-            .filter(token_hash.eq(&hashed_token))
-            .filter(revoked.eq(false))
-            .filter(expires_at.gt(Utc::now()))
-            .first::<RefreshToken>(conn)
-            .optional()
-            .map_err(ApiError::from)?
-            .ok_or_else(|| {
-                ApiError::Auth(AuthError::InvalidToken(
-                    "Invalid or expired refresh token".into(),
-                ))
-            })?;
+        let token_record = diesel::update(
+            refresh_tokens
+                .filter(token_hash.eq(&hashed_token))
+                .filter(revoked.eq(false))
+                .filter(expires_at.gt(Utc::now())),
+        )
+        .set(revoked.eq(true))
+        .get_result::<RefreshToken>(conn)
+        .optional()?;
 
-        // revoke old token
-        diesel::update(refresh_tokens.find(token_record.id))
-            .set(revoked.eq(true))
-            .execute(conn)
-            .map_err(ApiError::from)?;
+        // let token_record = refresh_tokens
+        //     .filter(token_hash.eq(&hashed_token))
+        //     .filter(revoked.eq(false))
+        //     .filter(expires_at.gt(Utc::now()))
+        //     .first::<RefreshToken>(conn)
+        //     .optional()
+        //     .map_err(ApiError::from)?
+        //     .ok_or_else(|| {
+        //         ApiError::Auth(AuthError::InvalidToken(
+        //             "Invalid or expired refresh token".into(),
+        //         ))
+        //     })?;
+        //
+        // // revoke old token
+        // diesel::update(refresh_tokens.find(token_record.id))
+        //     .set(revoked.eq(true))
+        //     .execute(conn)
+        //     .map_err(ApiError::from)?;
 
-        let new_token = Self::generate_refresh_token(conn, token_record.user_id)?;
+        if let Some(token_record) = token_record {
+            let new_token = Self::generate_refresh_token(conn, token_record.user_id)?;
 
-        Ok(RefreshResult {
-            user_id: token_record.user_id,
-            new_refresh_token: new_token,
-        })
+            Ok(RefreshResult {
+                user_id: token_record.user_id,
+                new_refresh_token: new_token,
+            })
+        } else {
+            Err(ApiError::Auth(AuthError::InvalidToken(
+                "Invalid or expired refresh token".into(),
+            )))
+        }
     }
-
 
     pub fn revoke_all_refresh_tokens(
         conn: &mut PgConnection,
@@ -91,4 +105,3 @@ impl AuthService {
         hex::encode(hasher.finalize())
     }
 }
-

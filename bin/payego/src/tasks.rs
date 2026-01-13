@@ -17,7 +17,7 @@ use diesel::dsl::now;
 pub async fn cleanup_expired_blacklisted_tokens(state: Arc<AppState>) {
     let mut interval = interval(Duration::from_secs(24 * 60 * 60));
 
-    // Skip immediate execution on startup
+    // to skip immediate execution on startup
     interval.tick().await;
 
     loop {
@@ -53,7 +53,7 @@ pub async fn cleanup_expired_blacklisted_tokens(state: Arc<AppState>) {
 pub async fn cleanup_expired_refresh_tokens(state: Arc<AppState>) {
     let mut interval = interval(Duration::from_secs(24 * 60 * 60)); // daily
 
-    // Avoid immediate run on startup
+    // to avoid immediate run on startup
     interval.tick().await;
 
     loop {

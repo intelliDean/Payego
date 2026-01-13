@@ -12,7 +12,7 @@ use validator::Validate;
 
 #[derive(Deserialize, ToSchema, Validate)]
 pub struct RefreshRequest {
-    #[validate(length(min = 32))]
+    #[validate(length(min = 64))]
     pub refresh_token: String,
 }
 
