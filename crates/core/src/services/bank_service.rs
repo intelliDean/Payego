@@ -1,6 +1,6 @@
 use diesel::prelude::*;
 use payego_primitives::error::ApiError;
-use payego_primitives::models::{AppState, Bank, BankAccount, BankRequest, NewBankAccount, PaystackBank, PaystackResponse};
+use payego_primitives::models::{AppState, Bank, BankAccount, BankRequest, NewBankAccount, PaystackBank, PaystackRecipientResponse, PaystackResponse};
 use payego_primitives::schema::{bank_accounts, banks};
 use reqwest::Client;
 use secrecy::ExposeSecret;
@@ -11,7 +11,7 @@ use uuid::Uuid;
 pub struct BankService;
 
 impl BankService {
-    pub async fn add_bank_account(
+    pub async fn create_bank_account(
         state: &AppState,
         user_id_val: Uuid,
         req: BankRequest,
@@ -21,40 +21,47 @@ impl BankService {
             ApiError::DatabaseConnection(e.to_string())
         })?;
 
+        // Idempotency check
+        if let Ok(existing) = bank_accounts::table
+            .filter(bank_accounts::user_id.eq(user_id_val))
+            .filter(bank_accounts::bank_code.eq(&req.bank_code))
+            .filter(bank_accounts::account_number.eq(&req.account_number))
+            .first::<BankAccount>(&mut conn)
+        {
+            return Ok(existing);
+        }
+
         let account_details =
             Self::resolve_account_details(state, &req.bank_code, &req.account_number).await?;
+
         let account_name = account_details["account_name"]
             .as_str()
             .ok_or_else(|| ApiError::Payment("Missing account name".to_string()))?
             .to_string();
 
-        let paystack_key = state.paystack_secret_key.expose_secret();
-        let client = Client::new();
+        let client = Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .map_err(|_| ApiError::Internal("HTTP client error".into()))?;
 
-        let recipient_resp = client
+        let resp = client
             .post(format!("{}/transferrecipient", state.paystack_api_url))
-            .header("Authorization", format!("Bearer {}", paystack_key))
+            .bearer_auth(state.paystack_secret_key.expose_secret())
             .json(&json!({
-                "type": "nuban",
-                "name": account_name,
-                "account_number": req.account_number,
-                "bank_code": req.bank_code,
-                "currency": "NGN"
-            }))
+            "type": "nuban",
+            "name": account_name,
+            "account_number": req.account_number,
+            "bank_code": req.bank_code,
+            "currency": "NGN"
+        }))
             .send()
             .await
-            .map_err(|e: reqwest::Error| {
-                ApiError::Payment(format!("Recipient creation failed: {}", e))
-            })?;
+            .map_err(|_| ApiError::Payment("Paystack recipient creation failed".into()))?;
 
-        let r_body = recipient_resp
-            .json::<Value>()
+        let body: PaystackRecipientResponse = resp
+            .json()
             .await
-            .map_err(|e: reqwest::Error| ApiError::Payment(format!("Parsing failed: {}", e)))?;
-        let recipient_code = r_body["data"]["recipient_code"]
-            .as_str()
-            .ok_or_else(|| ApiError::Payment("Missing recipient code".to_string()))?
-            .to_string();
+            .map_err(|_| ApiError::Payment("Invalid Paystack response".into()))?;
 
         let new_account = NewBankAccount {
             id: Uuid::new_v4(),
@@ -63,18 +70,17 @@ impl BankService {
             account_number: req.account_number,
             account_name: Some(account_name),
             bank_code: req.bank_code,
-            paystack_recipient_code: Some(recipient_code),
-            is_verified: true,
+            paystack_recipient_code: Some(body.data.recipient_code),
+            is_verified: true, // rename later
         };
 
         let account = diesel::insert_into(bank_accounts::table)
             .values(&new_account)
-            .get_result::<BankAccount>(&mut conn)
-            .map_err(ApiError::from)?;
+            .get_result(&mut conn)?;
 
-        info!("Bank account added successfully for user: {}", user_id_val);
         Ok(account)
     }
+
 
     pub async fn resolve_account_details(
         state: &AppState,
@@ -187,3 +193,68 @@ impl BankService {
     }
 }
 
+// 
+// pub async fn create_bank_account(
+//     state: &AppState,
+//     user_id_val: Uuid,
+//     req: BankRequest,
+// ) -> Result<BankAccount, ApiError> {
+//     let mut conn = state.db.get().map_err(|e: r2d2::Error| {
+//         error!("Database error: {}", e);
+//         ApiError::DatabaseConnection(e.to_string())
+//     })?;
+// 
+//     let account_details =
+//         Self::resolve_account_details(state, &req.bank_code, &req.account_number).await?;
+//     let account_name = account_details["account_name"]
+//         .as_str()
+//         .ok_or_else(|| ApiError::Payment("Missing account name".to_string()))?
+//         .to_string();
+// 
+//     let paystack_key = state.paystack_secret_key.expose_secret();
+//     let client = Client::new();
+// 
+//     let recipient_resp = client
+//         .post(format!("{}/transferrecipient", state.paystack_api_url))
+//         .header("Authorization", format!("Bearer {}", paystack_key))
+//         .json(&json!({
+//                 "type": "nuban",
+//                 "name": account_name,
+//                 "account_number": req.account_number,
+//                 "bank_code": req.bank_code,
+//                 "currency": "NGN"
+//             }))
+//         .send()
+//         .await
+//         .map_err(|e: reqwest::Error| {
+//             ApiError::Payment(format!("Recipient creation failed: {}", e))
+//         })?;
+// 
+//     let r_body = recipient_resp
+//         .json::<Value>()
+//         .await
+//         .map_err(|e: reqwest::Error| ApiError::Payment(format!("Parsing failed: {}", e)))?;
+//     let recipient_code = r_body["data"]["recipient_code"]
+//         .as_str()
+//         .ok_or_else(|| ApiError::Payment("Missing recipient code".to_string()))?
+//         .to_string();
+// 
+//     let new_account = NewBankAccount {
+//         id: Uuid::new_v4(),
+//         user_id: user_id_val,
+//         bank_name: Some(req.bank_name),
+//         account_number: req.account_number,
+//         account_name: Some(account_name),
+//         bank_code: req.bank_code,
+//         paystack_recipient_code: Some(recipient_code),
+//         is_verified: true,
+//     };
+// 
+//     let account = diesel::insert_into(bank_accounts::table)
+//         .values(&new_account)
+//         .get_result::<BankAccount>(&mut conn)
+//         .map_err(ApiError::from)?;
+// 
+//     info!("Bank account added successfully for user: {}", user_id_val);
+//     Ok(account)
+// }

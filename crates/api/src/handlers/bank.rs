@@ -42,7 +42,7 @@ pub async fn add_bank_account(
     })?;
 
     // 3. Call BankService
-    let account = BankService::add_bank_account(&state, user_id, req).await?;
+    let account = BankService::create_bank_account(&state, user_id, req).await?;
 
     Ok((StatusCode::CREATED, Json(account)))
 }

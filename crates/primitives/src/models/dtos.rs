@@ -158,6 +158,16 @@ pub struct RefreshResult {
     pub user_id: Uuid,
     pub new_refresh_token: String,
 }
+#[derive(Deserialize)]
+pub struct PaystackRecipientResponse {
+    pub status: bool,
+    pub data: PaystackRecipientData,
+}
+
+#[derive(Deserialize)]
+pub struct PaystackRecipientData {
+    pub recipient_code: String,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct PaystackResponse<T> {

@@ -40,44 +40,36 @@ pub async fn current_user_details(
     State(state): State<Arc<AppState>>,
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<CurrentUserResponse>, ApiError> {
-    // Parse user ID from JWT claims
-    let user_id = Uuid::parse_str(&claims.sub).map_err(|e: uuid::Error| {
-        error!("Invalid user ID in JWT: {}", e);
-        ApiError::Auth(AuthError::InvalidToken("Invalid user ID".to_string()))
+    let user_id = Uuid::parse_str(&claims.sub).map_err(|_| {
+        ApiError::Auth(AuthError::InvalidToken("Invalid subject".into()))
     })?;
 
-    let conn = &mut state.db.get().map_err(|e: diesel::r2d2::PoolError| {
-        error!("Database connection error: {}", e);
+    let mut conn = state.db.get().map_err(|e| {
+        error!("DB connection error: {}", e);
         ApiError::DatabaseConnection(e.to_string())
     })?;
 
-    // Fetch user email
-    let user = users::table
-        .filter(users::id.eq(user_id))
+    // Fetch user email (fail fast if user doesn't exist)
+    let email = users::table
+        .find(user_id)
         .select(users::email)
-        .first::<String>(conn)
-        .map_err(|e: diesel::result::Error| {
-            error!("Failed to fetch user: {}", e);
-            ApiError::from(e)
+        .first::<String>(&mut conn)
+        .optional()
+        .map_err(ApiError::from)?
+        .ok_or_else(|| {
+            ApiError::Auth(AuthError::InvalidToken(
+                "User no longer exists".into(),
+            ))
         })?;
 
-    // Fetch wallets
     let wallets = wallets::table
         .filter(wallets::user_id.eq(user_id))
         .select((wallets::currency, wallets::balance))
-        .load::<(String, i64)>(conn)
-        .map_err(|e: diesel::result::Error| {
-            error!("Failed to fetch wallets: {}", e);
-            ApiError::from(e)
-        })?
+        .load::<(String, i64)>(&mut conn)
+        .map_err(ApiError::from)?
         .into_iter()
         .map(|(currency, balance)| Wallet { currency, balance })
-        .collect::<Vec<Wallet>>();
+        .collect();
 
-    info!("Fetched user data for user_id: {}", user_id);
-
-    Ok(Json(CurrentUserResponse {
-        email: user,
-        wallets,
-    }))
+    Ok(Json(CurrentUserResponse { email, wallets }))
 }

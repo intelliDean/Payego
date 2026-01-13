@@ -104,7 +104,7 @@ async fn test_add_bank_account_success() {
         account_number: "0001234567".to_string(),
     };
 
-    let result = BankService::add_bank_account(&state, user_id, req).await;
+    let result = BankService::create_bank_account(&state, user_id, req).await;
 
     if let Err(e) = &result {
         println!("Add bank failed: {:?}", e);
