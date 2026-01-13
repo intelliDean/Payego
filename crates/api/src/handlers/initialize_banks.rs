@@ -1,16 +1,10 @@
 use axum::extract::State;
 use diesel::prelude::*;
 use http::StatusCode;
+use payego_core::services::bank_service::BankService;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::AppState;
-use payego_primitives::models::Bank;
-use payego_primitives::schema::banks;
-use reqwest::Client;
-use secrecy::ExposeSecret;
-use serde_json::Value;
 use std::sync::Arc;
-use tracing::{error, info};
-use payego_core::services::bank_service::BankService;
 
 #[utoipa::path(
     post,

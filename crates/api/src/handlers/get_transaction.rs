@@ -12,16 +12,6 @@ use tracing::error;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Queryable, Selectable, Identifiable, Debug)]
-#[diesel(table_name = transactions)]
-pub struct Transaction {
-    pub id: Uuid,
-    transaction_type: String,
-    amount: i64,
-    currency: String,
-    created_at: DateTime<Utc>,
-    status: String,
-}
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct Transact {
@@ -39,6 +29,18 @@ pub struct TransactionsResponse {
     transactions: Vec<Transact>,
 }
 
+const RECENT_TX_LIMIT: i64 = 5;
+
+#[derive(Queryable)]
+struct TransactionRow {
+    id: Uuid,
+    transaction_type: String,
+    amount: i64,
+    currency: String,
+    created_at: DateTime<Utc>,
+    status: String,
+}
+
 #[utoipa::path(
     get,
     path = "/api/transactions",
@@ -54,41 +56,49 @@ pub async fn get_transactions(
     State(state): State<Arc<AppState>>,
     Extension(claims): Extension<Claims>,
 ) -> Result<(StatusCode, Json<TransactionsResponse>), ApiError> {
-    // Validate JWT token
-    let usr_id = Uuid::parse_str(&claims.sub).map_err(|e| {
-        error!("Invalid user ID: {}", e);
-        ApiError::Auth(AuthError::InvalidToken("Invalid user ID".to_string()))
+
+    let usr_id = Uuid::parse_str(&claims.sub).map_err(|_| {
+        ApiError::Auth(AuthError::InvalidToken("Invalid subject".into()))
     })?;
 
-    let conn = &mut state.db.get().map_err(|e: r2d2::Error| {
-        error!("Database connection error: {}", e);
+    let mut conn = state.db.get().map_err(|e| {
+        error!("DB connection error: {}", e);
         ApiError::DatabaseConnection(e.to_string())
     })?;
 
-    // Fetch last 5 transactions
     use payego_primitives::schema::transactions::dsl::*;
-    let results = transactions
+
+    let rows = transactions
         .filter(user_id.eq(usr_id))
         .order(created_at.desc())
-        .limit(5)
-        .select(Transaction::as_select())
-        .load(conn)
-        .map_err(ApiError::from)?
+        .limit(RECENT_TX_LIMIT)
+        .select((
+            id,
+            transaction_type,
+            amount,
+            currency,
+            created_at,
+            status,
+        ))
+        .load::<TransactionRow>(&mut conn)
+        .map_err(ApiError::from)?;
+
+    let response = rows
         .into_iter()
-        .map(|transact| Transact {
-            id: transact.id.to_string(),
-            transaction_type: transact.transaction_type,
-            amount: transact.amount,
-            currency: transact.currency,
-            created_at: transact.created_at.to_string(),
-            status: transact.status,
+        .map(|tx| Transact {
+            id: tx.id.to_string(),
+            transaction_type: tx.transaction_type,
+            amount: tx.amount,
+            currency: tx.currency,
+            created_at: tx.created_at.to_rfc3339(),
+            status: tx.status,
         })
-        .collect::<Vec<Transact>>();
+        .collect();
 
     Ok((
         StatusCode::OK,
         Json(TransactionsResponse {
-            transactions: results,
+            transactions: response,
         }),
     ))
 }
