@@ -1,7 +1,7 @@
 use diesel::prelude::*;
 use payego_primitives::error::ApiError;
-use payego_primitives::models::{AppState, BankAccount, BankRequest, NewBankAccount};
-use payego_primitives::schema::bank_accounts;
+use payego_primitives::models::{AppState, Bank, BankAccount, BankRequest, NewBankAccount, PaystackBank, PaystackResponse};
+use payego_primitives::schema::{bank_accounts, banks};
 use reqwest::Client;
 use secrecy::ExposeSecret;
 use serde_json::{json, Value};
@@ -127,4 +127,63 @@ impl BankService {
 
         Ok(accounts)
     }
+
+    pub async fn initialize_banks(
+        state: &AppState,
+        conn: &mut PgConnection,
+    ) -> Result<bool, ApiError> {
+        // Idempotency check
+        let existing: i64 = banks::table.count().get_result(conn)?;
+        if existing > 0 {
+            info!("Banks already initialized ({} records)", existing);
+            return Ok(false);
+        }
+
+        let client = Client::new();
+
+        let resp = client
+            .get("https://api.paystack.co/bank?country=nigeria")
+            .bearer_auth(state.paystack_secret_key.expose_secret())
+            .send()
+            .await
+            .map_err(|_| ApiError::Payment("Failed to reach Paystack".into()))?;
+
+        let body: PaystackResponse<Vec<PaystackBank>> = resp
+            .json()
+            .await
+            .map_err(|_| ApiError::Payment("Invalid Paystack response".into()))?;
+
+        if !body.status {
+            return Err(ApiError::Payment(body.message));
+        }
+
+        let banks_to_insert: Vec<Bank> = body
+            .data
+            .into_iter()
+            .map(|b| Bank {
+                id: b.id,
+                name: b.name,
+                code: b.code,
+                currency: b.currency,
+                country: b.country,
+                gateway: b.gateway,
+                pay_with_bank: b.pay_with_bank,
+                is_active: b.is_active,
+            })
+            .collect();
+
+        if banks_to_insert.is_empty() {
+            return Err(ApiError::Payment("Paystack returned no banks".into()));
+        }
+
+        let inserted = diesel::insert_into(banks::table)
+            .values(&banks_to_insert)
+            .on_conflict(banks::code)
+            .do_nothing()
+            .execute(conn)?;
+
+        info!("Bank initialization complete: {} inserted", inserted);
+        Ok(true)
+    }
 }
+

@@ -48,8 +48,8 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/api/auth/refresh",
             axum::routing::post(crate::handlers::refresh_token::refresh_token),
         )
-        .route("/api/webhook/stripe", axum::routing::post(stripe_webhook))
-        .route("/webhooks/paystack", axum::routing::post(paystack_webhook))
+        .route("/api/webhook/stripe", post(stripe_webhook))
+        .route("/webhooks/paystack", post(paystack_webhook))
         .route("/api/bank/init", axum::routing::post(initialize_banks))
         .route("/api/banks", axum::routing::get(all_banks))
         .route("/api/resolve_account", axum::routing::get(resolve_account))

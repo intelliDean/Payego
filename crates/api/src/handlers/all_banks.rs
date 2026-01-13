@@ -13,6 +13,8 @@ pub struct BankListResponse {
     pub banks: Vec<Bank>,
 }
 
+
+
 #[utoipa::path(
     get,
     path = "/api/banks",
@@ -27,25 +29,22 @@ pub struct BankListResponse {
 pub async fn all_banks(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<BankListResponse>, ApiError> {
-    let mut conn = state.db.get().map_err(|e: diesel::r2d2::PoolError| {
+    let mut conn = state.db.get().map_err(|e| {
         error!("Database connection failed: {}", e);
         ApiError::DatabaseConnection(e.to_string())
     })?;
 
-    // Fetch banks from database
+    const COUNTRY: &str = "Nigeria";
+
     let banks: Vec<Bank> = banks::table
-        .filter(banks::country.eq("Nigeria")) // For now, we are only dealing with Nigerian Banks
+        .filter(banks::country.eq(COUNTRY))
         .load::<Bank>(&mut conn)
-        .map_err(|e: diesel::result::Error| {
+        .map_err(|e| {
             error!("Failed to load banks from database: {}", e);
             ApiError::from(e)
         })?;
 
-    if banks.is_empty() {
-        error!("No banks found in database");
-        return Err(ApiError::Internal("No banks found in database".to_string()));
-    }
+    info!("Returning {} banks", banks.len());
 
-    info!("Returning {} banks from database", banks.len());
     Ok(Json(BankListResponse { banks }))
 }

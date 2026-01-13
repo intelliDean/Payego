@@ -159,3 +159,22 @@ pub struct RefreshResult {
     pub new_refresh_token: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct PaystackResponse<T> {
+    pub status: bool,
+    pub message: String,
+    pub data: T,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PaystackBank {
+    pub id: i64,
+    pub name: String,
+    pub code: String,
+    pub currency: String,
+    pub country: String,
+    pub gateway: Option<String>,
+    pub pay_with_bank: Option<bool>,
+    pub is_active: Option<bool>,
+}
+
