@@ -12,9 +12,10 @@ use validator::Validate;
 
 #[derive(Deserialize, ToSchema, Validate)]
 pub struct RefreshRequest {
-    pub user_id: Uuid,
+    #[validate(length(min = 32))]
     pub refresh_token: String,
 }
+
 
 #[utoipa::path(
     post,
@@ -31,37 +32,25 @@ pub async fn refresh_token(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<RefreshRequest>,
 ) -> Result<Json<LoginResponse>, ApiError> {
-    // Validate request
-    payload.validate().map_err(|e| {
-        tracing::error!("Validation error: {}", e);
-        ApiError::Validation(e)
-    })?;
+    payload.validate().map_err(ApiError::Validation)?;
 
-    let mut conn = state.db.get().map_err(|e: r2d2::Error| {
-        tracing::error!("Database connection error: {}", e);
+    let mut conn = state.db.get().map_err(|e| {
+        tracing::error!("DB connection error: {}", e);
         ApiError::DatabaseConnection(e.to_string())
     })?;
 
-    // Validate and rotate refresh token
-    let new_refresh_token = AuthService::validate_and_rotate_refresh_token(
+    // Validate refresh token and rotate it
+    let refreshed = AuthService::validate_and_rotate_refresh_token(
         &mut conn,
-        payload.user_id,
         &payload.refresh_token,
     )?;
 
-    // Generate new access token
-    let access_token = create_token(&state, &payload.user_id.to_string())?;
-
-    // Get user details for response (optional, but LoginResponse expects email)
-    let user_email: String = payego_primitives::schema::users::table
-        .filter(payego_primitives::schema::users::id.eq(payload.user_id))
-        .select(payego_primitives::schema::users::email)
-        .first::<String>(&mut conn)
-        .map_err(ApiError::Database)?;
+    // refreshed should contain: user_id, new_refresh_token, user_email
+    let access_token = create_token(&state, &refreshed.user_id.to_string())?;
 
     Ok(Json(LoginResponse {
         token: access_token,
-        refresh_token: new_refresh_token,
-        user_email,
+        refresh_token: refreshed.new_refresh_token,
+        user_email: None,
     }))
 }

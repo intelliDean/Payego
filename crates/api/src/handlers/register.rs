@@ -86,6 +86,19 @@ pub async fn register(
 fn argon2id_hash_password(password: SecretBox<str>) -> Result<String, ApiError> {
     //hash the password
     let salt = SaltString::generate(&mut OsRng);
+    let argon2 = create_argon2()?;
+    let password_hash = argon2
+        .hash_password(password.expose_secret().as_bytes(), &salt)
+        .map_err(|e| {
+            error!("Argon2 hashing error: {}", e);
+            ApiError::Internal("Encryption error".to_string())
+        })?
+        .to_string();
+    Ok(password_hash)
+}
+
+pub fn create_argon2() -> Result<Argon2<'static>, ApiError> {
+
     let params = Params::new(
         65536, // 64 MiB memory
         3,     // iterations
@@ -100,12 +113,5 @@ fn argon2id_hash_password(password: SecretBox<str>) -> Result<String, ApiError> 
         argon2::Version::V0x13,
         params,
     );
-    let password_hash = argon2
-        .hash_password(password.expose_secret().as_bytes(), &salt)
-        .map_err(|e| {
-            error!("Argon2 hashing error: {}", e);
-            ApiError::Internal("Encryption error".to_string())
-        })?
-        .to_string();
-    Ok(password_hash)
+    Ok(argon2)
 }

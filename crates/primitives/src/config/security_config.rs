@@ -12,8 +12,7 @@ use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::sync::Arc;
-use tracing::log::info;
-use tracing::{error, warn};
+use tracing::error;
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -119,7 +118,7 @@ pub fn is_jti_blacklisted(
         .select(jti)
         .first::<String>(conn)
         .optional()
-        .map(|res| res.is_some())
+        .map(|res: Option<String>| res.is_some())
         .map_err(|e| {
             error!("Blacklist lookup failed for jti {}: {}", jti_value, e);
             ApiError::Database(e)
@@ -148,7 +147,7 @@ pub async fn auth_middleware(
             .into_response()
     })?;
 
-    if is_jti_blacklisted(&mut conn, &claims.jti)? {
+    if is_jti_blacklisted(&mut conn, &claims.jti).map_err(|e| ApiError::from(e).into_response())? {
         return Err(ApiError::from(AuthError::BlacklistedToken).into_response());
     }
 

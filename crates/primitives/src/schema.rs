@@ -34,10 +34,9 @@ diesel::table! {
 }
 
 diesel::table! {
-    blacklisted_tokens (token) {
-        token -> Varchar,
+    blacklisted_tokens (jti) {
+        jti -> Text,
         expires_at -> Timestamptz,
-        created_at -> Timestamptz,
     }
 }
 

@@ -2,7 +2,7 @@ use chrono::{Duration, Utc};
 use diesel::prelude::*;
 use hex;
 use payego_primitives::error::{ApiError, AuthError};
-use payego_primitives::models::{NewRefreshToken, RefreshToken};
+use payego_primitives::models::{NewRefreshToken, RefreshResult, RefreshToken};
 use payego_primitives::schema::refresh_tokens::dsl::*;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
@@ -16,11 +16,14 @@ impl AuthService {
         conn: &mut PgConnection,
         user_uuid: Uuid,
     ) -> Result<String, ApiError> {
-        let raw_token: String = rand::thread_rng()
+        use rand::rngs::OsRng;
+
+        let raw_token: String = OsRng
             .sample_iter(&Alphanumeric)
             .take(64)
             .map(char::from)
             .collect();
+
 
         let hashed_token = Self::hash_token(&raw_token);
         let expiry = Utc::now() + Duration::days(7);
@@ -39,28 +42,37 @@ impl AuthService {
 
     pub fn validate_and_rotate_refresh_token(
         conn: &mut PgConnection,
-        user_uuid: Uuid,
         raw_token: &str,
-    ) -> Result<String, ApiError> {
+    ) -> Result<RefreshResult, ApiError> {
         let hashed_token = Self::hash_token(raw_token);
 
         let token_record = refresh_tokens
-            .filter(user_id.eq(user_uuid))
             .filter(token_hash.eq(&hashed_token))
             .filter(revoked.eq(false))
             .filter(expires_at.gt(Utc::now()))
             .first::<RefreshToken>(conn)
             .optional()
             .map_err(ApiError::from)?
-            .ok_or_else(|| ApiError::Auth(AuthError::InvalidToken("Invalid or expired refresh token".into())))?;
+            .ok_or_else(|| {
+                ApiError::Auth(AuthError::InvalidToken(
+                    "Invalid or expired refresh token".into(),
+                ))
+            })?;
 
+        // revoke old token
         diesel::update(refresh_tokens.find(token_record.id))
             .set(revoked.eq(true))
             .execute(conn)
-            .map_err(|e: diesel::result::Error| ApiError::from(e))?;
+            .map_err(ApiError::from)?;
 
-        Self::generate_refresh_token(conn, user_uuid)
+        let new_token = Self::generate_refresh_token(conn, token_record.user_id)?;
+
+        Ok(RefreshResult {
+            user_id: token_record.user_id,
+            new_refresh_token: new_token,
+        })
     }
+
 
     pub fn revoke_all_refresh_tokens(
         conn: &mut PgConnection,
@@ -79,3 +91,4 @@ impl AuthService {
         hex::encode(hasher.finalize())
     }
 }
+

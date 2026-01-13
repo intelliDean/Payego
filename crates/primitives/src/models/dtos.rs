@@ -1,4 +1,4 @@
-use secrecy::SecretString;
+
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -146,10 +146,16 @@ pub struct RegisterResponse {
 pub struct LoginResponse {
     pub token: String,
     pub refresh_token: String,
-    pub user_email: String,
+    pub user_email: Option<String>,
 }
 
 #[derive(Serialize, ToSchema, Debug)]
 pub struct ErrorResponse {
     pub error: String,
 }
+
+pub struct RefreshResult {
+    pub user_id: Uuid,
+    pub new_refresh_token: String,
+}
+

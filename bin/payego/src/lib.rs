@@ -12,7 +12,7 @@ pub use payego_primitives::models::AppState;
 use tracing::info;
 
 use crate::logging::setup_logging;
-use crate::tasks::{cleanup_expired_tokens, db_connection, shutdown_signal};
+use crate::tasks::{cleanup_expired_blacklisted_tokens, cleanup_expired_refresh_tokens, db_connection, shutdown_signal};
 use axum::extract::State;
 use diesel::r2d2;
 use dotenvy::dotenv;
@@ -54,7 +54,9 @@ pub async fn run() -> Result<(), eyre::Error> {
         info!("Banks initialized successfully");
     }
 
-    tokio::spawn(cleanup_expired_tokens(app_state.clone())); //a different threat to do this
+    tokio::spawn(cleanup_expired_blacklisted_tokens(app_state.clone())); //a different threat to do this
+    tokio::spawn(cleanup_expired_refresh_tokens(app_state.clone()));
+
 
     // Setup CORS
     let cors = CorsLayer::new()
