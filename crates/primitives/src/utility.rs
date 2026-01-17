@@ -54,14 +54,6 @@ pub fn validate_password(password: &str) -> Result<(), ValidationError> {
     Ok(())
 }
 
-// // Add this to your AppState
-// pub struct AppState {
-//     pub paypal_client_id: String,
-//     pub paypal_secret: String,
-//     pub paypal_access_token: Mutex<String>, // Use a mutex for thread safety
-//     pub paypal_token_expiry: Mutex<Option<SystemTime>>,
-//     // ... other fields
-// }
 pub async fn get_paypal_access_token(
     client: &Client,
     client_id: &str,

@@ -3,12 +3,13 @@ use diesel::prelude::*;
 use payego_core::services::auth_service::AuthService;
 use payego_primitives::config::security_config::create_token;
 use payego_primitives::error::ApiError;
-use payego_primitives::models::{AppState, LoginResponse};
 use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
+use payego_primitives::models::app_state::app_state::AppState;
+use payego_primitives::models::dtos::dtos::LoginResponse;
 
 #[derive(Deserialize, ToSchema, Validate)]
 pub struct RefreshRequest {

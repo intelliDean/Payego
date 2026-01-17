@@ -21,6 +21,7 @@ chrono.workspace = true
 serde_json.workspace = true
 wiremock = { version = "0.6.2", default-features = false }
 axum-prometheus = "0.10.0"
+atty = "0.2.14"
 
 [dev-dependencies]
 axum-test = "18.5.0"

@@ -1,12 +1,13 @@
 use axum::extract::{Extension, Json, State};
 use payego_core::services::conversion_service::ConversionService;
 use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::{ApiError, AuthError};
-use payego_primitives::models::{AppState, ConvertRequest, ConvertResponse};
+use payego_primitives::error::ApiError;
+use payego_primitives::models::app_state::app_state::AppState;
+use payego_primitives::models::conversion_dto::ConvertRequest;
+use payego_primitives::models::dtos::dtos::ConvertResponse;
 use std::sync::Arc;
-use tracing::error;
-use uuid::Uuid;
 use validator::Validate;
+
 
 #[utoipa::path(
     post,
@@ -26,20 +27,13 @@ pub async fn convert_currency(
     Extension(claims): Extension<Claims>,
     Json(req): Json<ConvertRequest>,
 ) -> Result<Json<ConvertResponse>, ApiError> {
-    // 1. Validate request
-    req.validate().map_err(|e| {
-        error!("Validation error: {}", e);
-        ApiError::Validation(e)
-    })?;
 
-    // 2. Parse user ID from claims
-    let user_id = Uuid::parse_str(&claims.sub).map_err(|e| {
-        error!("Invalid user ID in claims: {}", e);
-        ApiError::Auth(AuthError::InvalidToken("Invalid user ID".to_string()))
-    })?;
+    req.validate()?;
 
-    // 3. Call ConversionService
-    let response = ConversionService::convert_currency(&*state, user_id, req).await?;
+    let user_id = claims.user_id()?;
+
+    let response =
+        ConversionService::convert_currency(&state, user_id, req).await?;
 
     Ok(Json(response))
 }

@@ -2,12 +2,13 @@ use chrono::{Duration, Utc};
 use diesel::prelude::*;
 use hex;
 use payego_primitives::error::{ApiError, AuthError};
-use payego_primitives::models::{NewRefreshToken, RefreshResult, RefreshToken};
+use payego_primitives::models::dtos::dtos::{ RefreshResult};
 use payego_primitives::schema::refresh_tokens::dsl::*;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
+use payego_primitives::models::authentication::{NewRefreshToken, RefreshToken};
 
 pub struct AuthService;
 
@@ -30,7 +31,7 @@ impl AuthService {
         diesel::insert_into(refresh_tokens)
             .values(NewRefreshToken {
                 user_id: user_uuid,
-                token_hash: hashed_token,
+                token_hash: &hashed_token,
                 expires_at: expiry,
             })
             .execute(conn)
@@ -54,25 +55,6 @@ impl AuthService {
         .set(revoked.eq(true))
         .get_result::<RefreshToken>(conn)
         .optional()?;
-
-        // let token_record = refresh_tokens
-        //     .filter(token_hash.eq(&hashed_token))
-        //     .filter(revoked.eq(false))
-        //     .filter(expires_at.gt(Utc::now()))
-        //     .first::<RefreshToken>(conn)
-        //     .optional()
-        //     .map_err(ApiError::from)?
-        //     .ok_or_else(|| {
-        //         ApiError::Auth(AuthError::InvalidToken(
-        //             "Invalid or expired refresh token".into(),
-        //         ))
-        //     })?;
-        //
-        // // revoke old token
-        // diesel::update(refresh_tokens.find(token_record.id))
-        //     .set(revoked.eq(true))
-        //     .execute(conn)
-        //     .map_err(ApiError::from)?;
 
         if let Some(token_record) = token_record {
             let new_token = Self::generate_refresh_token(conn, token_record.user_id)?;

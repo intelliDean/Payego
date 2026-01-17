@@ -1,16 +1,26 @@
-use axum::{
-    extract::{Path, State},
-    Json,
-};
-use payego_primitives::error::ApiError;
-use payego_primitives::models::AppState;
-use serde::Serialize;
-use std::sync::Arc;
+use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use axum::extract::{Json, Path, State};
+use payego_primitives::error::ApiError;
+use payego_primitives::models::app_state::app_state::AppState;
+use std::sync::Arc;
+use payego_core::services::paypal_service::PayPalService;
 
-#[derive(Serialize, ToSchema)]
+#[derive(Debug, Deserialize)]
+pub struct PayPalTokenResponse {
+    pub access_token: String,
+    pub expires_in: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PayPalOrderResponse {
+    pub id: String,
+    pub status: String,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
 pub struct OrderResponse {
-    status: String,
+    pub status: String,
 }
 
 #[utoipa::path(
@@ -25,52 +35,14 @@ pub struct OrderResponse {
     tag = "Payments"
 )]
 pub async fn get_paypal_order(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Path(order_id): Path<String>,
 ) -> Result<Json<OrderResponse>, ApiError> {
-    let client = reqwest::Client::new();
-    let paypal_client_id = std::env::var("PAYPAL_CLIENT_ID")
-        .map_err(|_e| ApiError::Payment("PAYPAL_CLIENT_ID not set".to_string()))?;
-    let paypal_secret = std::env::var("PAYPAL_SECRET")
-        .map_err(|_e| ApiError::Payment("PAYPAL_SECRET not set".to_string()))?;
+    if order_id.len() < 10 {
+        return Err(ApiError::Payment("Invalid PayPal order ID".into()));
+    }
 
-    // Get PayPal access token
-    let token_response = client
-        .post("https://api-m.sandbox.paypal.com/v1/oauth2/token")
-        .basic_auth(&paypal_client_id, Some(&paypal_secret))
-        .form(&[("grant_type", "client_credentials")])
-        .send()
-        .await
-        .map_err(|e| ApiError::Payment(format!("Failed to get PayPal token: {}", e)))?;
-
-    let token: serde_json::Value = token_response
-        .json()
-        .await
-        .map_err(|e| ApiError::Payment(format!("Failed to parse PayPal token: {}", e)))?;
-    let access_token = token["access_token"]
-        .as_str()
-        .ok_or(ApiError::Payment("Missing access_token".to_string()))?;
-
-    // Get order details
-    let order_response = client
-        .get(&format!(
-            "https://api-m.sandbox.paypal.com/v2/checkout/orders/{}",
-            order_id
-        ))
-        .bearer_auth(access_token)
-        .send()
-        .await
-        .map_err(|e| ApiError::Payment(format!("Failed to get PayPal order: {}", e)))?;
-
-    let order_result: serde_json::Value = order_response
-        .json()
-        .await
-        .map_err(|e| ApiError::Payment(format!("Failed to parse order response: {}", e)))?;
-
-    let status = order_result["status"]
-        .as_str()
-        .ok_or(ApiError::Payment("Missing order status".to_string()))?
-        .to_string();
+    let status = PayPalService::get_order_status(&state, &order_id).await?;
 
     Ok(Json(OrderResponse { status }))
 }

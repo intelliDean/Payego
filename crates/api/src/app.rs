@@ -20,7 +20,7 @@ use crate::handlers::{
     transfer_external::transfer_external, transfer_internal::transfer_internal, withdraw::withdraw,
 };
 use payego_primitives::config::security_config::auth_middleware;
-use payego_primitives::models::AppState;
+use payego_primitives::models::app_state::app_state::AppState;
 
 use tower::ServiceBuilder;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};

@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use payego_primitives::config::security_config::{verify_token, Claims};
 use payego_primitives::error::{ApiError, AuthError};
-use payego_primitives::models::AppState;
+use payego_primitives::models::app_state::app_state::AppState;
 use serde::Serialize;
 use std::sync::Arc;
 use tracing::{error, info, warn};

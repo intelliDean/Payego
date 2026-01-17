@@ -5,17 +5,18 @@ use axum::{
 use diesel::prelude::*;
 use payego_primitives::config::security_config::Claims;
 use payego_primitives::error::{ApiError, AuthError};
-use payego_primitives::models::AppState;
+use payego_primitives::models::app_state::app_state::AppState;
 use payego_primitives::schema::{users, wallets};
 use serde::Serialize;
 use std::sync::Arc;
 use tracing::{error, info};
 use utoipa::ToSchema;
 use uuid::Uuid;
+use payego_primitives::models::enum_types::CurrencyCode;
 
 #[derive(Serialize, ToSchema)]
 pub struct Wallet {
-    pub currency: String,
+    pub currency: CurrencyCode,
     pub balance: i64,
 }
 
@@ -65,7 +66,7 @@ pub async fn current_user_details(
     let wallets = wallets::table
         .filter(wallets::user_id.eq(user_id))
         .select((wallets::currency, wallets::balance))
-        .load::<(String, i64)>(&mut conn)
+        .load::<(CurrencyCode, i64)>(&mut conn)
         .map_err(ApiError::from)?
         .into_iter()
         .map(|(currency, balance)| Wallet { currency, balance })

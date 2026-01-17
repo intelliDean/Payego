@@ -230,17 +230,16 @@
 
 //===
 
-use crate::handlers::paypal_capture::Transaction;
+use axum::body::Bytes;
 use axum::extract::State;
 use diesel::prelude::*;
 use http::{HeaderMap, StatusCode};
-use payego_primitives::error::{ApiError, AuthError};
-use payego_primitives::models::AppState;
-use payego_primitives::schema::{transactions, wallets};
+use payego_core::services::stripe_service::StripeService;
+use payego_core::services::transaction_service::TransactionService;
+use payego_primitives::error::ApiError;
+use payego_primitives::models::app_state::app_state::AppState;
+use secrecy::ExposeSecret;
 use std::sync::Arc;
-use stripe::{Event, EventObject, EventType, Webhook};
-use tracing::{error, info};
-use uuid::Uuid;
 
 #[utoipa::path(
     post,
@@ -248,175 +247,44 @@ use uuid::Uuid;
     request_body = String,
     responses(
         (status = 200, description = "Webhook received"),
-        (status = 400, description = "Invalid webhook payload or signature"),
-        (status = 500, description = "Internal server error")
+        (status = 400, description = "Invalid webhook payload or signature")
     ),
-    tag = "Transaction"
+    tag = "Webhook"
 )]
 pub async fn stripe_webhook(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    payload: String,
+    body: Bytes,
 ) -> Result<StatusCode, ApiError> {
-    info!("Webhook called with payload length: {}", payload.len());
-
     let signature = headers
         .get("stripe-signature")
-        .ok_or(ApiError::Auth(AuthError::MissingHeader))?
-        .to_str()
-        .map_err(|_| ApiError::Auth(AuthError::InvalidFormat))?;
+        .and_then(|v| v.to_str().ok())
+        .ok_or(ApiError::Payment("Missing Stripe signature".into()))?;
 
-    let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET")
-        .map_err(|_| ApiError::Internal("STRIPE_WEBHOOK_SECRET not set".to_string()))?;
+    let payload_str = std::str::from_utf8(&body)
+        .map_err(|_| ApiError::Payment("Invalid UTF-8 Stripe payload".into()))?;
 
-    let sent_event: Event = Webhook::construct_event(&payload, signature, &webhook_secret)
-        .map_err(|e| {
-            error!("Webhook validation failed: {}", e);
-            ApiError::Webhook(e)
-        })?;
+    let event = StripeService::construct_event(
+        payload_str,
+        signature,
+        state
+            .config
+            .stripe_details
+            .stripe_webhook_secret
+            .expose_secret(),
+    )?;
 
-    info!(
-        "Event parsed successfully: type={}, id={}",
-        sent_event.type_, sent_event.id
-    );
+    let Some(ctx) = StripeService::extract_context(&event)? else {
+        // Ignore unrelated events but ACK
+        return Ok(StatusCode::OK);
+    };
 
-    let conn = &mut state
+    let mut conn = state
         .db
         .get()
         .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
-    match sent_event.type_ {
-        EventType::CheckoutSessionCompleted => {
-            if let EventObject::CheckoutSession(session) = sent_event.data.object {
-                let transaction_id_str = session
-                    .metadata
-                    .as_ref()
-                    .ok_or(ApiError::Auth(AuthError::InvalidToken("Missing metadata in session".to_string())))?
-                    .get("transaction_id")
-                    .ok_or(ApiError::Auth(AuthError::InvalidToken(
-                        "Missing transaction_id in metadata".to_string(),
-                    )))?;
-
-                let transaction_id = Uuid::parse_str(transaction_id_str).map_err(|e| {
-                    error!("Invalid transaction_id: {}", e);
-                    ApiError::Auth(AuthError::InvalidToken(format!("Invalid transaction_id: {}", e)))
-                })?;
-
-                info!(
-                    "Processing checkout.session.completed for transaction {}",
-                    transaction_id
-                );
-
-                // Check for idempotency
-                let existing = transactions::table
-                    .filter(transactions::reference.eq(transaction_id))
-                    .filter(transactions::status.eq("completed"))
-                    .select(diesel::dsl::count_star())
-                    .first::<i64>(conn)
-                    .map(|count| count > 0)
-                    .map_err(|e| {
-                        error!("Idempotency check failed: {}", e);
-                        if e.to_string().contains("not found") {
-                            ApiError::Payment("Transaction not found".to_string())
-                        } else {
-                            ApiError::from(e)
-                        }
-                    })?;
-
-                if existing {
-                    info!("Transaction {} already processed", transaction_id);
-                    return Ok(StatusCode::OK);
-                }
-
-                // Fetch transaction
-                let transaction = transactions::table
-                    .filter(transactions::reference.eq(transaction_id))
-                    .select(Transaction::as_select())
-                    .first(conn)
-                    .map_err(|e| {
-                        error!("Failed to fetch transaction: {}", e);
-                        ApiError::Payment("Transaction not found".to_string())
-                    })?;
-
-                // Validate currency
-                let payment_currency = session
-                    .currency
-                    .as_ref()
-                    .map(|c| c.to_string().to_uppercase());
-                if let Some(curr) = payment_currency {
-                    if transaction.currency != curr {
-                        error!(
-                            "Currency mismatch: transaction currency {}, session currency {}",
-                            transaction.currency, curr
-                        );
-                        return Err(ApiError::Auth(AuthError::InvalidToken("Currency mismatch".to_string())));
-                    }
-                }
-
-                // Update transaction and wallet atomically
-                conn.transaction(|conn| {
-                    info!("Updating transaction {}", transaction_id);
-                    let updated_transaction = diesel::update(transactions::table)
-                        .filter(transactions::reference.eq(transaction_id))
-                        .set((
-                            transactions::status.eq("completed"),
-                            transactions::description.eq("Stripe top-up completed"),
-                            transactions::updated_at.eq(chrono::Utc::now()),
-                        ))
-                        .returning(Transaction::as_select())
-                        .get_result(conn)
-                        .map_err(|e: diesel::result::Error| {
-                            error!("Transaction update failed: {}", e);
-                            if e.to_string().contains("not found") {
-                                ApiError::Payment("Transaction not found".to_string())
-                            } else {
-                                ApiError::from(e)
-                            }
-                        })?;
-
-                    info!(
-                        "Updating wallet for user {} in {}",
-                        updated_transaction.user_id, updated_transaction.currency
-                    );
-                    diesel::insert_into(wallets::table)
-                        .values((
-                            wallets::user_id.eq(updated_transaction.user_id),
-                            wallets::balance.eq(updated_transaction.amount),
-                            wallets::currency.eq(updated_transaction.currency),
-                        ))
-                        .on_conflict((wallets::user_id, wallets::currency))
-                        .do_update()
-                        .set(
-                            wallets::balance.eq(diesel::dsl::sql::<diesel::sql_types::BigInt>(
-                                "balance + ",
-                            )
-                            .bind::<diesel::sql_types::BigInt, _>(updated_transaction.amount)),
-                        )
-                        .execute(conn)
-                        .map_err(|e: diesel::result::Error| {
-                            error!("Wallet update failed: {}", e);
-                            if e.to_string().contains("not found") {
-                                ApiError::Payment("Wallet not found".to_string())
-                            } else {
-                                ApiError::from(e)
-                            }
-                        })?;
-
-                    Ok::<(), ApiError>(())
-                })?;
-
-                info!(
-                    "Stripe payment succeeded for transaction: {}",
-                    transaction_id
-                );
-            } else {
-                info!("Unexpected event object for checkout.session.completed");
-            }
-        }
-        _ => {
-            info!("Received unhandled Stripe event: {}", sent_event.type_);
-        }
-    }
+    TransactionService::apply_stripe_webhook(&mut conn, ctx)?;
 
     Ok(StatusCode::OK)
 }

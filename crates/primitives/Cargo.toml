@@ -21,3 +21,5 @@ reqwest.workspace = true
 tracing.workspace = true
 base64.workspace = true
 http.workspace = true
+diesel-derive-enum.workspace = true
+strum.workspace = true

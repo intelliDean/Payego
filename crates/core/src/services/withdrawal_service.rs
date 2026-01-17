@@ -2,14 +2,21 @@ use diesel::dsl::sql;
 use diesel::prelude::*;
 use diesel::sql_types::BigInt;
 use payego_primitives::error::ApiError;
-use payego_primitives::models::{
-    AppState, BankAccount, NewTransaction, Wallet, WithdrawRequest, WithdrawResponse,
-};
-use payego_primitives::schema::{bank_accounts, transactions, wallets};
+use payego_primitives::schema::{bank_accounts, transactions, wallet_ledger, wallets};
 use reqwest::Client;
+use secrecy::ExposeSecret;
 use serde_json::{json, Value};
 use tracing::{debug, error, info};
 use uuid::Uuid;
+use payego_primitives::models::app_state::app_state::AppState;
+use payego_primitives::models::bank::BankAccount;
+use payego_primitives::models::dtos::dtos::{WithdrawRequest, WithdrawResponse};
+// use payego_primitives::models::dtos::dtos::{, WithdrawResponse};
+use payego_primitives::models::enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent};
+use payego_primitives::models::transaction::NewTransaction;
+use payego_primitives::models::wallet::Wallet;
+use payego_primitives::models::wallet_ledger::NewWalletLedger;
+
 
 pub struct WithdrawalService;
 
@@ -17,235 +24,136 @@ impl WithdrawalService {
     pub async fn withdraw(
         state: &AppState,
         user_id: Uuid,
-        bnk_id: Uuid,
+        bank_account_id: Uuid,
         req: WithdrawRequest,
     ) -> Result<WithdrawResponse, ApiError> {
-        let amount_cents = (req.amount * 100.0) as i64;
+        let amount_minor = Self::convert_to_minor_units(req.amount)?;
 
         let mut conn = state
             .db
             .get()
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
-        let sender_wallet = wallets::table
-            .filter(wallets::user_id.eq(user_id))
-            .filter(wallets::currency.eq(&req.currency))
-            .first::<Wallet>(&mut conn)
-            .map_err(|e: diesel::result::Error| {
-                error!("Sender wallet lookup failed: {}", e);
-                if e.to_string().contains("not found") {
-                    ApiError::Payment(format!("Wallet not found for currency {}", req.currency))
-                } else {
-                    ApiError::from(e)
-                }
-            })?;
 
-        if sender_wallet.balance < amount_cents {
-            error!(
-                "Insufficient balance: available={}, required={}",
-                sender_wallet.balance, amount_cents
-            );
-            return Err(ApiError::Payment("Insufficient balance".to_string()));
+        // ---- Load wallet (FOR UPDATE) ----
+        let wallet = wallets::table
+            .filter(wallets::user_id.eq(user_id))
+            .filter(wallets::currency.eq(CurrencyCode::from(req.currency)))
+            .for_update()
+            .first::<Wallet>(&mut conn)?;
+
+        if wallet.balance < amount_minor {
+            return Err(ApiError::Payment("Insufficient balance".into()));
         }
 
         let bank_account = bank_accounts::table
+            .filter(bank_accounts::id.eq(bank_account_id))
             .filter(bank_accounts::user_id.eq(user_id))
-            .filter(bank_accounts::id.eq(bnk_id))
             .filter(bank_accounts::is_verified.eq(true))
-            .first::<BankAccount>(&mut conn)
-            .map_err(|e: diesel::result::Error| {
-                error!("Bank account lookup failed: {}", e);
-                if e.to_string().contains("not found") {
-                    ApiError::Payment("Bank account not found or not verified".to_string())
-                } else {
-                    ApiError::from(e)
-                }
-            })?;
+            .first::<BankAccount>(&mut conn)?;
 
-        let amount_ngn_kobo = if req.currency == "NGN" {
-            amount_cents
-        } else {
-            let exchange_rate =
-                Self::get_exchange_rate(&state.exchange_api_url, &req.currency, "NGN").await?;
-            ((amount_cents as f64) * exchange_rate).round() as i64
-        };
-
-        Self::handle_paystack_transfer(
-            &state,
-            amount_ngn_kobo,
+        // ---- External transfer FIRST ----
+        let provider_ref = Self::initiate_paystack_transfer(
+            state,
             &bank_account,
-            req.reference,
+            amount_minor,
             &req.currency,
+            req.reference,
         )
-        .await?;
+            .await?;
 
-        conn.transaction::<(), ApiError, _>(|conn| {
+        // ---- Atomic DB write ----
+        conn.transaction(|conn| {
+            // Wallet update
             diesel::update(wallets::table)
-                .filter(wallets::user_id.eq(user_id))
-                .filter(wallets::currency.eq(&req.currency))
-                .set(
-                    wallets::balance
-                        .eq(sql::<BigInt>("balance - ").bind::<BigInt, _>(amount_cents)),
-                )
-                .execute(conn)
-                .map_err(|e: diesel::result::Error| ApiError::from(e))?;
+                .filter(wallets::id.eq(wallet.id))
+                .set(wallets::balance.eq(wallet.balance - amount_minor))
+                .execute(conn)?;
 
-            diesel::insert_into(transactions::table)
+            // Transaction
+            let tx_id = diesel::insert_into(transactions::table)
                 .values(NewTransaction {
                     user_id,
-                    recipient_id: None,
-                    amount: -amount_cents,
-                    transaction_type: "paystack_payout".to_string(),
-                    currency: req.currency.to_uppercase(),
-                    status: "pending".to_string(),
-                    provider: Some("paystack".to_string()),
-                    description: Some(format!(
-                        "Withdrawal to bank {} in {}",
-                        bank_account.bank_code, req.currency
-                    )),
+                    counterparty_id: None,
+                    intent: TransactionIntent::Payout,
+                    amount: -amount_minor,
+                    currency: wallet.currency,
+                    txn_state: PaymentState::Pending,
+                    provider: Some(PaymentProvider::Paystack),
+                    provider_reference: Some(&provider_ref),
+                    idempotency_key: &req.idempotency_key,
                     reference: req.reference,
-                    metadata: Some(json!({
-                        "idempotency_key": req.idempotency_key
-                    })),
+                    description: Some("Wallet withdrawal"),
+                    metadata: json!({
+                        "bank_account_id": bank_account_id,
+                    }),
                 })
-                .execute(conn)
-                .map_err(|e: diesel::result::Error| ApiError::from(e))?;
+                .returning(transactions::id)
+                .get_result::<Uuid>(conn)?;
 
-            Ok(())
-        })?;
+            // Ledger
+            diesel::insert_into(wallet_ledger::table)
+                .values(NewWalletLedger {
+                    wallet_id: wallet.id,
+                    transaction_id: tx_id,
+                    amount: -amount_minor,
+                })
+                .execute(conn)?;
 
-        info!(
-            "Withdrawal initiated: user_id={}, amount={}, currency={}, bank_id={}",
-            user_id, req.amount, req.currency, bnk_id
-        );
-
-        Ok(WithdrawResponse {
-            transaction_id: req.reference.to_string(),
+            Ok(tx_id)
         })
-    }
-
-    async fn handle_paystack_transfer(
-        state: &AppState,
-        amount_ngn_kobo: i64,
-        bank_account: &BankAccount,
-        reference: Uuid,
-        currency: &str,
-    ) -> Result<(), ApiError> {
-        let paystack_key =
-            std::env::var("PAYSTACK_SECRET_KEY").map_err(|e: std::env::VarError| {
-                error!("PAYSTACK_SECRET_KEY not set: {}", e);
-                ApiError::Payment("Paystack key not set".to_string())
-            })?;
-
-        let client = Client::new();
-        let base_url = &state.paystack_api_url;
-
-        let balance_resp = client
-            .get(format!("{}/balance", base_url))
-            .header("Authorization", format!("Bearer {}", paystack_key))
-            .send()
-            .await
-            .map_err(|e: reqwest::Error| ApiError::Payment(format!("Paystack API error: {}", e)))?;
-
-        let balance_body = balance_resp
-            .json::<Value>()
-            .await
-            .map_err(|e: reqwest::Error| {
-                ApiError::Payment(format!("Paystack response error: {}", e))
-            })?;
-
-        let ngn_balance = balance_body["data"]
-            .as_array()
-            .and_then(|arr| {
-                arr.iter()
-                    .find(|item| item["currency"].as_str() == Some("NGN"))
-                    .and_then(|item| item["balance"].as_i64())
+            .map(|tx_id| WithdrawResponse {
+                transaction_id: tx_id,
             })
-            .ok_or_else(|| {
-                error!("No NGN balance found in Paystack response");
-                ApiError::Payment("No NGN balance found".to_string())
-            })?;
-
-        let paystack_fee = if amount_ngn_kobo < 500000 {
-            5000
-        } else {
-            10000
-        };
-        let total_required = amount_ngn_kobo + paystack_fee;
-
-        if ngn_balance < total_required {
-            return Err(ApiError::Payment(format!(
-                "Insufficient Paystack balance: available ₦{:.2}, required ₦{:.2}",
-                ngn_balance as f64 / 100.0,
-                total_required as f64 / 100.0
-            )));
-        }
-
-        let resp = client
-            .post(format!("{}/transfer", base_url))
-            .header("Authorization", format!("Bearer {}", paystack_key))
-            .json(&json!({
-                "source": "balance",
-                "reason": format!("Withdrawal from Payego in {}", currency),
-                "amount": amount_ngn_kobo,
-                "recipient": bank_account.paystack_recipient_code,
-                "reference": reference.to_string(),
-            }))
-            .send()
-            .await
-            .map_err(|e: reqwest::Error| ApiError::Payment(format!("Paystack API error: {}", e)))?;
-
-        let status = resp.status();
-        let body = resp.json::<Value>().await.map_err(|e: reqwest::Error| {
-            ApiError::Payment(format!("Paystack response error: {}", e))
-        })?;
-
-        if !status.is_success() || body["status"].as_bool().unwrap_or(false) == false {
-            let message = body["message"]
-                .as_str()
-                .unwrap_or("Unknown Paystack error")
-                .to_string();
-            return Err(ApiError::Payment(format!(
-                "Paystack withdrawal failed: {}",
-                message
-            )));
-        }
-
-        let transfer_code = body["data"]["transfer_code"].as_str().ok_or_else(|| {
-            ApiError::Payment("Invalid Paystack response: missing transfer_code".to_string())
-        })?;
-
-        debug!("Paystack transfer_code: {}", transfer_code);
-        Ok(())
     }
 
-    async fn get_exchange_rate(
-        base_url: &str,
-        from_currency: &str,
-        to_currency: &str,
-    ) -> Result<f64, ApiError> {
-        if from_currency == to_currency {
-            return Ok(1.0);
+    fn convert_to_minor_units(amount: f64) -> Result<i64, ApiError> {
+        if amount <= 0.0 {
+            return Err(ApiError::Internal("Invalid amount".into()));
         }
-        let url = format!("{}/{}", base_url, from_currency);
+
+        Ok((amount * 100.0).round() as i64)
+    }
+
+
+    async fn initiate_paystack_transfer(
+        state: &AppState,
+        bank: &BankAccount,
+        amount_minor: i64,
+        currency: &CurrencyCode,
+        reference: Uuid,
+    ) -> Result<String, ApiError> {
         let client = Client::new();
+        let key = state.config.paystack_details.paystack_secret_key.expose_secret();
+
         let resp = client
-            .get(url)
+            .post(format!("{}/transfer", state.config.paystack_details.paystack_api_url))
+            .bearer_auth(key)
+            .json(&json!({
+            "source": "balance",
+            "amount": amount_minor,
+            "recipient": bank.provider_recipient_id,
+            "reference": reference.to_string(),
+            "reason": format!("Withdrawal ({})", currency),
+        }))
             .send()
-            .await
-            .map_err(|e: reqwest::Error| ApiError::Payment(e.to_string()))?;
+            .await?;
 
-        let body = resp
-            .json::<Value>()
-            .await
-            .map_err(|e: reqwest::Error| ApiError::Payment(e.to_string()))?;
+        let body: Value = resp.json().await?;
 
-        let rate = body["rates"][to_currency]
-            .as_f64()
-            .ok_or(ApiError::Payment(
-                "Invalid exchange rate response".to_string(),
-            ))?;
+        if body["status"] != true {
+            return Err(ApiError::Payment(
+                body["message"].as_str().unwrap_or("Paystack failed").into(),
+            ));
+        }
 
-        Ok(rate)
+        body["data"]["transfer_code"]
+            .as_str()
+            .map(String::from)
+            .ok_or_else(|| ApiError::Payment("Missing transfer_code".into()))
     }
 }
+
+
+
+

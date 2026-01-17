@@ -21,3 +21,11 @@ secrecy = { workspace = true }
 http = { workspace = true }
 stripe = { workspace = true }
 r2d2 = "0.8.10"
+serde = { version = "1.0.228", features = ["derive"] }
+utoipa = "5.4.0"
+hmac.workspace = true
+subtle = "2.6.1"
+dashmap = "7.0.0-rc2"
+once_cell = "1.21.3"
+validator = "0.20.0"
+strum = "0.26.3"

@@ -40,20 +40,23 @@ pub fn create_test_app_state() -> Arc<AppState> {
         jwt_expiration_hours: 2,
         jwt_issuer: "paye".to_string(),
         jwt_audience: "paye_api".to_string(),
+        client: Default::default(),
         stripe_secret_key: SecretString::from("sk_test_fake_key_for_testing_only"),
         app_url: "http://localhost:8080".to_string(),
         exchange_api_url: "http://localhost:8080/mock/exchange".to_string(),
         paypal_api_url: "http://localhost:8080/mock/paypal".to_string(),
         stripe_api_url: "http://localhost:8080/mock/stripe".to_string(),
+        stripe_webhook_secret: Default::default(),
         paystack_api_url: "http://localhost:8080/mock/paystack".to_string(),
         paystack_secret_key: SecretString::from("sk_test_fake_paystack_key"),
+        paystack_webhook_secret: Default::default(),
         paypal_client_id: "test_paypal_client_id".to_string(),
         paypal_secret: SecretString::from("test_paypal_secret"),
     });
 
     INIT.call_once(|| {
         std::env::set_var("APP_ENV", "test");
-        payego::logging::setup_logging();
+        payego::utility::logging::setup_logging();
         let mut conn = state_arc
             .db
             .get()

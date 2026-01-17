@@ -1,7 +1,7 @@
 use crate::handlers::{
     all_banks::__path_all_banks, bank::__path_add_bank_account,
     current_user::__path_current_user_details, get_transaction::__path_get_transactions,
-    initialize_banks::__path_initialize_banks, internal_conversion::__path_convert_currency,
+    internal_conversion::__path_convert_currency, initialize_banks::__path_initialize_banks,
     login::__path_login, logout::__path_logout, paypal_capture::__path_paypal_capture,
     paypal_order::__path_get_paypal_order, paystack_webhook::__path_paystack_webhook,
     register::__path_register, resolve_account::__path_resolve_account,
@@ -20,11 +20,11 @@ use utoipa::{Modify, OpenApi};
         register, login, current_user_details, top_up, paypal_capture,
         stripe_webhook, transfer_internal, transfer_external,
         add_bank_account, withdraw, all_banks, paystack_webhook,
-        initialize_banks, get_paypal_order, get_wallets,
+        get_paypal_order, get_wallets, initialize_banks,
         user_bank_accounts, convert_currency, resolve_account,
         get_transactions, get_user_transaction, logout
     ),
-    components(schemas(RegisterRequest)),
+    // components(schemas(RegisterRequest)),
     modifiers(&SecurityAddon),
     tags(
         (name = "Auth", description = "Authentication endpoints"),

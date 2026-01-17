@@ -1,19 +1,32 @@
 // @generated automatically by Diesel CLI.
 
+pub mod sql_types {
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "currency_code"))]
+    pub struct CurrencyCode;
+
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "payment_provider"))]
+    pub struct PaymentProvider;
+
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "payment_state"))]
+    pub struct PaymentState;
+
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "transaction_intent"))]
+    pub struct TransactionIntent;
+}
+
 diesel::table! {
     bank_accounts (id) {
         id -> Uuid,
         user_id -> Uuid,
-        #[max_length = 10]
-        bank_code -> Varchar,
-        #[max_length = 20]
-        account_number -> Varchar,
-        #[max_length = 255]
-        account_name -> Nullable<Varchar>,
-        #[max_length = 255]
-        bank_name -> Nullable<Varchar>,
-        #[max_length = 50]
-        paystack_recipient_code -> Nullable<Varchar>,
+        bank_code -> Text,
+        account_number -> Text,
+        account_name -> Nullable<Text>,
+        bank_name -> Nullable<Text>,
+        provider_recipient_id -> Nullable<Text>,
         is_verified -> Bool,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
@@ -21,15 +34,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::CurrencyCode;
+
     banks (id) {
         id -> Int8,
-        name -> Varchar,
-        code -> Varchar,
-        currency -> Varchar,
+        name -> Text,
+        code -> Text,
+        currency -> CurrencyCode,
         country -> Varchar,
-        gateway -> Nullable<Varchar>,
-        pay_with_bank -> Nullable<Bool>,
-        is_active -> Nullable<Bool>,
+        is_active -> Bool,
     }
 }
 
@@ -53,22 +67,26 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::TransactionIntent;
+    use super::sql_types::CurrencyCode;
+    use super::sql_types::PaymentState;
+    use super::sql_types::PaymentProvider;
+
     transactions (id) {
         id -> Uuid,
         user_id -> Uuid,
-        recipient_id -> Nullable<Uuid>,
+        counterparty_id -> Nullable<Uuid>,
+        intent -> TransactionIntent,
         amount -> Int8,
-        #[max_length = 50]
-        transaction_type -> Varchar,
-        #[max_length = 3]
-        currency -> Varchar,
-        #[max_length = 50]
-        status -> Varchar,
-        #[max_length = 50]
-        provider -> Nullable<Varchar>,
-        description -> Nullable<Text>,
+        currency -> CurrencyCode,
+        txn_state -> PaymentState,
+        provider -> Nullable<PaymentProvider>,
+        provider_reference -> Nullable<Text>,
+        idempotency_key -> Text,
         reference -> Uuid,
-        metadata -> Nullable<Jsonb>,
+        description -> Nullable<Text>,
+        metadata -> Jsonb,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }
@@ -77,23 +95,33 @@ diesel::table! {
 diesel::table! {
     users (id) {
         id -> Uuid,
-        #[max_length = 255]
-        email -> Varchar,
+        email -> Text,
         password_hash -> Text,
-        #[max_length = 100]
-        username -> Nullable<Varchar>,
+        username -> Nullable<Text>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }
 }
 
 diesel::table! {
+    wallet_ledger (id) {
+        id -> Uuid,
+        wallet_id -> Uuid,
+        transaction_id -> Uuid,
+        amount -> Int8,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::CurrencyCode;
+
     wallets (id) {
         id -> Uuid,
         user_id -> Uuid,
+        currency -> CurrencyCode,
         balance -> Int8,
-        #[max_length = 3]
-        currency -> Varchar,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }
@@ -101,6 +129,8 @@ diesel::table! {
 
 diesel::joinable!(bank_accounts -> users (user_id));
 diesel::joinable!(refresh_tokens -> users (user_id));
+diesel::joinable!(wallet_ledger -> transactions (transaction_id));
+diesel::joinable!(wallet_ledger -> wallets (wallet_id));
 diesel::joinable!(wallets -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
@@ -110,5 +140,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     refresh_tokens,
     transactions,
     users,
+    wallet_ledger,
     wallets,
 );

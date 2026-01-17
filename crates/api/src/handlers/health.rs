@@ -1,6 +1,6 @@
 use axum::{extract::State, http::StatusCode};
 use diesel::prelude::*;
-use payego_primitives::models::AppState;
+use payego_primitives::models::app_state::app_state::AppState;
 use std::sync::Arc;
 
 #[utoipa::path(

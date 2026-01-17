@@ -1,21 +1,23 @@
 use payego_primitives::error::ApiError;
-use payego_primitives::models::{AppState, NewUser, RegisterRequest, RegisterResponse, User};
+use payego_primitives::models::dtos::dtos::{ RegisterRequest, RegisterResponse};
 // Token generation now handled by JWTSecret::encode_token()
+use argon2::{
+    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
+    Argon2, Params,
+};
 use axum::{
     extract::{Json, State},
     http::StatusCode,
 };
-use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
-    Argon2, Params
-};
 use diesel::prelude::*;
 use payego_core::services::auth_service::AuthService;
 use payego_primitives::config::security_config::create_token;
-use std::sync::Arc;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
+use std::sync::Arc;
 use tracing::error;
 use validator::Validate;
+use payego_primitives::models::app_state::app_state::AppState;
+use payego_primitives::models::user::{NewUser, User};
 
 #[utoipa::path(
     post,
@@ -33,7 +35,6 @@ pub async fn register(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<RegisterRequest>,
 ) -> Result<(StatusCode, Json<RegisterResponse>), ApiError> {
-
     payload.validate().map_err(|e| {
         error!("Validation error: {}", e);
         ApiError::Validation(e)
@@ -50,9 +51,9 @@ pub async fn register(
 
     //create the user
     let new_user = NewUser {
-        email: payload.email.clone(),
-        password_hash,
-        username: payload.username,
+        email: &payload.email.clone(),
+        password_hash: &password_hash,
+        username: Option::from(payload.username.as_ref().unwrap().as_str()),
     };
 
     let user = diesel::insert_into(payego_primitives::schema::users::table)
@@ -98,20 +99,16 @@ fn argon2id_hash_password(password: SecretBox<str>) -> Result<String, ApiError> 
 }
 
 pub fn create_argon2() -> Result<Argon2<'static>, ApiError> {
-
     let params = Params::new(
         65536, // 64 MiB memory
         3,     // iterations
         1,     // parallelism
         None,
-    ).map_err(|e| {
+    )
+    .map_err(|e| {
         error!("Argon2 params error: {}", e);
         ApiError::Internal("Encryption configuration error".to_string())
     })?;
-    let argon2 = Argon2::new(
-        argon2::Algorithm::Argon2id,
-        argon2::Version::V0x13,
-        params,
-    );
+    let argon2 = Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
     Ok(argon2)
 }

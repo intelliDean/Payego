@@ -1,16 +1,18 @@
+
+
 use axum::{
     extract::{Query, State},
     Json,
 };
-use lazy_static::lazy_static;
-use payego_core::services::bank_service::BankService;
-use payego_primitives::error::{ApiError, AuthError};
-use payego_primitives::models::AppState;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::info;
 use utoipa::ToSchema;
+
+use payego_core::services::bank_service::BankService;
+use payego_primitives::{error::ApiError, models::app_state::app_state::AppState};
 
 #[derive(Deserialize, ToSchema)]
 pub struct ResolveAccountRequest {
@@ -23,10 +25,11 @@ pub struct ResolveAccountResponse {
     pub account_name: String,
 }
 
-lazy_static! {
-    static ref ACCOUNT_NUMBER_RE: Regex =
-        Regex::new(r"^\d{10}$").expect("Invalid account number regex");
-}
+static ACCOUNT_NUMBER_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^\d{10}$").unwrap());
+
+static BANK_CODE_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^\d{3,5}$").unwrap());
 
 #[utoipa::path(
     get,
@@ -46,30 +49,29 @@ pub async fn resolve_account(
     State(state): State<Arc<AppState>>,
     Query(req): Query<ResolveAccountRequest>,
 ) -> Result<Json<ResolveAccountResponse>, ApiError> {
-    info!(
-        "Resolve account initiated for bank_code: {}, account_number: {}",
-        req.bank_code, req.account_number
-    );
 
-    // Validate input
     if !ACCOUNT_NUMBER_RE.is_match(&req.account_number) {
-        return Err(ApiError::Auth(AuthError::InvalidToken(
+        return Err(ApiError::Internal(
             "Account number must be 10 digits".to_string(),
-        )));
+        ));
     }
 
-    let account_details =
-        BankService::resolve_account_details(&state, &req.bank_code, &req.account_number).await?;
-
-    let account_name = account_details["account_name"]
-        .as_str()
-        .ok_or_else(|| ApiError::Internal("Missing account name".to_string()))?
-        .to_string();
+    if !BANK_CODE_RE.is_match(&req.bank_code) {
+        return Err(ApiError::Internal(
+            "Bank code must be 3–5 digits".to_string(),
+        ));
+    }
 
     info!(
-        "Account resolved: {} - {}",
-        req.account_number, account_name
+        "Resolving account ****{} @ {}",
+        &req.account_number[6..],
+        req.bank_code
     );
 
-    Ok(Json(ResolveAccountResponse { account_name }))
+    let resolved =
+        BankService::resolve_account_details(&state, &req.bank_code, &req.account_number).await?;
+
+    Ok(Json(ResolveAccountResponse {
+        account_name: resolved.account_name,
+    }))
 }

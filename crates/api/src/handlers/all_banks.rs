@@ -1,12 +1,12 @@
 use axum::{extract::State, Json};
 use diesel::prelude::*;
-use payego_primitives::models::Bank;
 use payego_primitives::schema::banks;
-use payego_primitives::{error::ApiError, models::AppState};
+use payego_primitives::{error::ApiError, models::app_state::app_state::AppState};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{error, info};
 use utoipa::ToSchema;
+use payego_primitives::models::bank::Bank;
 
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct BankListResponse {

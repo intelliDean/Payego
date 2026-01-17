@@ -1,5 +1,4 @@
 use payego_primitives::error::{ApiError, AuthError};
-use payego_primitives::models::{AppState, LoginRequest, LoginResponse, User};
 // Token generation now handled by JWTSecret::encode_token()
 use axum::extract::{Json, State};
 use argon2::{password_hash::{PasswordHash, PasswordVerifier}, Argon2, Params};
@@ -10,6 +9,9 @@ use std::sync::Arc;
 use argon2::password_hash::rand_core::OsRng;
 use argon2::password_hash::SaltString;
 use tracing::error;
+use payego_primitives::models::app_state::app_state::AppState;
+use payego_primitives::models::dtos::dtos::{LoginRequest, LoginResponse};
+use payego_primitives::models::user::User;
 use crate::handlers::register::create_argon2;
 
 #[utoipa::path(

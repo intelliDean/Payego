@@ -4,3 +4,7 @@ pub mod conversion_service;
 pub mod payment_service;
 pub mod transfer_service;
 pub mod withdrawal_service;
+pub mod paypal_service;
+pub mod paystack_service;
+pub mod stripe_service;
+pub mod transaction_service;

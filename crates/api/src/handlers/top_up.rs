@@ -1,12 +1,14 @@
-use axum::extract::{Extension, Json, State};
-use payego_core::services::payment_service::PaymentService;
+use axum::extract::State;
+use axum::Extension;
 use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::{ApiError, AuthError};
-use payego_primitives::models::{AppState, TopUpRequest, TopUpResponse};
+use payego_primitives::models::app_state::app_state::AppState;
 use std::sync::Arc;
-use tracing::error;
-use uuid::Uuid;
+
+
+use axum::extract::Json;
 use validator::Validate;
+use payego_core::services::payment_service::{PaymentService, TopUpRequest, TopUpResponse};
+use payego_primitives::error::ApiError;
 
 #[utoipa::path(
     post,
@@ -26,20 +28,14 @@ pub async fn top_up(
     Extension(claims): Extension<Claims>,
     Json(req): Json<TopUpRequest>,
 ) -> Result<Json<TopUpResponse>, ApiError> {
-    // 1. Validate request
-    req.validate().map_err(|e| {
-        error!("Validation error: {}", e);
-        ApiError::Validation(e)
-    })?;
+    req.validate().map_err(ApiError::Validation)?;
 
-    // 2. Parse user ID from claims
-    let user_id = Uuid::parse_str(&claims.sub).map_err(|e| {
-        error!("Invalid user ID in claims: {}", e);
-        ApiError::Auth(AuthError::InvalidToken("Invalid user ID".to_string()))
-    })?;
+    let user_id = claims.user_id()?;
 
-    // 3. Call PaymentService
-    let response = PaymentService::initiate_top_up(&state, user_id, req).await?;
-
-    Ok(Json(response))
+    Ok(Json(
+        PaymentService::initiate_top_up(&state, user_id, req).await?,
+    ))
 }
+
+
+

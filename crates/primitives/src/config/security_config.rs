@@ -1,47 +1,40 @@
 use crate::error::{ApiError, AuthError};
-use crate::models::AppState;
+use crate::models::app_state::app_state::AppState;
 use axum::http::Request;
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::{extract::State, http::StatusCode};
 use chrono::{Duration, Utc};
 use diesel::prelude::*;
+use eyre::Report;
 use http::HeaderMap;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
-use secrecy::ExposeSecret;
+use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::sync::Arc;
 use tracing::error;
-
+use uuid::Uuid;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: String, // user id
-    pub exp: i64, // expiration time
-    pub iat: i64, // issued at
+    pub exp: i64,    // expiration time
+    pub iat: i64,    // issued at
     pub iss: String,
     pub aud: String,
     pub jti: String,
 }
-
-
-pub struct JWTSecret {
-    pub jwt_secret: String,
-}
-
-impl JWTSecret {
-    pub fn new() -> Self {
-        let jwt_secret =
-            env::var("JWT_SECRET").expect("JWT_SECRET must be set in environment variables");
-
-        if jwt_secret.len() < 32 {
-            panic!("JWT_SECRET must be at least 32 characters long");
-        }
-
-        Self { jwt_secret }
+impl Claims {
+    pub fn user_id(&self) -> Result<Uuid, ApiError> {
+        Uuid::parse_str(&self.sub).map_err(|e| {
+            error!("Invalid user ID in claims: {}", e);
+            ApiError::Auth(AuthError::InvalidToken("Invalid user ID".to_string()))
+        })
     }
 }
+
+
 
 pub fn create_token(state: &AppState, user_id: &str) -> Result<String, ApiError> {
     let now = Utc::now();
@@ -49,9 +42,9 @@ pub fn create_token(state: &AppState, user_id: &str) -> Result<String, ApiError>
     let claims = Claims {
         sub: user_id.to_string(),
         iat: now.timestamp(),
-        exp: (now + Duration::hours(state.jwt_expiration_hours)).timestamp(),
-        iss: state.jwt_issuer.clone(),
-        aud: state.jwt_audience.clone(),
+        exp: (now + Duration::hours(state.config.jwt_details.jwt_expiration_hours)).timestamp(),
+        iss: state.config.jwt_details.jwt_issuer.clone(),
+        aud: state.config.jwt_details.jwt_audience.clone(),
         jti: uuid::Uuid::new_v4().to_string(),
     };
 
@@ -61,15 +54,13 @@ pub fn create_token(state: &AppState, user_id: &str) -> Result<String, ApiError>
     encode(
         &header,
         &claims,
-        &EncodingKey::from_secret(state.jwt_secret.expose_secret().as_bytes()),
+        &EncodingKey::from_secret(state.config.jwt_details.jwt_secret.expose_secret().as_bytes()),
     )
-        .map_err(|e| {
-            error!("JWT encoding error: {}", e);
-            ApiError::Token("Token creation failed".into())
-        })
+    .map_err(|e| {
+        error!("JWT encoding error: {}", e);
+        ApiError::Token("Token creation failed".into())
+    })
 }
-
-
 
 fn extract_bearer_token(headers: &HeaderMap) -> Result<String, AuthError> {
     let auth_header = headers
@@ -92,24 +83,21 @@ fn extract_bearer_token(headers: &HeaderMap) -> Result<String, AuthError> {
 
 pub fn verify_token(state: &AppState, token: &str) -> Result<Claims, AuthError> {
     let mut validation = Validation::new(Algorithm::HS256);
-    validation.set_issuer(&[state.jwt_issuer.as_str()]);
-    validation.set_audience(&[state.jwt_audience.as_str()]);
+    validation.set_issuer(&[state.config.jwt_details.jwt_issuer.as_str()]);
+    validation.set_audience(&[state.config.jwt_details.jwt_audience.as_str()]);
     validation.validate_exp = true;
     validation.validate_nbf = true;
 
     decode::<Claims>(
         token,
-        &DecodingKey::from_secret(state.jwt_secret.expose_secret().as_bytes()),
+        &DecodingKey::from_secret(state.config.jwt_details.jwt_secret.expose_secret().as_bytes()),
         &validation,
     )
-        .map(|data| data.claims)
-        .map_err(|_| AuthError::InvalidToken("Invalid or expired token".into()))
+    .map(|data| data.claims)
+    .map_err(|_| AuthError::InvalidToken("Invalid or expired token".into()))
 }
 
-pub fn is_jti_blacklisted(
-    conn: &mut PgConnection,
-    jti_value: &str,
-) -> Result<bool, ApiError> {
+pub fn is_jti_blacklisted(conn: &mut PgConnection, jti_value: &str) -> Result<bool, ApiError> {
     use crate::schema::blacklisted_tokens::dsl::*;
 
     blacklisted_tokens
@@ -125,19 +113,15 @@ pub fn is_jti_blacklisted(
         })
 }
 
-
-
 pub async fn auth_middleware(
     State(state): State<Arc<AppState>>,
     mut req: Request<axum::body::Body>,
     next: Next,
 ) -> Result<Response, Response> {
+    let token =
+        extract_bearer_token(req.headers()).map_err(|e| ApiError::from(e).into_response())?;
 
-    let token = extract_bearer_token(req.headers())
-        .map_err(|e| ApiError::from(e).into_response())?;
-
-    let claims = verify_token(&state, &token)
-        .map_err(|e| ApiError::from(e).into_response())?;
+    let claims = verify_token(&state, &token).map_err(|e| ApiError::from(e).into_response())?;
 
     let mut conn = state.db.get().map_err(|_| {
         (
@@ -154,4 +138,3 @@ pub async fn auth_middleware(
     req.extensions_mut().insert(claims);
     Ok(next.run(req).await)
 }
-
