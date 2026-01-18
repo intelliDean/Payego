@@ -30,10 +30,9 @@ pub async fn convert_currency(
 
     req.validate()?;
 
-    let user_id = claims.user_id()?;
 
     let response =
-        ConversionService::convert_currency(&state, user_id, req).await?;
+        ConversionService::convert_currency(&state, claims.user_id()?, req).await?;
 
     Ok(Json(response))
 }

@@ -232,13 +232,11 @@
 
 use axum::body::Bytes;
 use axum::extract::State;
-use diesel::prelude::*;
 use http::{HeaderMap, StatusCode};
 use payego_core::services::stripe_service::StripeService;
 use payego_core::services::transaction_service::TransactionService;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
-use secrecy::ExposeSecret;
 use std::sync::Arc;
 
 #[utoipa::path(
@@ -256,35 +254,13 @@ pub async fn stripe_webhook(
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<StatusCode, ApiError> {
-    let signature = headers
-        .get("stripe-signature")
-        .and_then(|v| v.to_str().ok())
-        .ok_or(ApiError::Payment("Missing Stripe signature".into()))?;
-
-    let payload_str = std::str::from_utf8(&body)
-        .map_err(|_| ApiError::Payment("Invalid UTF-8 Stripe payload".into()))?;
-
-    let event = StripeService::construct_event(
-        payload_str,
-        signature,
-        state
-            .config
-            .stripe_details
-            .stripe_webhook_secret
-            .expose_secret(),
-    )?;
-
-    let Some(ctx) = StripeService::extract_context(&event)? else {
+    
+    let Some(ctx) = StripeService::extract_context(&state, headers, &body)? else {
         // Ignore unrelated events but ACK
         return Ok(StatusCode::OK);
     };
 
-    let mut conn = state
-        .db
-        .get()
-        .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
-
-    TransactionService::apply_stripe_webhook(&mut conn, ctx)?;
+    TransactionService::apply_stripe_webhook(&state, ctx)?;
 
     Ok(StatusCode::OK)
 }

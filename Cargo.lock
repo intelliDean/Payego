@@ -2134,6 +2134,7 @@ dependencies = [
 name = "payego-core"
 version = "0.1.0"
 dependencies = [
+ "argon2",
  "async-stripe",
  "axum",
  "chrono",
@@ -2143,9 +2144,11 @@ dependencies = [
  "hmac 0.13.0-rc.3",
  "http 1.4.0",
  "once_cell",
+ "password-hash",
  "payego-primitives",
  "r2d2",
  "rand 0.7.3",
+ "rand_core 0.6.4",
  "regex",
  "reqwest",
  "secrecy",

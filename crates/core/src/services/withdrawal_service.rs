@@ -1,21 +1,17 @@
-use diesel::dsl::sql;
 use diesel::prelude::*;
-use diesel::sql_types::BigInt;
 use payego_primitives::error::ApiError;
-use payego_primitives::schema::{bank_accounts, transactions, wallet_ledger, wallets};
-use reqwest::Client;
-use secrecy::ExposeSecret;
-use serde_json::{json, Value};
-use tracing::{debug, error, info};
-use uuid::Uuid;
 use payego_primitives::models::app_state::app_state::AppState;
 use payego_primitives::models::bank::BankAccount;
 use payego_primitives::models::dtos::dtos::{WithdrawRequest, WithdrawResponse};
-// use payego_primitives::models::dtos::dtos::{, WithdrawResponse};
 use payego_primitives::models::enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent};
 use payego_primitives::models::transaction::NewTransaction;
 use payego_primitives::models::wallet::Wallet;
 use payego_primitives::models::wallet_ledger::NewWalletLedger;
+use payego_primitives::schema::{bank_accounts, transactions, wallet_ledger, wallets};
+use reqwest::Client;
+use secrecy::ExposeSecret;
+use serde_json::{json, Value};
+use uuid::Uuid;
 
 
 pub struct WithdrawalService;

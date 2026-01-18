@@ -1,14 +1,11 @@
 use axum::extract::{Json, State};
 use diesel::prelude::*;
+use payego_core::services::paypal_service::PayPalService;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::enum_types::PaymentState;
-use serde::{Deserialize, Serialize};
+use payego_primitives::models::dtos::dtos::{CaptureRequest, CaptureResponse};
 use std::sync::Arc;
 use utoipa::ToSchema;
-use uuid::Uuid;
-use payego_core::services::paypal_service::PayPalService;
-use payego_primitives::models::dtos::dtos::{CaptureRequest, CaptureResponse};
 
 #[utoipa::path(
     post,

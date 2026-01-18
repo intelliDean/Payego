@@ -1,9 +1,14 @@
 // payego_core::services::stripe_service.rs
 
+use axum::body::Bytes;
+use http::HeaderMap;
+use secrecy::ExposeSecret;
+use std::sync::Arc;
 use stripe::{Event, EventObject, EventType, Webhook};
 use uuid::Uuid;
 
 use payego_primitives::error::ApiError;
+use payego_primitives::models::app_state::app_state::AppState;
 
 #[derive(Debug)]
 pub struct StripeWebhookContext {
@@ -16,15 +21,37 @@ pub struct StripeService;
 
 impl StripeService {
     pub fn construct_event(
-        payload: &str,
-        signature: &str,
-        secret: &str,
+        state: &Arc<AppState>,
+        headers: HeaderMap,
+        body: &Bytes,
     ) -> Result<Event, ApiError> {
-        Webhook::construct_event(payload, signature, secret)
-            .map_err(|e| ApiError::Payment(format!("Invalid Stripe webhook: {}", e)))
+        let signature = headers
+            .get("stripe-signature")
+            .and_then(|v| v.to_str().ok())
+            .ok_or(ApiError::Payment("Missing Stripe signature".into()))?;
+
+        let payload_str = std::str::from_utf8(&body)
+            .map_err(|_| ApiError::Payment("Invalid UTF-8 Stripe payload".into()))?;
+
+        Webhook::construct_event(
+            payload_str,
+            signature,
+            state
+                .config
+                .stripe_details
+                .stripe_webhook_secret
+                .expose_secret(),
+        )
+        .map_err(|e| ApiError::Payment(format!("Invalid Stripe webhook: {}", e)))
     }
 
-    pub fn extract_context(event: &Event) -> Result<Option<StripeWebhookContext>, ApiError> {
+    pub fn extract_context(
+        state: &Arc<AppState>,
+        headers: HeaderMap,
+        body: &Bytes
+    ) -> Result<Option<StripeWebhookContext>, ApiError> {
+        let event = Self::construct_event(&state, headers, &body)?;
+
         match event.type_ {
             EventType::CheckoutSessionCompleted => {
                 let EventObject::CheckoutSession(session) = &event.data.object else {
@@ -46,9 +73,7 @@ impl StripeService {
                 let currency = session
                     .currency
                     .map(|c| c.to_string())
-                    .ok_or_else(|| {
-                        ApiError::Payment("Stripe session missing currency".into())
-                    })?;
+                    .ok_or_else(|| ApiError::Payment("Stripe session missing currency".into()))?;
 
                 let provider_reference = session.id.to_string(); // Stripe IDs are strings
 
@@ -57,7 +82,6 @@ impl StripeService {
                     provider_reference,
                     currency,
                 }))
-
             }
             _ => Ok(None),
         }

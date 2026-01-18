@@ -5,7 +5,7 @@ use payego_primitives::error::ApiError;
 use payego_primitives::schema::{bank_accounts, banks};
 use reqwest::Client;
 use secrecy::ExposeSecret;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tracing::{error, info};
 use uuid::Uuid;
@@ -14,11 +14,13 @@ use dashmap::DashMap;
 use once_cell::sync::Lazy;
 use std::time::{Duration, Instant};
 use tracing::log::warn;
+use utoipa::ToSchema;
 use payego_primitives::models::app_state::app_state::AppState;
 use payego_primitives::models::bank::{Bank, BankAccount, NewBank, NewBankAccount};
 use payego_primitives::models::bank_dtos::BankRequest;
 use payego_primitives::models::dtos::dtos::{ PaystackRecipientResponse, ResolvedAccount};
 use payego_primitives::models::enum_types::CurrencyCode;
+use crate::services::bank_account_service::BankAccountResponse;
 
 static ACCOUNT_CACHE: Lazy<DashMap<String, (ResolvedAccount, Instant)>> = Lazy::new(DashMap::new);
 const TTL: Duration = Duration::from_secs(60 * 10); // 10 minutes
@@ -57,6 +59,33 @@ pub struct PaystackBank {
 
     #[serde(rename = "active", default)]
     pub is_active: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct BankDto {
+    pub id: i64,
+    pub name: String,
+    pub code: String,
+    pub currency: String,
+    pub is_active: bool,
+}
+
+impl From<Bank> for BankDto {
+    fn from(bank: Bank) -> Self {
+        Self {
+            id: bank.id,
+            name: bank.name,
+            code: bank.code,
+            currency: bank.currency.to_string(),
+            is_active: bank.is_active,
+        
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct BankListResponse {
+    pub banks: Vec<BankDto>,
 }
 
 
@@ -249,6 +278,7 @@ impl BankService {
 
         Ok(true)
     }
+    
     pub async fn resolve_account_details(
         state: &AppState,
         bank_code: &str,
@@ -289,6 +319,37 @@ impl BankService {
 
         Ok(resolved)
     }
+
+    pub async fn list_banks(state: &AppState) -> Result<BankListResponse, ApiError> {
+        let mut conn = state.db.get().map_err(|_| {
+            error!("banks.list: failed to acquire db connection");
+            ApiError::DatabaseConnection("Database unavailable".into())
+        })?;
+
+        let banks = banks::table
+            .filter(banks::country.eq(&state.config.default_country))
+            .filter(banks::is_active.eq(true))
+            .order(banks::name.asc())
+            .load::<Bank>(&mut conn)
+            .map_err(|_| {
+                error!("banks.list: query failed");
+                ApiError::Internal("Failed to fetch banks".into())
+            })?;
+
+        Ok(BankListResponse {
+            banks: banks.into_iter().map(Self::to_dto).collect(),
+        })
+    }
+
+    fn to_dto(bank: Bank) -> BankDto {
+        BankDto {
+            id: bank.id,
+            name: bank.name,
+            code: bank.code,
+            currency: bank.currency.to_string(),
+            is_active: bank.is_active,
+        }
+    }
 }
 
 // payego_core::cache::bank_cache.rs
@@ -306,5 +367,6 @@ pub fn get(key: &str) -> Option<ResolvedAccount> {
 pub fn set(key: String, value: ResolvedAccount) {
     ACCOUNT_CACHE.insert(key, (value, Instant::now()));
 }
+
 
 

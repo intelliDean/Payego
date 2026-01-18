@@ -37,14 +37,12 @@ pub async fn add_bank_account(
         ApiError::Validation(e)
     })?;
 
-    // 2. Parse user ID from claims
-    let user_id = Uuid::parse_str(&claims.sub).map_err(|e: uuid::Error| {
-        error!("Invalid user ID in claims: {}", e);
-        ApiError::Auth(AuthError::InvalidToken("Invalid user ID".to_string()))
-    })?;
-
     // 3. Call BankService
-    let account = BankService::create_bank_account(&state, user_id, req).await?;
+    let account = BankService::create_bank_account(
+        &state,
+        claims.user_id()?, 
+        req
+    ).await?;
 
     Ok((StatusCode::CREATED, Json(account)))
 }

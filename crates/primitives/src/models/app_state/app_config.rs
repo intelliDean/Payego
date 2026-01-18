@@ -21,6 +21,8 @@ pub struct AppConfig {
     pub paypal_details: PaypalInfo,
 
     pub exchange_api_url: String,
+
+    pub default_country: String,
 }
 
 impl AppConfig {
@@ -39,6 +41,8 @@ impl AppConfig {
 
             exchange_api_url: env::var("EXCHANGE_API_URL")
                 .unwrap_or_else(|_| "https://api.exchangerate-api.com/v4/latest".into()),
+
+            default_country: env::var("DEFAULT_COUNTRY").unwrap_or_else(|_| "Nigeria".into()),
         })
     }
 }

@@ -1,6 +1,10 @@
+use std::sync::Arc;
+use axum::body::Bytes;
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use hmac::{KeyInit,};
+use http::HeaderMap;
+use secrecy::ExposeSecret;
 use payego_primitives::{
     error::ApiError,
     models::{
@@ -11,15 +15,37 @@ use payego_primitives::{
 };
 use tracing::{info};
 use uuid::Uuid;
+use payego_primitives::models::app_state::app_state::AppState;
 use payego_primitives::models::dtos::dtos::PaystackWebhook;
 
 pub struct PaystackService;
 
 impl PaystackService {
     pub fn handle_event(
-        conn: &mut PgConnection,
-        payload: &PaystackWebhook,
+        state: Arc<AppState>,
+        headers: HeaderMap,
+        body: &Bytes,
     ) -> Result<(), ApiError> {
+        
+        let signature = headers
+            .get("x-paystack-signature")
+            .and_then(|v| v.to_str().ok())
+            .ok_or(ApiError::Payment("Missing Paystack signature".into()))?;
+
+        PaystackService::verify_paystack_signature(
+            state.config.paystack_details.paystack_webhook_secret.expose_secret(),
+            &body,
+            signature,
+        )?;
+
+        let payload: PaystackWebhook = serde_json::from_slice(&body)
+            .map_err(|_| ApiError::Payment("Invalid webhook payload".into()))?;
+
+        let mut conn = state.db.get()
+            .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
+
+
+        //=============
         let event = payload.event.as_str();
 
         if !matches!(event, "transfer.success" | "transfer.failed") {

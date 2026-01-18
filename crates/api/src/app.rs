@@ -1,6 +1,6 @@
+use axum::routing::post;
 use axum::{middleware, response::IntoResponse, Router};
 use std::sync::Arc;
-use axum::routing::post;
 use utoipa::OpenApi;
 
 use utoipa_swagger_ui::SwaggerUi;
@@ -19,15 +19,18 @@ use crate::handlers::{
     register::register, stripe_webhook::stripe_webhook, top_up::top_up,
     transfer_external::transfer_external, transfer_internal::transfer_internal, withdraw::withdraw,
 };
-use payego_primitives::config::security_config::auth_middleware;
+// use payego_primitives::config::security_config::auth_middleware;
 use payego_primitives::models::app_state::app_state::AppState;
 
 use tower::ServiceBuilder;
-use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
+use tower_governor::governor::GovernorConfig;
+use tower_governor::key_extractor::PeerIpKeyExtractor;
+use tower_governor::{governor, governor::GovernorConfigBuilder, GovernorLayer};
 use tower_http::{
     request_id::{MakeRequestUuid, SetRequestIdLayer},
     trace::TraceLayer,
 };
+use payego_primitives::config::security_config::SecurityConfig;
 
 pub fn create_router(state: Arc<AppState>) -> Router {
     // Rate limiting configuration
@@ -40,22 +43,31 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     );
 
     // Public routes (no authentication)
-    let public_router = Router::new()
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-        .route("/api/register", post(register))
-        .route("/api/login", axum::routing::post(login))
-        .route(
-            "/api/auth/refresh",
-            axum::routing::post(crate::handlers::refresh_token::refresh_token),
-        )
-        .route("/api/webhook/stripe", post(stripe_webhook))
-        .route("/webhooks/paystack", post(paystack_webhook))
-        .route("/api/bank/init", axum::routing::post(initialize_banks))
-        .route("/api/banks", axum::routing::get(all_banks))
-        .route("/api/resolve_account", axum::routing::get(resolve_account))
-        .route("/api/health", axum::routing::get(health_check));
+    let public_router = create_public_routers();
 
     // Protected routes (require JWT authentication)
+    let protected_router = create_secured_routers(&state);
+
+    let mut router = Router::new()
+        .merge(public_router)
+        .merge(protected_router)
+        .layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)) // 2MB limit
+        .layer(middleware::from_fn(https_redirect_middleware))
+        .layer(
+            ServiceBuilder::new()
+                .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
+                .layer(TraceLayer::new_for_http()),
+        );
+
+    // Disable rate limiting in test environment to avoid "Unable To Extract Key!" errors
+    if std::env::var("APP_ENV").unwrap_or_default() != "test" {
+        router = router.layer(GovernorLayer::new(governor_conf));
+    }
+
+    router.with_state(state)
+}
+
+fn create_secured_routers(state: &Arc<AppState>) -> Router<Arc<AppState>> {
     let protected_router = Router::new()
         .route(
             "/api/current_user",
@@ -87,26 +99,27 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/withdraw", axum::routing::post(withdraw))
         .layer(middleware::from_fn_with_state(
             state.clone(),
-            auth_middleware,
+            SecurityConfig::auth_middleware,
         ));
+    protected_router
+}
 
-    let mut router = Router::new()
-        .merge(public_router)
-        .merge(protected_router)
-        .layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)) // 2MB limit
-        .layer(middleware::from_fn(https_redirect_middleware))
-        .layer(
-            ServiceBuilder::new()
-                .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
-                .layer(TraceLayer::new_for_http()),
-        );
-
-    // Disable rate limiting in test environment to avoid "Unable To Extract Key!" errors
-    if std::env::var("APP_ENV").unwrap_or_default() != "test" {
-        router = router.layer(GovernorLayer::new(governor_conf));
-    }
-
-    router.with_state(state)
+fn create_public_routers() -> Router<Arc<AppState>> {
+    let public_router = Router::new()
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .route("/api/register", post(register))
+        .route("/api/login", axum::routing::post(login))
+        .route(
+            "/api/auth/refresh",
+            axum::routing::post(crate::handlers::refresh_token::refresh_token),
+        )
+        .route("/api/webhook/stripe", post(stripe_webhook))
+        .route("/webhooks/paystack", post(paystack_webhook))
+        .route("/api/bank/init", axum::routing::post(initialize_banks))
+        .route("/api/banks", axum::routing::get(all_banks))
+        .route("/api/resolve_account", axum::routing::get(resolve_account))
+        .route("/api/health", axum::routing::get(health_check));
+    public_router
 }
 
 async fn https_redirect_middleware(

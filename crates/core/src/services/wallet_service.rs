@@ -1,0 +1,70 @@
+use diesel::prelude::*;
+use serde::Serialize;
+use tracing::{error, warn};
+use utoipa::ToSchema;
+use uuid::Uuid;
+
+use payego_primitives::{
+    config::security_config::Claims,
+    error::{ApiError, AuthError},
+    models::{
+        app_state::app_state::AppState,
+        wallet::Wallet,
+    },
+    schema::wallets,
+};
+use payego_primitives::models::enum_types::CurrencyCode;
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct WalletDto {
+    pub id: Uuid,
+    pub currency: CurrencyCode,
+    pub balance: i64, // cents
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct WalletsResponse {
+    pub wallets: Vec<WalletDto>,
+}
+
+impl From<Wallet> for WalletDto {
+    fn from(wallet: Wallet) -> Self {
+        Self {
+            id: wallet.id,
+            currency: wallet.currency,
+            balance: wallet.balance,
+        }
+    }
+}
+
+pub struct WalletService;
+
+impl WalletService {
+    pub async fn get_user_wallets(
+        state: &AppState,
+        claims: &Claims,
+    ) -> Result<WalletsResponse, ApiError> {
+        let user_id = Uuid::parse_str(&claims.sub).map_err(|_| {
+            warn!("wallets.list: invalid subject in token");
+            ApiError::Auth(AuthError::InvalidToken("Invalid token".into()))
+        })?;
+
+        let mut conn = state.db.get().map_err(|_| {
+            error!("wallets.list: failed to acquire db connection");
+            ApiError::DatabaseConnection("Database unavailable".into())
+        })?;
+
+        let wallets = wallets::table
+            .filter(wallets::user_id.eq(user_id))
+            .order(wallets::created_at.asc())
+            .load::<Wallet>(&mut conn)
+            .map_err(|_| {
+                error!("wallets.list: query failed");
+                ApiError::Internal("Failed to fetch wallets".into())
+            })?;
+
+        Ok(WalletsResponse {
+            wallets: wallets.into_iter().map(WalletDto::from).collect(),
+        })
+    }
+}
