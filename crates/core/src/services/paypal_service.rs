@@ -1,24 +1,27 @@
-use diesel::ExpressionMethods;
-use diesel::{Connection, RunQueryDsl};
-use diesel::{OptionalExtension, QueryDsl};
-use http::StatusCode;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::dtos::providers_dto::{
-    CaptureResponse, PayPalOrderResponse, PayPalTokenResponse,
+use diesel::{
+    ExpressionMethods, {Connection, RunQueryDsl}, {OptionalExtension, QueryDsl},
 };
-use payego_primitives::models::enum_types::{CurrencyCode, PaymentProvider, PaymentState};
-use payego_primitives::models::transaction::Transaction;
-use payego_primitives::models::wallet::Wallet;
-use payego_primitives::models::wallet_ledger::NewWalletLedger;
-use payego_primitives::schema::{transactions, wallet_ledger, wallets};
-use secrecy::{ExposeSecret, SecretString};
+use http::StatusCode;
+pub use payego_primitives::{
+    error::ApiError,
+    models::{
+        app_state::app_state::AppState,
+        dtos::providers_dto::{CaptureResponse, PayPalOrderResponse, PayPalTokenResponse},
+        enum_types::{CurrencyCode, PaymentProvider, PaymentState},
+        providers_dto::PaypalCapture,
+        transaction::Transaction,
+        wallet::Wallet,
+        wallet_ledger::NewWalletLedger,
+        providers_dto::OrderResponse,
+        providers_dto::CaptureRequest
+    },
+    schema::{transactions, wallet_ledger, wallets},
+};
+use secrecy::ExposeSecret;
 use std::str::FromStr;
-use std::sync::Arc;
 use std::time::Duration;
 use tracing::log::error;
 use uuid::Uuid;
-use payego_primitives::models::providers_dto::PaypalCapture;
 
 #[derive(Clone)]
 pub struct PayPalService;

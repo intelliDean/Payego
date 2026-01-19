@@ -1,32 +1,15 @@
-use argon2::{password_hash::PasswordHash, Argon2, Params, PasswordVerifier};
-use chrono::{DateTime, Duration, Utc};
 use diesel::prelude::*;
-use hex;
-use password_hash::PasswordHasher;
-use payego_primitives::config::security_config::{Claims, SecurityConfig};
-use payego_primitives::error::{ApiError, AuthError};
-use payego_primitives::models::authentication::{NewRefreshToken, RefreshToken};
-use payego_primitives::models::dtos::token_dto::{RefreshResult,};
-use payego_primitives::models::dtos::register_dto::{ RegisterRequest, RegisterResponse,};
-use payego_primitives::models::enum_types::CurrencyCode;
-use payego_primitives::models::{
-    app_state::app_state::AppState,
-    dtos::login_dto::{LoginRequest, LoginResponse},
-    user::User,
+pub use payego_primitives::{
+    config::security_config::Claims,
+    error::{ApiError, AuthError},
+    models::{
+        app_state::app_state::AppState, enum_types::CurrencyCode, token_dto::CurrentUserResponse,
+        withdrawal_dto::WalletSummaryDto,
+    },
+    schema::{users, wallets},
 };
-use payego_primitives::schema::refresh_tokens::dsl::*;
-use payego_primitives::schema::{blacklisted_tokens, users, wallets};
-use rand::distributions::Alphanumeric;
-use rand::Rng;
-use secrecy::{ExposeSecret, SecretString};
-use serde::Serialize;
-use sha2::{Digest, Sha256};
-use tracing::log::info;
-use tracing::{error, warn};
-use utoipa::ToSchema;
+use tracing::log::error;
 use uuid::Uuid;
-use payego_primitives::models::token_dto::CurrentUserResponse;
-use payego_primitives::models::withdrawal_dto::WalletSummaryDto;
 
 pub struct UserService;
 

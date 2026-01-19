@@ -233,10 +233,10 @@
 use axum::body::Bytes;
 use axum::extract::State;
 use http::{HeaderMap, StatusCode};
-use payego_core::services::stripe_service::StripeService;
-use payego_core::services::transaction_service::TransactionService;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::app_state::app_state::AppState;
+use payego_core::services::{
+    stripe_service::{ApiError, AppState, StripeService},
+    transaction_service::TransactionService,
+};
 use std::sync::Arc;
 
 #[utoipa::path(
@@ -254,7 +254,6 @@ pub async fn stripe_webhook(
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<StatusCode, ApiError> {
-    
     let Some(ctx) = StripeService::extract_context(&state, headers, &body)? else {
         // Ignore unrelated events but ACK
         return Ok(StatusCode::OK);

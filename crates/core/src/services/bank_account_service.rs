@@ -1,22 +1,21 @@
 use diesel::prelude::*;
 use reqwest::Client;
 use secrecy::ExposeSecret;
-use serde::Serialize;
 use serde_json::json;
 use tracing::{error, warn};
-use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::services::bank_service::BankService;
-use payego_primitives::models::bank::NewBankAccount;
-use payego_primitives::models::bank_dtos::{
-    BankAccountResponse, BankAccountsResponse, BankRequest,
-};
-use payego_primitives::models::dtos::bank_dtos::PaystackRecipientResponse;
-use payego_primitives::{
+pub use payego_primitives::{
     config::security_config::Claims,
     error::{ApiError, AuthError},
     models::{app_state::app_state::AppState, bank::BankAccount},
+    models::{
+        bank::NewBankAccount,
+        dtos::bank_dtos::{
+            BankAccountResponse, BankAccountsResponse, BankRequest, PaystackRecipientResponse,
+        },
+    },
     schema::bank_accounts,
 };
 

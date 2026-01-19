@@ -1,11 +1,9 @@
 use axum::extract::State;
-use diesel::prelude::*;
 use http::StatusCode;
-use payego_core::services::bank_service::BankService;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::app_state::app_state::AppState;
+use payego_core::services::bank_service::{
+    BankService, ApiError, AppState
+};
 use std::sync::Arc;
-
 
 #[utoipa::path(
     post,
@@ -19,12 +17,8 @@ use std::sync::Arc;
     tag = "Admin"
 )]
 pub async fn initialize_banks(
-    // state: &Arc<AppState>,
     State(state): State<Arc<AppState>>,
 ) -> Result<StatusCode, ApiError> {
-
-    
-
     let initialized = BankService::initialize_banks(&state).await?;
 
     Ok(if initialized {
@@ -33,6 +27,3 @@ pub async fn initialize_banks(
         StatusCode::OK
     })
 }
-
-
-

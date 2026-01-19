@@ -1,10 +1,10 @@
 use argon2::{Params, PasswordVerifier};
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
-use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::{
-    app_state::app_state::AppState, entities::authentication::NewBlacklistedToken,
+pub use payego_primitives::{
+    config::security_config::Claims,
+    error::ApiError,
+    models::{app_state::app_state::AppState, entities::authentication::NewBlacklistedToken, token_dto::LogoutResponse},
 };
 use tracing::log::{error, info};
 
@@ -47,7 +47,6 @@ impl LogoutService {
                 ApiError::Internal("Logout failed".into())
             })?;
 
-        // Idempotent by design — no branching, no noise
         info!("auth.logout: token invalidated");
 
         Ok(())

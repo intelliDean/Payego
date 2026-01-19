@@ -1,19 +1,23 @@
 use diesel::prelude::*;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::conversion_dto::{ConvertRequest, ExchangeRateResponse};
-use payego_primitives::models::dtos::conversion_dto::ConvertResponse;
-use payego_primitives::models::enum_types::{
-    CurrencyCode, PaymentProvider, PaymentState, TransactionIntent,
+pub use payego_primitives::{
+    error::ApiError,
+    config::security_config::Claims,
+    models::{
+        app_state::app_state::AppState,
+        conversion_dto::{ConvertRequest, ExchangeRateResponse},
+        dtos::conversion_dto::ConvertResponse,
+        enum_types::{
+            CurrencyCode, PaymentProvider, PaymentState, TransactionIntent,
+        },
+        transaction::{NewTransaction, Transaction},
+        wallet::Wallet,
+        wallet_ledger::NewWalletLedger,
+    },
+    schema::{transactions, wallet_ledger, wallets},
+    
 };
-use payego_primitives::models::transaction::{NewTransaction, Transaction};
-use payego_primitives::models::wallet::Wallet;
-use payego_primitives::models::wallet_ledger::NewWalletLedger;
-use payego_primitives::schema::{transactions, wallet_ledger, wallets};
 use reqwest::Client;
-use serde::Deserialize;
 use serde_json::json;
-use std::collections::HashMap;
 use std::time::Duration;
 use uuid::Uuid;
 

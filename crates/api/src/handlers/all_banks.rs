@@ -1,8 +1,6 @@
 use axum::{extract::State, Json};
-use payego_primitives::{error::ApiError, models::app_state::app_state::AppState};
+use payego_core::services::bank_service::{ApiError, AppState, BankListResponse, BankService};
 use std::sync::Arc;
-use payego_core::services::bank_service::{BankService};
-use payego_primitives::models::bank_dtos::BankListResponse;
 
 #[utoipa::path(
     get,
@@ -16,8 +14,6 @@ use payego_primitives::models::bank_dtos::BankListResponse;
 pub async fn all_banks(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<BankListResponse>, ApiError> {
-    
     let response = BankService::list_banks(&state).await?;
     Ok(Json(response))
 }
-

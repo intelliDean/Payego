@@ -2,13 +2,12 @@ use axum::{
     extract::{Extension, Json, State},
     http::StatusCode,
 };
-use payego_core::services::transfer_service::{TransferService};
-use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::app_state::app_state::AppState;
+use payego_core::services::transfer_service::{
+    ApiError, AppState, Claims, TransferRequest, TransferService,
+};
 use std::sync::Arc;
+use tracing::log::error;
 use validator::Validate;
-use payego_primitives::models::transfer_dto::TransferRequest;
 
 #[utoipa::path(
     post,
@@ -28,7 +27,11 @@ pub async fn transfer_external(
     Extension(claims): Extension<Claims>,
     Json(req): Json<TransferRequest>,
 ) -> Result<StatusCode, ApiError> {
-    req.validate()?;
+    req.validate().map_err(|e| {
+        error!("Validation error: {}", e);
+        ApiError::Validation(e)
+    })?;
+
     let user_id = claims.user_id()?;
 
     TransferService::transfer_external(&state, user_id, req).await

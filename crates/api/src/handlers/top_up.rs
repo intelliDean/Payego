@@ -1,13 +1,10 @@
-use axum::extract::Json;
-use axum::extract::State;
-use axum::Extension;
-use payego_core::services::payment_service::{PaymentService};
-use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::app_state::app_state::AppState;
+use axum::{extract::Json, extract::State, Extension};
+use payego_core::services::payment_service::{
+    PaymentService, ApiError, AppState, TopUpRequest, TopUpResponse, Claims
+};
 use std::sync::Arc;
+use tracing::log::error;
 use validator::Validate;
-use payego_primitives::models::top_up_dto::{TopUpRequest, TopUpResponse};
 
 #[utoipa::path(
     post,
@@ -28,9 +25,14 @@ pub async fn top_up(
     Json(req): Json<TopUpRequest>,
 ) -> Result<Json<TopUpResponse>, ApiError> {
     
-    req.validate().map_err(ApiError::Validation)?;
+    req.validate().map_err(|e| {
+        error!("Validation error: {}", e);
+        ApiError::Validation(e)
+    })?;
+
+    let user_id = claims.user_id()?;
 
     Ok(Json(
-        PaymentService::initiate_top_up(&state, claims.user_id()?, req).await?,
+        PaymentService::initiate_top_up(&state, user_id, req).await?,
     ))
 }

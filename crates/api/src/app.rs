@@ -1,39 +1,31 @@
-use axum::routing::post;
-use axum::{middleware, response::IntoResponse, Router};
-use std::sync::Arc;
-use utoipa::OpenApi;
-
-use utoipa_swagger_ui::SwaggerUi;
-
 use crate::config::swagger_config::ApiDoc;
-use crate::handlers::internal_conversion::convert_currency;
-use crate::handlers::logout::logout;
-use crate::handlers::resolve_account::resolve_account;
-use crate::handlers::transaction::get_user_transaction;
-use crate::handlers::user_bank_accounts::user_bank_accounts;
-use crate::handlers::user_wallets::get_wallets;
 use crate::handlers::{
     all_banks::all_banks, bank::add_bank_account, current_user::current_user_details,
     get_transaction::get_transactions, health::health_check, initialize_banks::initialize_banks,
-    login::login, paypal_capture::paypal_capture, paystack_webhook::paystack_webhook,
-    register::register, stripe_webhook::stripe_webhook, top_up::top_up,
-    transfer_external::transfer_external, transfer_internal::transfer_internal, withdraw::withdraw,
+    internal_conversion::convert_currency, login::login, logout::logout,
+    paypal_capture::paypal_capture, paystack_webhook::paystack_webhook, register::register,
+    resolve_account::resolve_account, stripe_webhook::stripe_webhook, top_up::top_up,
+    transaction::get_user_transaction, transfer_external::transfer_external,
+    transfer_internal::transfer_internal, user_bank_accounts::user_bank_accounts,
+    user_wallets::get_wallets, withdraw::withdraw,
 };
+use axum::{middleware, response::IntoResponse, routing::post, Router};
 // use payego_primitives::config::security_config::auth_middleware;
 use payego_primitives::models::app_state::app_state::AppState;
+use std::sync::Arc;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
+use payego_primitives::config::security_config::SecurityConfig;
 use tower::ServiceBuilder;
-use tower_governor::governor::GovernorConfig;
-use tower_governor::key_extractor::PeerIpKeyExtractor;
-use tower_governor::{governor, governor::GovernorConfigBuilder, GovernorLayer};
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tower_http::{
     request_id::{MakeRequestUuid, SetRequestIdLayer},
     trace::TraceLayer,
 };
-use payego_primitives::config::security_config::SecurityConfig;
 
 pub fn create_router(state: Arc<AppState>) -> Router {
-    // Rate limiting configuration
+    // rate limiting configuration
     let governor_conf = Arc::new(
         GovernorConfigBuilder::default()
             .per_second(2) // 2 requests per second = 120 per minute
@@ -42,10 +34,10 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             .unwrap(),
     );
 
-    // Public routes (no authentication)
+    // public routes (no authentication)
     let public_router = create_public_routers();
 
-    // Protected routes (require JWT authentication)
+    // protected routes (require JWT authentication)
     let protected_router = create_secured_routers(&state);
 
     let mut router = Router::new()
@@ -59,7 +51,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
                 .layer(TraceLayer::new_for_http()),
         );
 
-    // Disable rate limiting in test environment to avoid "Unable To Extract Key!" errors
+    // disable rate limiting in test environment to avoid "Unable To Extract Key!" errors
     if std::env::var("APP_ENV").unwrap_or_default() != "test" {
         router = router.layer(GovernorLayer::new(governor_conf));
     }

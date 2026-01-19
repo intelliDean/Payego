@@ -2,17 +2,12 @@ use axum::{
     extract::{Extension, Json, State},
     http::StatusCode,
 };
-use payego_core::services::bank_service::BankService;
-use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::{ApiError, AuthError};
+use payego_core::services::bank_account_service::{
+    ApiError, AppState, BankAccount, BankAccountResponse, BankAccountService, BankRequest, Claims
+};
 use std::sync::Arc;
 use tracing::error;
-use uuid::Uuid;
 use validator::Validate;
-use payego_core::services::bank_account_service::BankAccountService;
-use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::bank::BankAccount;
-use payego_primitives::models::bank_dtos::{BankAccountResponse, BankRequest};
 
 #[utoipa::path(
     post,
@@ -32,18 +27,17 @@ pub async fn add_bank_account(
     Extension(claims): Extension<Claims>,
     Json(req): Json<BankRequest>,
 ) -> Result<(StatusCode, Json<BankAccountResponse>), ApiError> {
-    // 1. Validate request
     req.validate().map_err(|e| {
         error!("Validation error: {}", e);
         ApiError::Validation(e)
     })?;
 
-    // 3. Call BankService
-    let account = BankAccountService::create_bank_account(
-        &state,
-        claims.user_id()?, 
-        req
-    ).await?;
+    let user_id = claims.user_id()?;
 
-    Ok((StatusCode::CREATED, Json(BankAccountResponse::from(account))))
+    let account = BankAccountService::create_bank_account(&state, user_id, req).await?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(BankAccountResponse::from(account)),
+    ))
 }

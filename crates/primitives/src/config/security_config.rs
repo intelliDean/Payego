@@ -1,5 +1,7 @@
-use crate::error::{ApiError, AuthError};
-use crate::models::app_state::app_state::AppState;
+use crate::{
+    models::app_state::app_state::AppState,
+    error::{ApiError, AuthError}
+};
 use axum::http::Request;
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};

@@ -1,25 +1,18 @@
-
-
 use axum::{
     extract::{Query, State},
     Json,
 };
 use once_cell::sync::Lazy;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::info;
-use utoipa::ToSchema;
 
-use payego_core::services::bank_service::BankService;
-use payego_primitives::{error::ApiError, models::app_state::app_state::AppState};
-use payego_primitives::models::bank_dtos::{ResolveAccountRequest, ResolveAccountResponse};
+use payego_core::services::bank_service::{
+    ApiError, AppState, BankService, ResolveAccountRequest, ResolveAccountResponse,
+};
 
-static ACCOUNT_NUMBER_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^\d{10}$").unwrap());
-
-static BANK_CODE_RE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^\d{3,5}$").unwrap());
+static ACCOUNT_NUMBER_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\d{10}$").unwrap());
+static BANK_CODE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\d{3,5}$").unwrap());
 
 #[utoipa::path(
     get,
@@ -39,7 +32,6 @@ pub async fn resolve_account(
     State(state): State<Arc<AppState>>,
     Query(req): Query<ResolveAccountRequest>,
 ) -> Result<Json<ResolveAccountResponse>, ApiError> {
-
     if !ACCOUNT_NUMBER_RE.is_match(&req.account_number) {
         return Err(ApiError::Internal(
             "Account number must be 10 digits".to_string(),

@@ -2,12 +2,10 @@ use axum::{
     extract::{Extension, State},
     Json,
 };
-use payego_core::services::wallet_service::{WalletService, WalletsResponse};
-use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::app_state::app_state::AppState;
+use payego_core::services::wallet_service::{
+    ApiError, AppState, Claims, WalletService, WalletsResponse,
+};
 use std::sync::Arc;
-
 
 #[utoipa::path(
     get,
@@ -27,20 +25,6 @@ pub async fn get_wallets(
     let wallets = WalletService::get_user_wallets(&state, &claims).await?;
     Ok(Json(wallets))
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 //
 //

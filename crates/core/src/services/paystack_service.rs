@@ -1,22 +1,21 @@
-use std::sync::Arc;
 use axum::body::Bytes;
-use chrono::{DateTime, Utc};
 use diesel::prelude::*;
-use hmac::{KeyInit,};
+use hmac::KeyInit;
 use http::HeaderMap;
-use secrecy::ExposeSecret;
-use payego_primitives::{
+pub use payego_primitives::{
     error::ApiError,
     models::{
+        app_state::app_state::AppState,
+        dtos::providers_dto::PaystackWebhook,
         entities::enum_types::{PaymentState, TransactionIntent},
         transaction::Transaction,
     },
     schema::{transactions, wallets},
 };
-use tracing::{info};
+use secrecy::ExposeSecret;
+use std::sync::Arc;
+use tracing::info;
 use uuid::Uuid;
-use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::dtos::providers_dto::PaystackWebhook;
 
 pub struct PaystackService;
 
@@ -26,14 +25,17 @@ impl PaystackService {
         headers: HeaderMap,
         body: &Bytes,
     ) -> Result<(), ApiError> {
-        
         let signature = headers
             .get("x-paystack-signature")
             .and_then(|v| v.to_str().ok())
             .ok_or(ApiError::Payment("Missing Paystack signature".into()))?;
 
         PaystackService::verify_paystack_signature(
-            state.config.paystack_details.paystack_webhook_secret.expose_secret(),
+            state
+                .config
+                .paystack_details
+                .paystack_webhook_secret
+                .expose_secret(),
             &body,
             signature,
         )?;
@@ -41,9 +43,10 @@ impl PaystackService {
         let payload: PaystackWebhook = serde_json::from_slice(&body)
             .map_err(|_| ApiError::Payment("Invalid webhook payload".into()))?;
 
-        let mut conn = state.db.get()
+        let mut conn = state
+            .db
+            .get()
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
-
 
         let event = payload.event.as_str();
 
@@ -125,4 +128,3 @@ impl PaystackService {
         Ok(())
     }
 }
-

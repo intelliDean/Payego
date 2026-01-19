@@ -1,12 +1,10 @@
 use axum::extract::{Extension, Json, State};
-use payego_core::services::conversion_service::ConversionService;
-use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::conversion_dto::{ConvertRequest, ConvertResponse};
+use payego_core::services::conversion_service::{
+    ApiError, AppState, ConversionService, ConvertRequest, ConvertResponse, Claims
+};
 use std::sync::Arc;
+use tracing::error;
 use validator::Validate;
-
 
 #[utoipa::path(
     post,
@@ -26,12 +24,14 @@ pub async fn convert_currency(
     Extension(claims): Extension<Claims>,
     Json(req): Json<ConvertRequest>,
 ) -> Result<Json<ConvertResponse>, ApiError> {
+    req.validate().map_err(|e| {
+        error!("Validation error: {}", e);
+        ApiError::Validation(e)
+    })?;
 
-    req.validate()?;
+    let user_id = claims.user_id()?;
 
-
-    let response =
-        ConversionService::convert_currency(&state, claims.user_id()?, req).await?;
+    let response = ConversionService::convert_currency(&state, user_id, req).await?;
 
     Ok(Json(response))
 }

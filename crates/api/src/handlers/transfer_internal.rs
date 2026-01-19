@@ -2,14 +2,12 @@ use axum::{
     extract::{Extension, Json, State},
     http::StatusCode,
 };
-use payego_core::services::transfer_service::{TransferService};
-use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::ApiError;
+use payego_core::services::transfer_service::{
+    ApiError, AppState, Claims, TransferService, WalletTransferRequest,
+};
 use std::sync::Arc;
 use tracing::error;
 use validator::Validate;
-use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::transfer_dto::WalletTransferRequest;
 
 #[utoipa::path(
     post,
@@ -29,7 +27,6 @@ pub async fn transfer_internal(
     Extension(claims): Extension<Claims>,
     Json(req): Json<WalletTransferRequest>,
 ) -> Result<StatusCode, ApiError> {
-    
     req.validate().map_err(|e| {
         error!("Validation error: {}", e);
         ApiError::Validation(e)
@@ -46,4 +43,3 @@ pub async fn transfer_internal(
 
     Ok(response)
 }
-

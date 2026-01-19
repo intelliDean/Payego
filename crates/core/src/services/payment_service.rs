@@ -1,19 +1,16 @@
 use diesel::prelude::*;
-
-use payego_primitives::models::enum_types::CurrencyCode;
-use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-use utoipa::ToSchema;
-use validator::Validate;
-
-use diesel::prelude::*;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::{
-    app_state::app_state::AppState,
-    enum_types::{PaymentProvider, PaymentState, TransactionIntent},
-    transaction::{NewTransaction, Transaction},
+pub use payego_primitives::{
+    error::ApiError,
+    config::security_config::Claims,
+    models::{
+        app_state::app_state::AppState,
+        enum_types::{PaymentProvider, PaymentState, TransactionIntent},
+        top_up_dto::{TopUpRequest, TopUpResponse},
+        transaction::{NewTransaction, Transaction},
+    },
+    schema::transactions,
 };
-use payego_primitives::schema::transactions;
 use reqwest::Client;
 use secrecy::ExposeSecret;
 use stripe::{
@@ -23,7 +20,6 @@ use stripe::{
 };
 use tracing::error;
 use uuid::Uuid;
-use payego_primitives::models::top_up_dto::{TopUpRequest, TopUpResponse};
 
 pub struct PaymentService;
 

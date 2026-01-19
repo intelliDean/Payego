@@ -1,17 +1,19 @@
 use crate::services::auth_service::token::TokenService;
-use argon2::{Argon2, Params, PasswordVerifier};
-use chrono::Utc;
+use argon2::{Argon2, Params};
 use diesel::prelude::*;
 use password_hash::PasswordHasher;
-use payego_primitives::config::security_config::SecurityConfig;
-use payego_primitives::error::{ApiError, AuthError};
-use payego_primitives::models::dtos::register_dto::{RegisterRequest, RegisterResponse};
-use payego_primitives::models::user::NewUser;
-use payego_primitives::models::{app_state::app_state::AppState, user::User};
-use payego_primitives::schema::users;
-
+pub use payego_primitives::{
+    config::security_config::SecurityConfig,
+    error::{ApiError, AuthError},
+    models::{
+        app_state::app_state::AppState,
+        dtos::register_dto::{RegisterRequest, RegisterResponse},
+        user::NewUser,
+        user::User,
+    },
+    schema::users,
+};
 use secrecy::{ExposeSecret, SecretString};
-
 use tracing::error;
 use tracing::log::info;
 

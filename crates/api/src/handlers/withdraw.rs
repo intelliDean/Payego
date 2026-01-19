@@ -1,12 +1,10 @@
 use axum::extract::{Path, State};
 use axum::{Extension, Json};
-use payego_core::services::withdrawal_service::WithdrawalService;
-use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::dtos::withdrawal_dto::{WithdrawRequest, WithdrawResponse};
-use serde::{Deserialize, Serialize};
+use payego_core::services::withdrawal_service::{
+    ApiError, AppState, Claims, WithdrawRequest, WithdrawResponse, WithdrawalService,
+};
 use std::sync::Arc;
+use tracing::log::error;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -32,11 +30,14 @@ pub async fn withdraw(
     Path(bank_account_id): Path<Uuid>,
     Json(req): Json<WithdrawRequest>,
 ) -> Result<Json<WithdrawResponse>, ApiError> {
-    req.validate()?;
+    req.validate().map_err(|e| {
+        error!("Validation error: {}", e);
+        ApiError::Validation(e)
+    })?;
 
     let user_id = claims.user_id()?;
 
-    let res = WithdrawalService::withdraw(state.as_ref(), user_id, bank_account_id, req).await?;
+    let res = WithdrawalService::withdraw(&state, user_id, bank_account_id, req).await?;
 
     Ok(Json(res))
 }

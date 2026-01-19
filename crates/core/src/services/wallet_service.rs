@@ -1,20 +1,17 @@
 use diesel::prelude::*;
-use serde::Serialize;
 use tracing::{error, warn};
-use utoipa::ToSchema;
 use uuid::Uuid;
 
-use payego_primitives::{
+pub use payego_primitives::{
     config::security_config::Claims,
     error::{ApiError, AuthError},
     models::{
         app_state::app_state::AppState,
         wallet::Wallet,
+        wallet_dto::{WalletDto, WalletsResponse}
     },
     schema::wallets,
 };
-use payego_primitives::models::enum_types::CurrencyCode;
-pub use payego_primitives::models::wallet_dto::{WalletDto, WalletsResponse};
 
 pub struct WalletService;
 

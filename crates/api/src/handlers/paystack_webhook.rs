@@ -1,9 +1,8 @@
 use axum::body::Bytes;
 use axum::{extract::State, http::StatusCode};
-use payego_core::services::paystack_service::PaystackService;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::dtos::providers_dto::PaystackWebhook;
+use payego_core::services::paystack_service::{
+    ApiError, AppState, PaystackService, PaystackWebhook,
+};
 use std::sync::Arc;
 // https://e02e3895d11f.ngrok-free.app/webhooks/paystack
 
@@ -23,7 +22,6 @@ pub async fn paystack_webhook(
     headers: axum::http::HeaderMap,
     body: Bytes,
 ) -> Result<StatusCode, ApiError> {
-    
     PaystackService::handle_event(state, headers, &body)?;
 
     Ok(StatusCode::OK)

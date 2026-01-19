@@ -7,9 +7,12 @@ use std::sync::Arc;
 use stripe::{Event, EventObject, EventType, Webhook};
 use uuid::Uuid;
 
-use payego_primitives::error::ApiError;
-use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::providers_dto::StripeWebhookContext;
+pub use payego_primitives::{
+    error::ApiError,
+    models::{
+        app_state::app_state::AppState, providers_dto::StripeWebhookContext
+    }
+};
 
 pub struct StripeService;
 

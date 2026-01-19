@@ -1,11 +1,6 @@
-use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
 use axum::extract::{Json, Path, State};
-use payego_primitives::error::ApiError;
-use payego_primitives::models::app_state::app_state::AppState;
+use payego_core::services::paypal_service::{ApiError, AppState, PayPalService, OrderResponse};
 use std::sync::Arc;
-use payego_core::services::paypal_service::PayPalService;
-use payego_primitives::models::providers_dto::OrderResponse;
 
 #[utoipa::path(
     get,

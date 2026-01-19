@@ -1,28 +1,24 @@
-use diesel::prelude::*;
-use payego_primitives::error::ApiError;
-use payego_primitives::schema::{bank_accounts, banks};
-use reqwest::Client;
-use secrecy::ExposeSecret;
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use std::str::FromStr;
-use std::sync::Arc;
-use tracing::{error, info};
-use uuid::Uuid;
-
-// use crate::services::bank_account_service::BankAccountResponse;
 use dashmap::DashMap;
+use diesel::prelude::*;
 use once_cell::sync::Lazy;
-use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::bank::{Bank, BankAccount, NewBank, NewBankAccount};
-use payego_primitives::models::bank_dtos::{
-    BankDto, BankListResponse, PaystackBank, PaystackResolveResponse, PaystackResponse,
+pub use payego_primitives::{
+    error::ApiError,
+    models::{
+        app_state::app_state::AppState,
+        bank::{Bank, NewBank, NewBankAccount},
+        bank_dtos::{
+            BankDto, BankListResponse, PaystackBank, PaystackResolveResponse, PaystackResponse, ResolveAccountRequest, ResolveAccountResponse
+        },
+        dtos::bank_dtos::ResolvedAccount,
+        enum_types::CurrencyCode,
+    },
+    schema::banks,
 };
-use payego_primitives::models::dtos::bank_dtos::{BankRequest, ResolvedAccount};
-use payego_primitives::models::enum_types::CurrencyCode;
+use secrecy::ExposeSecret;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tracing::log::warn;
-use utoipa::ToSchema;
+use tracing::{error, info};
 
 static ACCOUNT_CACHE: Lazy<DashMap<String, (ResolvedAccount, Instant)>> = Lazy::new(DashMap::new);
 const TTL: Duration = Duration::from_secs(60 * 10); // 10 minutes
@@ -114,8 +110,6 @@ impl BankService {
         }
 
         let banks_to_insert = Self::insert_banks(body);
-
-        info!("OneBank: {:?}", banks_to_insert[0].currency);
 
         let inserted = diesel::insert_into(banks::table)
             .values(&banks_to_insert)

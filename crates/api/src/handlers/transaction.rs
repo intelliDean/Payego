@@ -2,14 +2,11 @@ use axum::{
     extract::{Extension, Path, State},
     Json,
 };
-use diesel::prelude::*;
-use payego_core::services::transaction_service::{ TransactionService};
-use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::app_state::app_state::AppState;
+use payego_core::services::transaction_service::{
+    TransactionService, ApiError, AppState, TransactionResponse, Claims
+};
 use std::sync::Arc;
 use uuid::Uuid;
-use payego_primitives::models::transaction_dto::TransactionResponse;
 
 #[utoipa::path(
     get,
@@ -32,7 +29,8 @@ pub async fn get_user_transaction(
     Path(transaction_id): Path<Uuid>,
 ) -> Result<Json<TransactionResponse>, ApiError> {
     
-    let tx = TransactionService::get_user_transaction(&state, &claims, transaction_id).await?;
+    let tnx_response =
+        TransactionService::get_user_transaction(&state, &claims, transaction_id).await?;
 
-    Ok(Json(tx))
+    Ok(Json(tnx_response))
 }

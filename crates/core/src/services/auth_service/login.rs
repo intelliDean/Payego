@@ -1,20 +1,20 @@
-use crate::services::auth_service::token::TokenService;
+use crate::services::auth_service::register::RegisterService;
 use argon2::{password_hash::PasswordHash, PasswordVerifier};
 use diesel::prelude::*;
-use payego_primitives::config::security_config::SecurityConfig;
-use payego_primitives::error::{ApiError, AuthError};
-use payego_primitives::models::{
-    app_state::app_state::AppState,
-    dtos::login_dto::{LoginRequest, LoginResponse},
-    user::User,
-};
 use tracing::{error, warn};
-use crate::services::auth_service::register::RegisterService;
+pub use payego_primitives::{
+    config::security_config::SecurityConfig,
+    error::{ApiError, AuthError},
+    models::{
+        app_state::app_state::AppState,
+        dtos::login_dto::{LoginRequest, LoginResponse},
+        user::User,
+    },
+};
 
 pub struct LoginService;
 
 impl LoginService {
-    //======= LOGIN =============
     pub async fn login(state: &AppState, payload: LoginRequest) -> Result<LoginResponse, ApiError> {
         let mut conn = state.db.get().map_err(|_| {
             error!("auth.login: failed to acquire db connection");

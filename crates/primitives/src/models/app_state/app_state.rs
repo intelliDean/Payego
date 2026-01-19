@@ -1,17 +1,12 @@
-use diesel::r2d2::{self, ConnectionManager, Pool};
+use diesel::r2d2::{self, ConnectionManager};
 use diesel::PgConnection;
-use eyre::Report;
 use reqwest::Client;
-use std::env;
 use std::sync::Arc;
 use std::time::Duration;
 
 type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
-use crate::error::ApiError;
 use crate::models::app_config::AppConfig;
-use secrecy::SecretString;
-use tracing::error;
 
 #[derive(Clone)]
 pub struct AppState {
