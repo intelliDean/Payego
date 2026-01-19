@@ -1,8 +1,8 @@
 use axum::{extract::State, Json};
 use payego_primitives::{error::ApiError, models::app_state::app_state::AppState};
 use std::sync::Arc;
-use payego_core::services::bank_service::{BankListResponse, BankService};
-
+use payego_core::services::bank_service::{BankService};
+use payego_primitives::models::bank_dtos::BankListResponse;
 
 #[utoipa::path(
     get,

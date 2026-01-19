@@ -16,7 +16,7 @@ use payego_primitives::{
 use tracing::{info};
 use uuid::Uuid;
 use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::dtos::dtos::PaystackWebhook;
+use payego_primitives::models::dtos::providers_dto::PaystackWebhook;
 
 pub struct PaystackService;
 
@@ -45,7 +45,6 @@ impl PaystackService {
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
 
-        //=============
         let event = payload.event.as_str();
 
         if !matches!(event, "transfer.success" | "transfer.failed") {

@@ -23,26 +23,7 @@ use stripe::{
 };
 use tracing::error;
 use uuid::Uuid;
-
-#[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]
-pub struct TopUpRequest {
-    #[validate(range(min = 1.0, max = 10_000.0))]
-    pub amount: f64,
-
-    pub provider: PaymentProvider,
-    pub currency: CurrencyCode,
-
-    #[validate(length(min = 8, max = 128))]
-    pub idempotency_key: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct TopUpResponse {
-    pub session_url: Option<String>,
-    pub payment_id: Option<String>,
-    pub transaction_id: String,
-    pub amount: f64,
-}
+use payego_primitives::models::top_up_dto::{TopUpRequest, TopUpResponse};
 
 pub struct PaymentService;
 
@@ -125,7 +106,13 @@ impl PaymentService {
         reference: Uuid,
         amount_cents: i64,
     ) -> Result<(Option<String>, Option<String>), ApiError> {
-        let client = StripeClient::new(state.config.stripe_details.stripe_secret_key.expose_secret());
+        let client = StripeClient::new(
+            state
+                .config
+                .stripe_details
+                .stripe_secret_key
+                .expose_secret(),
+        );
 
         let currency = Currency::from_str(&req.currency.to_string().to_lowercase())
             .map_err(|_| ApiError::Payment("Invalid currency".into()))?;
@@ -134,7 +121,10 @@ impl PaymentService {
             &client,
             CreateCheckoutSession {
                 mode: Some(CheckoutSessionMode::Payment),
-                success_url: Some(&format!("{}/success?tx={}", state.config.app_url, reference)),
+                success_url: Some(&format!(
+                    "{}/success?tx={}",
+                    state.config.app_url, reference
+                )),
                 cancel_url: Some(&format!("{}/top-up", state.config.app_url)),
                 line_items: Some(vec![CreateCheckoutSessionLineItems {
                     quantity: Some(1),

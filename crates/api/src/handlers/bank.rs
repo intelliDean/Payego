@@ -9,6 +9,7 @@ use std::sync::Arc;
 use tracing::error;
 use uuid::Uuid;
 use validator::Validate;
+use payego_core::services::bank_account_service::BankAccountService;
 use payego_primitives::models::app_state::app_state::AppState;
 use payego_primitives::models::bank::BankAccount;
 use payego_primitives::models::bank_dtos::BankRequest;
@@ -38,7 +39,7 @@ pub async fn add_bank_account(
     })?;
 
     // 3. Call BankService
-    let account = BankService::create_bank_account(
+    let account = BankAccountService::create_bank_account(
         &state,
         claims.user_id()?, 
         req

@@ -2,7 +2,7 @@ use diesel::prelude::*;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
 use payego_primitives::models::bank::BankAccount;
-use payego_primitives::models::dtos::dtos::{WithdrawRequest, WithdrawResponse};
+use payego_primitives::models::dtos::withdrawal_dto::{WithdrawRequest, WithdrawResponse};
 use payego_primitives::models::enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent};
 use payego_primitives::models::transaction::NewTransaction;
 use payego_primitives::models::wallet::Wallet;

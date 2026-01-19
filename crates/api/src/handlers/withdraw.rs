@@ -4,7 +4,7 @@ use payego_core::services::withdrawal_service::WithdrawalService;
 use payego_primitives::config::security_config::Claims;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::dtos::dtos::{WithdrawRequest, WithdrawResponse};
+use payego_primitives::models::dtos::withdrawal_dto::{WithdrawRequest, WithdrawResponse};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use utoipa::ToSchema;

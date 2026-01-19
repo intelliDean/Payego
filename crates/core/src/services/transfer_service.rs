@@ -14,11 +14,13 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::dtos::dtos::{TransferRequest, WalletTransferRequest};
+// use payego_primitives::models::dtos::dtos::{TransferRequest, WalletTransferRequest};
 use payego_primitives::models::enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent};
 use payego_primitives::models::transaction::{NewTransaction, Transaction};
+use payego_primitives::models::transfer_dto::{TransferRequest, WalletTransferRequest};
 use payego_primitives::models::wallet::Wallet;
 use payego_primitives::models::wallet_ledger::NewWalletLedger;
+
 
 pub struct TransferService;
 

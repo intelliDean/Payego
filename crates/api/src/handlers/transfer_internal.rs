@@ -2,14 +2,14 @@ use axum::{
     extract::{Extension, Json, State},
     http::StatusCode,
 };
-use payego_core::services::transfer_service::TransferService;
+use payego_core::services::transfer_service::{TransferService};
 use payego_primitives::config::security_config::Claims;
 use payego_primitives::error::ApiError;
 use std::sync::Arc;
 use tracing::error;
 use validator::Validate;
 use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::dtos::dtos::WalletTransferRequest;
+use payego_primitives::models::transfer_dto::WalletTransferRequest;
 
 #[utoipa::path(
     post,

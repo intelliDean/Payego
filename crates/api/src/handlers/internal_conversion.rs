@@ -3,8 +3,7 @@ use payego_core::services::conversion_service::ConversionService;
 use payego_primitives::config::security_config::Claims;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::conversion_dto::ConvertRequest;
-use payego_primitives::models::dtos::dtos::ConvertResponse;
+use payego_primitives::models::conversion_dto::{ConvertRequest, ConvertResponse};
 use std::sync::Arc;
 use validator::Validate;
 

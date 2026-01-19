@@ -1,12 +1,13 @@
 use axum::extract::Json;
 use axum::extract::State;
 use axum::Extension;
-use payego_core::services::payment_service::{PaymentService, TopUpRequest, TopUpResponse};
+use payego_core::services::payment_service::{PaymentService};
 use payego_primitives::config::security_config::Claims;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
 use std::sync::Arc;
 use validator::Validate;
+use payego_primitives::models::top_up_dto::{TopUpRequest, TopUpResponse};
 
 #[utoipa::path(
     post,

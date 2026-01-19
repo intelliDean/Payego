@@ -1,5 +1,3 @@
-use std::str::FromStr;
-use std::sync::Arc;
 use diesel::prelude::*;
 use payego_primitives::error::ApiError;
 use payego_primitives::schema::{bank_accounts, banks};
@@ -7,178 +5,31 @@ use reqwest::Client;
 use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::str::FromStr;
+use std::sync::Arc;
 use tracing::{error, info};
 use uuid::Uuid;
 
+// use crate::services::bank_account_service::BankAccountResponse;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
+use payego_primitives::models::app_state::app_state::AppState;
+use payego_primitives::models::bank::{Bank, BankAccount, NewBank, NewBankAccount};
+use payego_primitives::models::bank_dtos::{
+    BankDto, BankListResponse, PaystackBank, PaystackResolveResponse, PaystackResponse,
+};
+use payego_primitives::models::dtos::bank_dtos::{BankRequest, ResolvedAccount};
+use payego_primitives::models::enum_types::CurrencyCode;
 use std::time::{Duration, Instant};
 use tracing::log::warn;
 use utoipa::ToSchema;
-use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::bank::{Bank, BankAccount, NewBank, NewBankAccount};
-use payego_primitives::models::bank_dtos::BankRequest;
-use payego_primitives::models::dtos::dtos::{ PaystackRecipientResponse, ResolvedAccount};
-use payego_primitives::models::enum_types::CurrencyCode;
-use crate::services::bank_account_service::BankAccountResponse;
 
 static ACCOUNT_CACHE: Lazy<DashMap<String, (ResolvedAccount, Instant)>> = Lazy::new(DashMap::new);
 const TTL: Duration = Duration::from_secs(60 * 10); // 10 minutes
 
-#[derive(Debug, Deserialize)]
-struct PaystackResolveResponse {
-    status: bool,
-    message: String,
-    data: Option<PaystackAccountData>,
-}
-
-#[derive(Debug, Deserialize)]
-struct PaystackAccountData {
-    account_name: String,
-}
-
-
-#[derive(Debug, Deserialize)]
-pub struct PaystackResponse<T> {
-    pub status: bool,
-    pub message: String,
-    pub data: T,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct PaystackBank {
-    pub id: i64,
-    pub name: String,
-    pub code: String,
-
-    // #[serde(default)]
-    pub currency: Option<String>,
-
-    // #[serde(default)]
-    pub country: Option<String>,
-
-    #[serde(rename = "active", default)]
-    pub is_active: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct BankDto {
-    pub id: i64,
-    pub name: String,
-    pub code: String,
-    pub currency: String,
-    pub is_active: bool,
-}
-
-impl From<Bank> for BankDto {
-    fn from(bank: Bank) -> Self {
-        Self {
-            id: bank.id,
-            name: bank.name,
-            code: bank.code,
-            currency: bank.currency.to_string(),
-            is_active: bank.is_active,
-        
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct BankListResponse {
-    pub banks: Vec<BankDto>,
-}
-
-
 pub struct BankService;
 
 impl BankService {
-    pub async fn create_bank_account(
-        state: &AppState,
-        user_id_val: Uuid,
-        req: BankRequest,
-    ) -> Result<BankAccount, ApiError> {
-        let mut conn = state.db.get().map_err(|e: r2d2::Error| {
-            error!("Database error: {}", e);
-            ApiError::DatabaseConnection(e.to_string())
-        })?;
-
-        // Idempotency check
-        if let Ok(existing) = bank_accounts::table
-            .filter(bank_accounts::user_id.eq(user_id_val))
-            .filter(bank_accounts::bank_code.eq(&req.bank_code))
-            .filter(bank_accounts::account_number.eq(&req.account_number))
-            .first::<BankAccount>(&mut conn)
-        {
-            return Ok(existing);
-        }
-
-        let account_details =
-            Self::resolve_account_details(state, &req.bank_code, &req.account_number).await?;
-
-        let account_name = account_details.account_name;
-
-        let client = Client::builder()
-            .timeout(std::time::Duration::from_secs(10))
-            .build()
-            .map_err(|_| ApiError::Internal("HTTP client error".into()))?;
-
-        let resp = client
-            .post(format!("{}/transferrecipient", state.config.paystack_details.paystack_api_url))
-            .bearer_auth(state.config.paystack_details.paystack_secret_key.expose_secret())
-            .json(&json!({
-                "type": "nuban",
-                "name": account_name,
-                "account_number": req.account_number,
-                "bank_code": req.bank_code,
-                "currency": "NGN"
-            }))
-            .send()
-            .await
-            .map_err(|_| ApiError::Payment("Paystack recipient creation failed".into()))?;
-
-        let body: PaystackRecipientResponse = resp
-            .json()
-            .await
-            .map_err(|_| ApiError::Payment("Invalid Paystack response".into()))?;
-
-        let new_account = NewBankAccount {
-            user_id: user_id_val,
-            bank_name: Some(&req.bank_name),
-            account_number: &req.account_number,
-            account_name: Some(&*account_name),
-            bank_code: &*req.bank_code,
-            provider_recipient_id: Some(&*body.data.recipient_code),
-            is_verified: true, // rename later
-        };
-
-        let account = diesel::insert_into(bank_accounts::table)
-            .values(&new_account)
-            .get_result(&mut conn)?;
-
-        Ok(account)
-    }
-
-
-
-    pub async fn get_bank_accounts(
-        state: &AppState,
-        user_id_val: Uuid,
-    ) -> Result<Vec<BankAccount>, ApiError> {
-        let mut conn = state
-            .db
-            .get()
-            .map_err(|e: r2d2::Error| ApiError::DatabaseConnection(e.to_string()))?;
-
-        let accounts = bank_accounts::table
-            .filter(bank_accounts::user_id.eq(user_id_val))
-            .load::<BankAccount>(&mut conn)
-            .map_err(ApiError::from)?;
-
-        Ok(accounts)
-    }
-
-
-
     pub async fn initialize_banks(
         state: &Arc<AppState>,
         conn: &mut PgConnection,
@@ -192,21 +43,21 @@ impl BankService {
 
         info!("Starting Paystack bank initialization...");
 
-        let secret_key = state.config.paystack_details.paystack_secret_key.expose_secret();
+        let secret_key = state
+            .config
+            .paystack_details
+            .paystack_secret_key
+            .expose_secret();
 
         // Safety check – prevent sending empty bearer token
         if secret_key.trim().is_empty() {
             return Err(ApiError::Internal("Paystack secret key is empty".into()));
         }
 
-        let client = Client::builder()
-            .timeout(Duration::from_secs(15))
-            .build()
-            .map_err(|e| ApiError::Payment(format!("Failed to create HTTP client: {}", e)))?;
-
         let url = "https://api.paystack.co/bank?country=nigeria";
 
-        let resp = client
+        let resp = state
+            .http_client
             .get(url)
             .bearer_auth(secret_key)
             .header("User-Agent", "Payego/1.0 (Rust backend)")
@@ -215,30 +66,33 @@ impl BankService {
             .map_err(|e| ApiError::Payment(format!("Failed to reach Paystack: {}", e)))?;
 
         let status = resp.status();
-        let body_text = resp.text().await
+        let body_text = resp
+            .text()
+            .await
             .unwrap_or_else(|_| "<empty response>".to_string());
 
         if !status.is_success() {
             error!(
-            http_status = status.as_u16(),
-            response_body = %body_text,
-            "Paystack bank list request failed"
-        );
+                http_status = status.as_u16(),
+                response_body = %body_text,
+                "Paystack bank list request failed"
+            );
 
             return Err(ApiError::Payment(format!(
                 "Paystack API error {}: {}",
-                status, body_text.chars().take(200).collect::<String>()
+                status,
+                body_text.chars().take(200).collect::<String>()
             )));
         }
 
         // Try to parse - if it fails we get useful error
-        let body: PaystackResponse<Vec<PaystackBank>> = serde_json::from_str(&body_text)
-            .map_err(|e| {
+        let body: PaystackResponse<Vec<PaystackBank>> =
+            serde_json::from_str(&body_text).map_err(|e| {
                 error!(
-                parse_error = %e,
-                response_body_first_500 = %body_text.chars().take(500).collect::<String>(),
-                "Failed to parse Paystack bank response as JSON"
-            );
+                    parse_error = %e,
+                    response_body_first_500 = %body_text.chars().take(500).collect::<String>(),
+                    "Failed to parse Paystack bank response as JSON"
+                );
                 ApiError::Payment(format!("Invalid JSON from Paystack: {}", e))
             })?;
 
@@ -246,7 +100,10 @@ impl BankService {
         // info!("Body: {:?}", body);
 
         if !body.status {
-            return Err(ApiError::Payment(format!("Paystack error: {}", body.message)));
+            return Err(ApiError::Payment(format!(
+                "Paystack error: {}",
+                body.message
+            )));
         }
 
         if body.data.is_empty() {
@@ -254,17 +111,18 @@ impl BankService {
             return Err(ApiError::Payment("Paystack returned no banks".into()));
         }
 
-        let banks_to_insert: Vec<NewBank> = body.data.into_iter().map(|b| {
-
-            NewBank {
+        let banks_to_insert: Vec<NewBank> = body
+            .data
+            .into_iter()
+            .map(|b| NewBank {
                 id: b.id,
                 name: b.name,
                 code: b.code,
                 currency: CurrencyCode::parse(&b.currency.unwrap()).unwrap(),
                 country: b.country.unwrap(),
                 is_active: b.is_active,
-            }
-        }).collect();
+            })
+            .collect();
 
         info!("OneBank: {:?}", banks_to_insert[0].currency);
 
@@ -274,11 +132,14 @@ impl BankService {
             .do_nothing()
             .execute(conn)?;
 
-        info!("Successfully initialized {} Nigerian banks from Paystack", inserted);
+        info!(
+            "Successfully initialized {} Nigerian banks from Paystack",
+            inserted
+        );
 
         Ok(true)
     }
-    
+
     pub async fn resolve_account_details(
         state: &AppState,
         bank_code: &str,
@@ -286,15 +147,25 @@ impl BankService {
     ) -> Result<ResolvedAccount, ApiError> {
         let cache_key = format!("{bank_code}:{account_number}");
 
-        if let Some(cached) = get(&cache_key) {
+        if let Some(cached) = Self::get(&cache_key) {
             info!("Bank resolve cache hit: {}", cache_key);
             return Ok(cached);
         }
 
-        let resp = state.http_client
-            .get(format!("{}/bank/resolve", state.config.paystack_details.paystack_api_url))
+        let resp = state
+            .http_client
+            .get(format!(
+                "{}/bank/resolve",
+                state.config.paystack_details.paystack_api_url
+            ))
             .query(&[("account_number", account_number), ("bank_code", bank_code)])
-            .bearer_auth(&state.config.paystack_details.paystack_secret_key.expose_secret())
+            .bearer_auth(
+                &state
+                    .config
+                    .paystack_details
+                    .paystack_secret_key
+                    .expose_secret(),
+            )
             .send()
             .await?;
 
@@ -315,7 +186,7 @@ impl BankService {
             account_number: account_number.to_string(),
         };
 
-        set(cache_key, resolved.clone());
+        Self::set(cache_key, resolved.clone());
 
         Ok(resolved)
     }
@@ -337,36 +208,22 @@ impl BankService {
             })?;
 
         Ok(BankListResponse {
-            banks: banks.into_iter().map(Self::to_dto).collect(),
+            banks: banks.into_iter().map(|b| BankDto::from(b)).collect(),
         })
     }
 
-    fn to_dto(bank: Bank) -> BankDto {
-        BankDto {
-            id: bank.id,
-            name: bank.name,
-            code: bank.code,
-            currency: bank.currency.to_string(),
-            is_active: bank.is_active,
-        }
+    pub fn get(key: &str) -> Option<ResolvedAccount> {
+        ACCOUNT_CACHE.get(key).and_then(|entry| {
+            if entry.value().1.elapsed() < TTL {
+                Some(entry.value().0.clone())
+            } else {
+                ACCOUNT_CACHE.remove(key);
+                None
+            }
+        })
+    }
+
+    pub fn set(key: String, value: ResolvedAccount) {
+        ACCOUNT_CACHE.insert(key, (value, Instant::now()));
     }
 }
-
-// payego_core::cache::bank_cache.rs
-pub fn get(key: &str) -> Option<ResolvedAccount> {
-    ACCOUNT_CACHE.get(key).and_then(|entry| {
-        if entry.value().1.elapsed() < TTL {
-            Some(entry.value().0.clone())
-        } else {
-            ACCOUNT_CACHE.remove(key);
-            None
-        }
-    })
-}
-
-pub fn set(key: String, value: ResolvedAccount) {
-    ACCOUNT_CACHE.insert(key, (value, Instant::now()));
-}
-
-
-

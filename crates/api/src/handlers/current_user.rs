@@ -3,12 +3,12 @@ use axum::{
     Json,
 };
 use diesel::prelude::*;
-use payego_core::services::auth_service::{AuthService, CurrentUserResponse};
+use payego_core::services::auth_service::{token::TokenService, user::CurrentUserResponse};
 use payego_primitives::config::security_config::Claims;
 use payego_primitives::error::{ApiError, AuthError};
 use payego_primitives::models::app_state::app_state::AppState;
 use std::sync::Arc;
-
+use payego_core::services::auth_service::user::UserService;
 
 #[utoipa::path(
     get,
@@ -30,6 +30,6 @@ pub async fn current_user_details(
         .parse()
         .map_err(|_| ApiError::Auth(AuthError::InvalidToken("Invalid subject".into())))?;
 
-    let response = AuthService::current_user_summary(&state, user_id).await?;
+    let response = UserService::current_user_summary(&state, user_id).await?;
     Ok(Json(response))
 }

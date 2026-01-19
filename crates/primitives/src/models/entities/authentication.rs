@@ -11,6 +11,14 @@ pub struct BlacklistedToken {
     pub expires_at: DateTime<Utc>,
 }
 
+#[derive(Insertable)]
+#[diesel(table_name = crate::schema::blacklisted_tokens)]
+pub struct NewBlacklistedToken<'a> {
+    pub jti: &'a str,
+    pub expires_at: DateTime<Utc>,
+}
+
+
 #[derive(Queryable, Identifiable, Associations)]
 #[diesel(table_name = crate::schema::refresh_tokens)]
 #[diesel(belongs_to(crate::models::entities::user::User))]

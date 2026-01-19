@@ -3,18 +3,13 @@ use axum::{
     Json,
 };
 use diesel::prelude::*;
-use payego_core::services::transaction_service::{TransactionResponse, TransactionService};
+use payego_core::services::transaction_service::{ TransactionService};
 use payego_primitives::config::security_config::Claims;
-use payego_primitives::error::{ApiError, AuthError};
+use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::enum_types::{CurrencyCode, PaymentState, TransactionIntent};
-use payego_primitives::models::transaction::Transaction;
-use payego_primitives::schema::transactions;
-use serde::Serialize;
 use std::sync::Arc;
-use tracing::error;
-use utoipa::ToSchema;
 use uuid::Uuid;
+use payego_primitives::models::transaction_dto::TransactionResponse;
 
 #[utoipa::path(
     get,

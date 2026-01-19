@@ -1,12 +1,10 @@
 // Token generation now handled by JWTSecret::encode_token()
 use axum::extract::{Json, State};
-use diesel::prelude::*;
-use payego_core::services::auth_service::AuthService;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::dtos::dtos::{LoginRequest, LoginResponse};
+use payego_primitives::models::dtos::login_dto::{LoginRequest, LoginResponse};
 use std::sync::Arc;
-
+use payego_core::services::auth_service::login::LoginService;
 
 #[utoipa::path(
     post,
@@ -23,7 +21,7 @@ pub async fn login(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, ApiError> {
-    let response = AuthService::login(&state, payload).await?;
+    let response = LoginService::login(&state, payload).await?;
     Ok(Json(response))
 }
 

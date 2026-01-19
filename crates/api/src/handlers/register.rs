@@ -2,13 +2,12 @@ use axum::{
     extract::{Json, State},
     http::StatusCode,
 };
-use diesel::prelude::*;
-use payego_core::services::auth_service::AuthService;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::dtos::dtos::{RegisterRequest, RegisterResponse};
+use payego_primitives::models::dtos::register_dto::{RegisterRequest, RegisterResponse};
 use std::sync::Arc;
 use validator::Validate;
+use payego_core::services::auth_service::register::RegisterService;
 
 #[utoipa::path(
     post,
@@ -28,7 +27,7 @@ pub async fn register(
 ) -> Result<(StatusCode, Json<RegisterResponse>), ApiError> {
     payload.validate()?;
 
-    let response = AuthService::register(&state, payload).await?;
+    let response = RegisterService::register(&state, payload).await?;
 
     Ok((StatusCode::CREATED, Json(response)))
 }

@@ -9,13 +9,7 @@ use uuid::Uuid;
 
 use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
-
-#[derive(Debug)]
-pub struct StripeWebhookContext {
-    pub transaction_ref: Uuid,
-    pub provider_reference: String,
-    pub currency: String,
-}
+use payego_primitives::models::providers_dto::StripeWebhookContext;
 
 pub struct StripeService;
 
@@ -48,7 +42,7 @@ impl StripeService {
     pub fn extract_context(
         state: &Arc<AppState>,
         headers: HeaderMap,
-        body: &Bytes
+        body: &Bytes,
     ) -> Result<Option<StripeWebhookContext>, ApiError> {
         let event = Self::construct_event(&state, headers, &body)?;
 

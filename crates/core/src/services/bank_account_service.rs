@@ -1,46 +1,25 @@
 use diesel::prelude::*;
+use reqwest::Client;
+use secrecy::ExposeSecret;
 use serde::Serialize;
+use serde_json::json;
 use tracing::{error, warn};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use crate::services::bank_service::BankService;
+use payego_primitives::models::bank::NewBankAccount;
+use payego_primitives::models::bank_dtos::{
+    BankAccountResponse, BankAccountsResponse, BankRequest,
+};
+use payego_primitives::models::dtos::bank_dtos::PaystackRecipientResponse;
 use payego_primitives::{
     config::security_config::Claims,
     error::{ApiError, AuthError},
-    models::{
-        app_state::app_state::AppState,
-        bank::BankAccount,
-    },
+    models::{app_state::app_state::AppState, bank::BankAccount},
     schema::bank_accounts,
 };
 
-#[derive(Debug, Serialize, ToSchema)]
-pub struct BankAccountResponse {
-    pub id: String,
-    pub bank_code: String,
-    pub account_number: String,
-    pub account_name: Option<String>,
-    pub bank_name: Option<String>,
-    pub is_verified: bool,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct BankAccountsResponse {
-    pub bank_accounts: Vec<BankAccountResponse>,
-}
-
-impl From<BankAccount> for BankAccountResponse {
-    fn from(account: BankAccount) -> Self {
-        Self {
-            id: account.id.to_string(),
-            bank_code: account.bank_code,
-            account_number: account.account_number,
-            account_name: account.account_name,
-            bank_name: account.bank_name,
-            is_verified: account.is_verified,
-        }
-    }
-}
 pub struct BankAccountService;
 
 impl BankAccountService {
@@ -73,5 +52,98 @@ impl BankAccountService {
                 .map(BankAccountResponse::from)
                 .collect(),
         })
+    }
+
+    pub async fn get_bank_accounts(
+        state: &AppState,
+        user_id_val: Uuid,
+    ) -> Result<Vec<BankAccount>, ApiError> {
+        let mut conn = state
+            .db
+            .get()
+            .map_err(|e: r2d2::Error| ApiError::DatabaseConnection(e.to_string()))?;
+
+        let accounts = bank_accounts::table
+            .filter(bank_accounts::user_id.eq(user_id_val))
+            .load::<BankAccount>(&mut conn)
+            .map_err(ApiError::from)?;
+
+        Ok(accounts)
+    }
+
+    pub async fn create_bank_account(
+        state: &AppState,
+        user_id_val: Uuid,
+        req: BankRequest,
+    ) -> Result<BankAccount, ApiError> {
+        let mut conn = state.db.get().map_err(|e: r2d2::Error| {
+            error!("Database error: {}", e);
+            ApiError::DatabaseConnection(e.to_string())
+        })?;
+
+        // Idempotency check
+        if let Ok(existing) = bank_accounts::table
+            .filter(bank_accounts::user_id.eq(user_id_val))
+            .filter(bank_accounts::bank_code.eq(&req.bank_code))
+            .filter(bank_accounts::account_number.eq(&req.account_number))
+            .first::<BankAccount>(&mut conn)
+        {
+            return Ok(existing);
+        }
+
+        let account_details =
+            BankService::resolve_account_details(state, &req.bank_code, &req.account_number)
+                .await?;
+
+        let account_name = account_details.account_name;
+
+        let client = Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .map_err(|_| ApiError::Internal("HTTP client error".into()))?;
+
+        let resp = client
+            .post(format!(
+                "{}/transferrecipient",
+                state.config.paystack_details.paystack_api_url
+            ))
+            .bearer_auth(
+                state
+                    .config
+                    .paystack_details
+                    .paystack_secret_key
+                    .expose_secret(),
+            )
+            .json(&json!({
+                "type": "nuban",
+                "name": account_name,
+                "account_number": req.account_number,
+                "bank_code": req.bank_code,
+                "currency": "NGN"
+            }))
+            .send()
+            .await
+            .map_err(|_| ApiError::Payment("Paystack recipient creation failed".into()))?;
+
+        let body: PaystackRecipientResponse = resp
+            .json()
+            .await
+            .map_err(|_| ApiError::Payment("Invalid Paystack response".into()))?;
+
+        let new_account = NewBankAccount {
+            user_id: user_id_val,
+            bank_name: Some(&req.bank_name),
+            account_number: &req.account_number,
+            account_name: Some(&*account_name),
+            bank_code: &*req.bank_code,
+            provider_recipient_id: Some(&*body.data.recipient_code),
+            is_verified: true, // rename later
+        };
+
+        let account = diesel::insert_into(bank_accounts::table)
+            .values(&new_account)
+            .get_result(&mut conn)?;
+
+        Ok(account)
     }
 }

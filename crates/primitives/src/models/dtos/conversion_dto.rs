@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
@@ -14,10 +15,17 @@ pub struct ConvertRequest {
 }
 
 
+
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ConvertResponse {
     pub transaction_id: String,
     pub converted_amount: f64,
     pub exchange_rate: f64,
     pub fee: f64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ExchangeRateResponse {
+   pub rates: HashMap<String, f64>,
+   pub error: Option<String>,
 }

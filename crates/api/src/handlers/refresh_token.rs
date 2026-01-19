@@ -1,6 +1,4 @@
 use axum::{extract::State, Json};
-use diesel::prelude::*;
-use payego_core::services::auth_service::AuthService;
 use payego_primitives::config::security_config::{ SecurityConfig};
 use payego_primitives::error::ApiError;
 use serde::Deserialize;
@@ -8,8 +6,9 @@ use std::sync::Arc;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
+use payego_core::services::auth_service::token::TokenService;
 use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::dtos::dtos::LoginResponse;
+use payego_primitives::models::dtos::login_dto::LoginResponse;
 
 #[derive(Deserialize, ToSchema, Validate)]
 pub struct RefreshRequest {
@@ -37,7 +36,7 @@ pub async fn refresh_token(
     payload.validate().map_err(ApiError::Validation)?;
     
     // Validate refresh token and rotate it
-    let refreshed = AuthService::validate_and_rotate_refresh_token(
+    let refreshed = TokenService::validate_and_rotate_refresh_token(
         &state,
         &payload.refresh_token,
     )?;

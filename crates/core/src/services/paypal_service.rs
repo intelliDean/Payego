@@ -4,7 +4,7 @@ use diesel::{OptionalExtension, QueryDsl};
 use http::StatusCode;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::dtos::dtos::{
+use payego_primitives::models::dtos::providers_dto::{
     CaptureResponse, PayPalOrderResponse, PayPalTokenResponse,
 };
 use payego_primitives::models::enum_types::{CurrencyCode, PaymentProvider, PaymentState};
@@ -18,11 +18,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::log::error;
 use uuid::Uuid;
-
-struct PaypalCapture {
-    capture_id: String,
-    currency: CurrencyCode,
-}
+use payego_primitives::models::providers_dto::PaypalCapture;
 
 #[derive(Clone)]
 pub struct PayPalService;

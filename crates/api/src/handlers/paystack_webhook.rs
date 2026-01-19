@@ -3,7 +3,7 @@ use axum::{extract::State, http::StatusCode};
 use payego_core::services::paystack_service::PaystackService;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::dtos::dtos::PaystackWebhook;
+use payego_primitives::models::dtos::providers_dto::PaystackWebhook;
 use std::sync::Arc;
 // https://e02e3895d11f.ngrok-free.app/webhooks/paystack
 

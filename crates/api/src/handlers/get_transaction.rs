@@ -1,9 +1,10 @@
 use axum::{extract::State, Extension, Json};
-use payego_core::services::transaction_service::{TransactionService, TransactionsResponse};
+use payego_core::services::transaction_service::{TransactionService};
 use payego_primitives::config::security_config::Claims;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
 use std::sync::Arc;
+use payego_primitives::models::transaction_dto::TransactionsResponse;
 
 #[utoipa::path(
     get,

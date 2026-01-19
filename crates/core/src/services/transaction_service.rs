@@ -1,4 +1,3 @@
-use crate::services::stripe_service::StripeWebhookContext;
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use payego_primitives::config::security_config::Claims;
@@ -13,46 +12,8 @@ use serde::Serialize;
 use tracing::{error, info, warn};
 use utoipa::ToSchema;
 use uuid::Uuid;
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct TransactionSummaryDto {
-    pub id: Uuid,
-    pub intent: TransactionIntent,
-    pub amount: i64,
-    pub currency: CurrencyCode,
-    pub created_at: DateTime<Utc>,
-    pub state: PaymentState,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct TransactionsResponse {
-    pub transactions: Vec<TransactionSummaryDto>,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct TransactionResponse {
-    pub id: String,
-    pub intent: TransactionIntent,
-    pub amount: i64,
-    pub currency: CurrencyCode,
-    pub status: PaymentState,
-    pub created_at: String,
-    pub description: Option<String>,
-}
-
-impl From<Transaction> for TransactionResponse {
-    fn from(tx: Transaction) -> Self {
-        Self {
-            id: tx.reference.to_string(),
-            intent: tx.intent,
-            amount: tx.amount,
-            currency: tx.currency,
-            status: tx.txn_state,
-            created_at: tx.created_at.to_rfc3339(),
-            description: tx.description,
-        }
-    }
-}
+use payego_primitives::models::providers_dto::StripeWebhookContext;
+use payego_primitives::models::transaction_dto::{TransactionResponse, TransactionSummaryDto, TransactionsResponse};
 
 const RECENT_TX_LIMIT: i64 = 5;
 
@@ -63,7 +24,6 @@ impl TransactionService {
         state: &AppState,
         ctx: StripeWebhookContext,
     ) -> Result<(), ApiError> {
-        
         let mut conn = state.db.get().map_err(|e| {
             tracing::error!("DB connection error: {}", e);
             ApiError::DatabaseConnection(e.to_string())

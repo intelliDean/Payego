@@ -1,8 +1,8 @@
 use diesel::prelude::*;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::conversion_dto::ConvertRequest;
-use payego_primitives::models::dtos::dtos::ConvertResponse;
+use payego_primitives::models::conversion_dto::{ConvertRequest, ExchangeRateResponse};
+use payego_primitives::models::dtos::conversion_dto::ConvertResponse;
 use payego_primitives::models::enum_types::{
     CurrencyCode, PaymentProvider, PaymentState, TransactionIntent,
 };
@@ -16,12 +16,6 @@ use serde_json::json;
 use std::collections::HashMap;
 use std::time::Duration;
 use uuid::Uuid;
-
-#[derive(Debug, Deserialize)]
-struct ExchangeRateResponse {
-    rates: HashMap<String, f64>,
-    error: Option<String>,
-}
 
 pub struct ConversionService;
 

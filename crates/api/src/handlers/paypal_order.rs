@@ -5,23 +5,7 @@ use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
 use std::sync::Arc;
 use payego_core::services::paypal_service::PayPalService;
-
-#[derive(Debug, Deserialize)]
-pub struct PayPalTokenResponse {
-    pub access_token: String,
-    pub expires_in: u64,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct PayPalOrderResponse {
-    pub id: String,
-    pub status: String,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct OrderResponse {
-    pub status: String,
-}
+use payego_primitives::models::providers_dto::OrderResponse;
 
 #[utoipa::path(
     get,

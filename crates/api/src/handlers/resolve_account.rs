@@ -13,17 +13,7 @@ use utoipa::ToSchema;
 
 use payego_core::services::bank_service::BankService;
 use payego_primitives::{error::ApiError, models::app_state::app_state::AppState};
-
-#[derive(Deserialize, ToSchema)]
-pub struct ResolveAccountRequest {
-    pub bank_code: String,
-    pub account_number: String,
-}
-
-#[derive(Serialize, ToSchema)]
-pub struct ResolveAccountResponse {
-    pub account_name: String,
-}
+use payego_primitives::models::bank_dtos::{ResolveAccountRequest, ResolveAccountResponse};
 
 static ACCOUNT_NUMBER_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^\d{10}$").unwrap());

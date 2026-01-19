@@ -3,11 +3,12 @@ use axum::{
     Json,
 };
 use diesel::prelude::*;
-use payego_core::services::bank_account_service::{BankAccountService, BankAccountsResponse};
+use payego_core::services::bank_account_service::{BankAccountService};
 use payego_primitives::config::security_config::Claims;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::app_state::app_state::AppState;
 use std::sync::Arc;
+use payego_primitives::models::bank_dtos::BankAccountsResponse;
 
 #[utoipa::path(
     get,
