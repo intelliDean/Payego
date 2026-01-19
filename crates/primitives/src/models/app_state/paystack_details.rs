@@ -1,9 +1,7 @@
-
 use crate::error::ApiError;
-use crate::models::app_state::stripe_details::StripeInfo;
+use eyre::Report;
 use secrecy::SecretString;
 use std::env;
-use eyre::Report;
 
 #[derive(Debug, Clone)]
 pub struct PaystackInfo {

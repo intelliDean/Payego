@@ -1,110 +1,48 @@
-use crate::error::ApiError;
-use base64::engine::general_purpose;
-use base64::Engine;
-use reqwest::Client;
-use tracing::log::error;
 use validator::ValidationError;
 
-pub fn validate_password(password: &str) -> Result<(), ValidationError> {
-    let trimmed = password.trim();
+const MIN_LEN: usize = 12;
+const MAX_LEN: usize = 128;
+const SPECIAL_CHARS: &str = "!@#$%^&*";
 
-    // Check for empty or too short password
-    if trimmed.is_empty() || trimmed.len() < 8 {
-        return Err(ValidationError::new(
-            "Password cannot be empty and must be at least 8 characters long",
-        ));
+pub fn validate_password(password: &str) -> Result<(), ValidationError> {
+    let len = password.len();
+
+    if len < MIN_LEN {
+        return Err(error("password_too_short"));
     }
 
-    // Individual character checks using iterator methods
-    let mut has_lowercase = false;
-    let mut has_uppercase = false;
+    if len > MAX_LEN {
+        return Err(error("password_too_long"));
+    }
+
+    let mut has_lower = false;
+    let mut has_upper = false;
     let mut has_digit = false;
     let mut has_special = false;
-    let mut has_invalid = false;
 
-    for c in trimmed.chars() {
-        if c.is_ascii_lowercase() {
-            has_lowercase = true;
-        } else if c.is_ascii_uppercase() {
-            has_uppercase = true;
-        } else if c.is_ascii_digit() {
-            has_digit = true;
-        } else if "!@#$%^&*".contains(c) {
-            has_special = true;
-        } else {
-            has_invalid = true;
+    for c in password.chars() {
+        match c {
+            c if c.is_ascii_lowercase() => has_lower = true,
+            c if c.is_ascii_uppercase() => has_upper = true,
+            c if c.is_ascii_digit() => has_digit = true,
+            c if SPECIAL_CHARS.contains(c) => has_special = true,
+            _ => return Err(error("password_invalid_character")),
         }
     }
 
-    if !(has_lowercase && has_uppercase && has_digit && has_special) {
-        return Err(ValidationError::new(
-            "Password must be at least 8 characters long and contain at \
-                least one uppercase letter, one lowercase letter, one digit, \
-                and one special character (!@#$%^&*)",
-        ));
-    }
-
-    if has_invalid {
-        return Err(ValidationError::new(
-            "Password contains invalid characters. Only letters, \
-                numbers, and !@#$%^&* are allowed",
-        ));
+    if !(has_lower && has_upper && has_digit && has_special) {
+        return Err(error("password_policy_violation"));
     }
 
     Ok(())
 }
 
-pub async fn get_paypal_access_token(
-    client: &Client,
-    client_id: &str,
-    secret: &str,
-) -> Result<String, ApiError> {
-    let resp = client
-        .post("https://api-m.sandbox.paypal.com/v1/oauth2/token")
-        .header("Content-Type", "application/x-www-form-urlencoded")
-        .header(
-            "Authorization",
-            format!(
-                "Basic {}",
-                general_purpose::STANDARD.encode(format!("{}:{}", client_id, secret))
-            ),
-        )
-        .form(&[("grant_type", "client_credentials")])
-        .send()
-        .await
-        .map_err(|e: reqwest::Error| {
-            error!("PayPal token request failed: {}", e);
-            ApiError::Payment(format!("Failed to fetch PayPal access token: {}", e))
-        })?;
 
-    let status = resp.status();
 
-    let json = resp
-        .json::<serde_json::Value>()
-        .await
-        .map_err(|e: reqwest::Error| {
-            error!("PayPal token response parsing failed: {}", e);
-            ApiError::Payment(format!("Failed to parse PayPal token response: {}", e))
-        })?;
-
-    if !status.is_success() {
-        error!(
-            "PayPal token API error: status {}, response {:?}",
-            status, json
-        );
-        return Err(ApiError::Payment(format!(
-            "PayPal token API error: {}",
-            json["error_description"]
-                .as_str()
-                .unwrap_or("Unknown error")
-        )));
-    }
-
-    json["access_token"]
-        .as_str()
-        .ok_or_else(|| {
-            error!("Invalid PayPal token response: missing access_token");
-            ApiError::Payment("Invalid PayPal token response".to_string())
-        })
-        .map(|s: &str| s.to_string())
+fn error(code: &'static str) -> ValidationError {
+    let mut err = ValidationError::new(code);
+    err.add_param("min_length".into(), &MIN_LEN);
+    err.add_param("max_length".into(), &MAX_LEN);
+    err.add_param("special_chars".into(), &SPECIAL_CHARS);
+    err
 }

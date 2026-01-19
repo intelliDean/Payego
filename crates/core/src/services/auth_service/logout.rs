@@ -1,10 +1,12 @@
-use argon2::{Params, PasswordVerifier};
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 pub use payego_primitives::{
     config::security_config::Claims,
     error::ApiError,
-    models::{app_state::app_state::AppState, entities::authentication::NewBlacklistedToken, token_dto::LogoutResponse},
+    models::{
+        app_state::app_state::AppState, entities::authentication::NewBlacklistedToken,
+        token_dto::LogoutResponse,
+    },
 };
 use tracing::log::{error, info};
 

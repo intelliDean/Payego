@@ -1,9 +1,8 @@
+use crate::models::withdrawal_dto::WalletSummaryDto;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
-use crate::models::user::User;
-use crate::models::withdrawal_dto::WalletSummaryDto;
 
 
 #[derive(Deserialize, ToSchema, Validate)]

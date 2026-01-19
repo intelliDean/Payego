@@ -9,3 +9,4 @@ pub mod top_up_dto;
 pub mod transaction_dto;
 pub mod transfer_dto;
 pub mod wallet_dto;
+pub mod clients_dto;

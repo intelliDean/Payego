@@ -14,9 +14,9 @@ pub use payego_primitives::{
         wallet_ledger::NewWalletLedger,
     },
     schema::{transactions, wallet_ledger, wallets},
-    
+
 };
-use reqwest::Client;
+use reqwest::{Client, Url};
 use serde_json::json;
 use std::time::Duration;
 use uuid::Uuid;
@@ -180,7 +180,16 @@ impl ConversionService {
             return Ok(1.0);
         }
 
-        let url = format!("{}/{}", base_url.trim_end_matches('/'), from);
+        // let url = format!("{}/{}", base_url.trim_end_matches('/'), from);
+
+
+        let mut url = Url::parse(base_url)
+            .map_err(|_| ApiError::Internal("Invalid FX base URL".into()))?;
+
+        url.path_segments_mut()
+            .map_err(|_| ApiError::Internal("Invalid FX URL path".into()))?
+            .push(from.to_string().as_str());
+
 
         let resp = client
             .get(url)

@@ -1,8 +1,9 @@
+use crate::client::PaystackClient;
 use diesel::prelude::*;
 use http::StatusCode;
 pub use payego_primitives::{
-    error::ApiError,
     config::security_config::Claims,
+    error::ApiError,
     models::{
         app_state::app_state::AppState,
         enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent},
@@ -10,17 +11,15 @@ pub use payego_primitives::{
         transfer_dto::{TransferRequest, WalletTransferRequest},
         wallet::Wallet,
         wallet_ledger::NewWalletLedger,
-        
     },
-    schema::{transactions, wallet_ledger, wallets}
-    
+    schema::{transactions, wallet_ledger, wallets},
 };
-use reqwest::Client;
+use reqwest::{Client, Url};
 use secrecy::ExposeSecret;
 use serde_json::{json, Value};
 use std::sync::Arc;
 use uuid::Uuid;
-
+use payego_primitives::models::providers_dto::PaystackTransferResponse;
 
 pub struct TransferService;
 
@@ -34,7 +33,6 @@ impl TransferService {
             .db
             .get()
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
-
 
         let amount_cents = (req.amount * 100.0).round() as i64;
         if amount_cents <= 0 {
@@ -88,9 +86,9 @@ impl TransferService {
                     reference: req.reference,
                     description: req.description.as_deref(),
                     metadata: json!({
-                    "direction": "debit",
-                    "counterparty": req.recipient_id
-                }),
+                        "direction": "debit",
+                        "counterparty": req.recipient_id
+                    }),
                 })
                 .returning(transactions::id)
                 .get_result::<Uuid>(conn)?;
@@ -110,9 +108,9 @@ impl TransferService {
                     reference: req.reference,
                     description: Some("Internal transfer received"),
                     metadata: json!({
-                    "direction": "credit",
-                    "counterparty": sender_id
-                }),
+                        "direction": "credit",
+                        "counterparty": sender_id
+                    }),
                 })
                 .returning(transactions::id)
                 .get_result::<Uuid>(conn)?;
@@ -153,10 +151,13 @@ impl TransferService {
         user_id: Uuid,
         req: TransferRequest,
     ) -> Result<StatusCode, ApiError> {
-        let mut conn = state.db.get()
+        let mut conn = state
+            .db
+            .get()
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
-        let currency: CurrencyCode = req.currency
+        let currency: CurrencyCode = req
+            .currency
             .parse()
             .map_err(|_| ApiError::Internal("Unsupported currency".into()))?;
 
@@ -246,48 +247,90 @@ impl TransferService {
         req: &TransferRequest,
     ) -> Result<String, ApiError> {
         let client = Client::new();
-        let key = state.config.paystack_details.paystack_secret_key.expose_secret();
+        let key = state
+            .config
+            .paystack_details
+            .paystack_secret_key
+            .expose_secret();
 
-        // create recipient
-        let recipient = client
-            .post(format!("{}/transferrecipient", state.config.paystack_details.paystack_api_url))
+        let paystack_client = PaystackClient::new(
+            state.http_client.clone(),
+            &state.config.paystack_details.paystack_api_url,
+            state.config.paystack_details.paystack_secret_key.clone(),
+        )?;
+
+        let name = req.account_name.clone().unwrap_or("Recipient".into());
+
+        let payload = PaystackClient::create_recipient(
+            &name,
+            &req.account_number,
+            &req.bank_code,
+            CurrencyCode::NGN,
+        );
+
+        let recipient_code = paystack_client
+            .create_transfer_recipient(payload)
+            .await
+            .map_err(|_| ApiError::Payment("Unable to create transfer recipient".into()))?;
+
+
+        //todo: turn this into client
+        let base = Url::parse(&state.config.paystack_details.paystack_api_url)
+            .map_err(|_| ApiError::Internal("Invalid Paystack base URL".into()))?;
+
+        let url = base
+            .join("transfer")
+            .map_err(|_| ApiError::Internal("Invalid Paystack transfer URL".into()))?;
+
+        let amount_kobo = (req.amount * 100.0).round() as i64;
+
+        if amount_kobo <= 0 {
+            return Err(ApiError::Internal("Invalid transfer amount".into()));
+        }
+
+        let resp = client
+            .post(url)
             .bearer_auth(key)
-            .json(&json!({
-            "type": "nuban",
-            "name": req.account_name.clone().unwrap_or("Recipient".into()),
-            "account_number": req.account_number,
-            "bank_code": req.bank_code,
-            "currency": "NGN"
-        }))
+            .json(&serde_json::json!({
+                "source": "balance",
+                "amount": amount_kobo,
+                "recipient": recipient_code,
+                "reference": req.reference.to_string()
+            }))
             .send()
-            .await?
-            .json::<Value>()
-            .await?;
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "Paystack transfer request failed");
+                ApiError::Payment("Failed to reach Paystack".into())
+            })?
+            .error_for_status()
+            .map_err(|e| {
+                tracing::warn!(error = %e, "Paystack transfer rejected");
+                ApiError::Payment("Paystack rejected transfer".into())
+            })?;
 
-        let recipient_code = recipient["data"]["recipient_code"]
-            .as_str()
-            .ok_or_else(|| ApiError::Payment("Invalid recipient response".into()))?;
+        //todo===== end of client
 
-        let transfer = client
-            .post(format!("{}/transfer", state.config.paystack_details.paystack_api_url))
-            .bearer_auth(key)
-            .json(&json!({
-            "source": "balance",
-            "amount": (req.amount * 100.0).round() as i64,
-            "recipient": recipient_code,
-            "reference": req.reference.to_string()
-        }))
-            .send()
-            .await?
-            .json::<Value>()
-            .await?;
+        let body: PaystackTransferResponse = resp
+            .json()
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "Invalid Paystack transfer response");
+                ApiError::Payment("Invalid Paystack response".into())
+            })?;
 
-        transfer["data"]["transfer_code"]
-            .as_str()
-            .map(str::to_string)
-            .ok_or_else(|| ApiError::Payment("Missing transfer code".into()))
+        if !body.status {
+            return Err(ApiError::Payment(body.message));
+        }
+
+        let transfer_code = body
+            .data
+            .ok_or_else(|| ApiError::Payment("Missing transfer data".into()))?
+            .transfer_code;
+
+        Ok(transfer_code)
+
     }
-
 
     async fn get_exchange_rate(
         base_url: &str,
@@ -309,7 +352,3 @@ impl TransferService {
             .ok_or_else(|| ApiError::Payment("Invalid rate".to_string()))
     }
 }
-
-
-
-

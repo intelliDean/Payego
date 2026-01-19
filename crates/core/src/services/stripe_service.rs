@@ -1,5 +1,3 @@
-// payego_core::services::stripe_service.rs
-
 use axum::body::Bytes;
 use http::HeaderMap;
 use secrecy::ExposeSecret;

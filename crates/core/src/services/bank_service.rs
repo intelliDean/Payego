@@ -7,13 +7,15 @@ pub use payego_primitives::{
         app_state::app_state::AppState,
         bank::{Bank, NewBank, NewBankAccount},
         bank_dtos::{
-            BankDto, BankListResponse, PaystackBank, PaystackResolveResponse, PaystackResponse, ResolveAccountRequest, ResolveAccountResponse
+            BankDto, BankListResponse, PaystackBank, PaystackResolveResponse, PaystackResponse,
+            ResolveAccountRequest, ResolveAccountResponse,
         },
         dtos::bank_dtos::ResolvedAccount,
         enum_types::CurrencyCode,
     },
     schema::banks,
 };
+use reqwest::Url;
 use secrecy::ExposeSecret;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -32,7 +34,7 @@ impl BankService {
             .get()
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
-        // 1. Idempotency check
+        // idempotency check
         let existing: i64 = banks::table.count().get_result(&mut conn)?;
         if existing > 0 {
             info!("Banks already initialized ({} records exist)", existing);
@@ -47,17 +49,36 @@ impl BankService {
             .paystack_secret_key
             .expose_secret();
 
-        // Safety check – prevent sending empty bearer token
-        if secret_key.trim().is_empty() {
+        // safety check to prevent sending empty bearer token
+        if state
+            .config
+            .paystack_details
+            .paystack_secret_key
+            .expose_secret()
+            .trim()
+            .is_empty()
+        {
             return Err(ApiError::Internal("Paystack secret key is empty".into()));
         }
 
-        let url = "https://api.paystack.co/bank?country=nigeria";
+        //to parse the url
+        let mut url = Url::parse(&state.config.paystack_details.paystack_api_url)
+            .map_err(|_| ApiError::Internal("Invalid Paystack base URL".into()))?;
+
+        url.set_path("bank");
+        url.query_pairs_mut()
+            .append_pair("country", &state.config.default_country.to_lowercase());
 
         let resp = state
             .http_client
             .get(url)
-            .bearer_auth(secret_key)
+            .bearer_auth(
+                state
+                    .config
+                    .paystack_details
+                    .paystack_secret_key
+                    .expose_secret(),
+            )
             .header("User-Agent", "Payego/1.0 (Rust backend)")
             .send()
             .await
@@ -189,22 +210,26 @@ impl BankService {
             return Ok(cached);
         }
 
-        let resp = state
-            .http_client
-            .get(format!(
-                "{}/bank/resolve",
-                state.config.paystack_details.paystack_api_url
-            ))
-            .query(&[("account_number", account_number), ("bank_code", bank_code)])
-            .bearer_auth(
-                &state
-                    .config
-                    .paystack_details
-                    .paystack_secret_key
-                    .expose_secret(),
-            )
+        let mut url = Url::parse(&state.config.paystack_details.paystack_api_url,)
+            .map_err(|_| ApiError::Internal("Invalid Paystack base URL".into()))?;
+
+        url.set_path("bank/resolve");
+        url.query_pairs_mut()
+            .append_pair("account_number", account_number)
+            .append_pair("bank_code", bank_code);
+
+        let resp = state.http_client
+            .get(url)
+            .bearer_auth(&state.config.paystack_details.paystack_secret_key.expose_secret())
+            .header("User-Agent", "Payego/1.0")
             .send()
-            .await?;
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "Failed to reach Paystack");
+                ApiError::Payment("Paystack service unavailable".into())
+            })?;
+
+        let status = resp.status();
 
         let body: PaystackResolveResponse = resp.json().await?;
 
@@ -264,3 +289,5 @@ impl BankService {
         ACCOUNT_CACHE.insert(key, (value, Instant::now()));
     }
 }
+
+

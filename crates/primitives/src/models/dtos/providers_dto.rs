@@ -57,3 +57,54 @@ pub struct StripeWebhookContext {
 pub struct OrderResponse {
     pub status: String,
 }
+
+#[derive(Deserialize)]
+pub struct PayPalLink {
+    pub rel: String,
+    pub href: String,
+}
+
+#[derive(Deserialize)]
+pub struct PayPalOrderResp {
+    pub id: String,
+    pub links: Vec<PayPalLink>,
+}
+
+#[derive(Deserialize)]
+pub struct CaptureAmount {
+    pub currency_code: String,
+}
+
+#[derive(Deserialize)]
+pub struct Capture {
+    pub id: String,
+    pub amount: CaptureAmount,
+}
+
+#[derive(Deserialize)]
+pub struct Payments {
+    pub captures: Vec<Capture>,
+}
+
+#[derive(Deserialize)]
+pub struct PurchaseUnit {
+    pub payments: Payments,
+}
+
+#[derive(Deserialize)]
+pub struct PayPalCaptureResponse {
+    pub purchase_units: Vec<PurchaseUnit>,
+}
+
+
+#[derive(Deserialize)]
+pub struct PaystackTransferData {
+    pub transfer_code: String,
+}
+
+#[derive(Deserialize)]
+pub struct PaystackTransferResponse {
+    pub status: bool,
+    pub message: String,
+    pub data: Option<PaystackTransferData>,
+}

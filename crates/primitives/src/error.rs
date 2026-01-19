@@ -3,6 +3,7 @@ use diesel::r2d2;
 use http::StatusCode;
 use std::fmt;
 use stripe::WebhookError;
+use thiserror::Error;
 
 #[derive(Debug)]
 pub enum ApiError {
@@ -15,6 +16,7 @@ pub enum ApiError {
     Payment(String),
     Webhook(WebhookError),
     Internal(String),
+    // PaystackError(PaystackError)
 }
 
 impl fmt::Display for ApiError {
@@ -29,6 +31,7 @@ impl fmt::Display for ApiError {
             ApiError::Payment(e) => write!(f, "Payment error: {}", e),
             ApiError::Webhook(e) => write!(f, "Webhook error: {}", e),
             ApiError::Internal(e) => write!(f, "Internal error: {}", e),
+            // ApiError::PaystackError(e) => write!(f, "Paystack error {}", e),
         }
     }
 }
@@ -166,6 +169,16 @@ impl From<ApiError> for (StatusCode, String) {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Internal error: {}", msg),
             ),
+            // ApiError::PaystackError(e) => match e {
+            //     PaystackError::Configuration(msg) => (
+            //
+            //         ),
+            //     PaystackError::RequestFailed => (),
+            //     PaystackError::Api(msg) => (
+            //
+            //         )
+            // },
+
         }
     }
 }
@@ -206,3 +219,16 @@ impl From<AuthError> for ApiError {
     }
 }
 
+
+
+#[derive(Debug, Error)]
+pub enum PaystackError {
+    #[error("Paystack configuration error: {0}")]
+    Configuration(&'static str),
+
+    #[error("Paystack API request failed")]
+    RequestFailed,
+
+    #[error("Paystack returned unsuccessful response: {0}")]
+    Api(String),
+}

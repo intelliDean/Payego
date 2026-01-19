@@ -8,43 +8,63 @@ pub use payego_primitives::{
         app_state::app_state::AppState,
         dtos::providers_dto::{CaptureResponse, PayPalOrderResponse, PayPalTokenResponse},
         enum_types::{CurrencyCode, PaymentProvider, PaymentState},
+        providers_dto::CaptureRequest,
+        providers_dto::OrderResponse,
         providers_dto::PaypalCapture,
         transaction::Transaction,
         wallet::Wallet,
         wallet_ledger::NewWalletLedger,
-        providers_dto::OrderResponse,
-        providers_dto::CaptureRequest
     },
     schema::{transactions, wallet_ledger, wallets},
 };
+use reqwest::Url;
 use secrecy::ExposeSecret;
 use std::str::FromStr;
 use std::time::Duration;
 use tracing::log::error;
 use uuid::Uuid;
+use payego_primitives::models::providers_dto::PayPalCaptureResponse;
 
 #[derive(Clone)]
 pub struct PayPalService;
 
 impl PayPalService {
     async fn get_access_token(state: &AppState) -> Result<String, ApiError> {
+        let base = Url::parse(&state.config.paypal_details.paypal_api_url)
+            .map_err(|_| ApiError::Internal("Invalid PayPal base URL".into()))?;
+
+        let url = base
+            .join("v1/oauth2/token")
+            .map_err(|_| ApiError::Internal("Invalid PayPal token URL".into()))?;
+
+        let client_id = &state.config.paypal_details.paypal_client_id;
+        let secret = state.config.paypal_details.paypal_secret.expose_secret();
+
+        //this is just to double-check as client_id  and secret will never be empty
+        if client_id.trim().is_empty() || secret.trim().is_empty() {
+            return Err(ApiError::Internal(
+                "PayPal credentials not configured".into(),
+            ));
+        }
+
         let resp = state
             .http_client
-            .post(format!(
-                "{}/v1/oauth2/token",
-                state.config.paypal_details.paypal_api_url
-            ))
-            .basic_auth(
-                &state.config.paypal_details.paypal_client_id,
-                Some(state.config.paypal_details.paypal_secret.expose_secret()),
-            )
+            .post(url)
+            .basic_auth(client_id, Some(secret))
             .form(&[("grant_type", "client_credentials")])
-            .timeout(Duration::from_secs(5))
+            .timeout(Duration::from_secs(5)) // to override the default which I set to be 10
             .send()
             .await
-            .map_err(|e| ApiError::Payment(format!("PayPal auth request failed: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!(error = %e, "PayPal auth request failed");
+                ApiError::Payment("Unable to reach PayPal".into())
+            })?;
 
         if resp.status() != StatusCode::OK {
+            tracing::warn!(
+                status = %resp.status(),
+                "PayPal auth rejected"
+            );
             return Err(ApiError::Payment("PayPal authentication failed".into()));
         }
 
@@ -59,26 +79,38 @@ impl PayPalService {
     pub async fn get_order_status(state: &AppState, order_id: &str) -> Result<String, ApiError> {
         let token = Self::get_access_token(state).await?;
 
+        let base = Url::parse(&state.config.paypal_details.paypal_api_url)
+            .map_err(|_| ApiError::Internal("Invalid PayPal base URL".into()))?;
+
+        let url = base
+            .join("v2/checkout/orders/")
+            .and_then(|u| u.join(order_id))
+            .map_err(|_| ApiError::Internal("Invalid PayPal order URL".into()))?;
+
         let resp = state
             .http_client
-            .get(format!(
-                "{}/v2/checkout/orders/{}",
-                state.config.paypal_details.paypal_api_url, order_id
-            ))
+            .get(url)
             .bearer_auth(token)
-            .timeout(Duration::from_secs(5))
+            .timeout(Duration::from_secs(5)) //override the default
             .send()
             .await
-            .map_err(|e| ApiError::Payment(format!("PayPal order request failed: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!(error = %e, "PayPal order fetch failed");
+                ApiError::Payment("Failed to reach PayPal".into())
+            })?;
 
         if !resp.status().is_success() {
+            tracing::warn!(
+                status = %resp.status(),
+                "PayPal order fetch rejected"
+            );
             return Err(ApiError::Payment("Failed to fetch PayPal order".into()));
         }
 
-        let order = resp
-            .json::<PayPalOrderResponse>()
-            .await
-            .map_err(|_| ApiError::Payment("Invalid PayPal order response".into()))?;
+        let order = resp.json::<PayPalOrderResponse>().await.map_err(|e| {
+            tracing::error!(error = %e, "Invalid PayPal order response");
+            ApiError::Payment("Invalid PayPal order response".into())
+        })?;
 
         Ok(order.status)
     }
@@ -168,35 +200,52 @@ impl PayPalService {
         let client = state.http_client.clone();
         let token = Self::get_access_token(state).await?;
 
+        let base = Url::parse(&state.config.paypal_details.paypal_api_url)
+            .map_err(|_| ApiError::Internal("Invalid PayPal base URL".into()))?;
+
+        let url = base
+            .join("v2/checkout/orders/")
+            .and_then(|u| u.join(order_id))
+            .and_then(|u| u.join("capture"))
+            .map_err(|_| ApiError::Internal("Invalid PayPal capture URL".into()))?;
+
+
         let resp = client
-            .post(format!(
-                "{}/v2/checkout/orders/{}/capture",
-                state.config.paypal_details.paypal_api_url, order_id
-            ))
+            .post(url)
             .bearer_auth(token)
             .send()
-            .await?
-            .error_for_status()?;
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "PayPal capture request failed");
+                ApiError::Payment("Failed to reach PayPal".into())
+            })?
+            .error_for_status()
+            .map_err(|e| {
+                tracing::warn!(error = %e, "PayPal capture rejected");
+                ApiError::Payment("PayPal capture rejected".into())
+            })?;
 
-        let body: serde_json::Value = resp.json().await?;
+        let body: PayPalCaptureResponse = resp
+            .json()
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "Invalid PayPal capture response");
+                ApiError::Payment("Invalid PayPal capture response".into())
+            })?;
 
-        let capture = &body["purchase_units"][0]["payments"]["captures"][0];
+        let capture = body
+            .purchase_units
+            .get(0)
+            .and_then(|pu| pu.payments.captures.get(0))
+            .ok_or_else(|| ApiError::Payment("Missing PayPal capture data".into()))?;
 
-        let capture_id = capture["id"]
-            .as_str()
-            .ok_or_else(|| ApiError::Payment("Missing capture ID".into()))?
-            .to_string();
-
-        let currency_str = capture["amount"]["currency_code"]
-            .as_str()
-            .ok_or_else(|| ApiError::Payment("Missing currency".into()))?;
-
-        let currency = CurrencyCode::from_str(currency_str)
+        let currency = CurrencyCode::from_str(&capture.amount.currency_code)
             .map_err(|_| ApiError::Payment("Unsupported currency".into()))?;
 
         Ok(PaypalCapture {
-            capture_id,
+            capture_id: capture.id.clone(),
             currency,
         })
     }
 }
+

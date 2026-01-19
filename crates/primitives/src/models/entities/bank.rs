@@ -6,7 +6,6 @@ use uuid::Uuid;
 use crate::models::entities::enum_types::CurrencyCode;
 
 #[derive(Queryable, Identifiable, Debug, Clone, Serialize, ToSchema, Deserialize)]
-// #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(table_name = crate::schema::banks)]
 pub struct Bank {
     pub id: i64,

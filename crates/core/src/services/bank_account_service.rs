@@ -1,11 +1,10 @@
+use crate::client::{CreateTransferRecipientRequest, PaystackClient};
 use diesel::prelude::*;
-use reqwest::Client;
-use secrecy::ExposeSecret;
-use serde_json::json;
 use tracing::{error, warn};
 use uuid::Uuid;
 
 use crate::services::bank_service::BankService;
+use payego_primitives::models::enum_types::CurrencyCode;
 pub use payego_primitives::{
     config::security_config::Claims,
     error::{ApiError, AuthError},
@@ -96,38 +95,24 @@ impl BankAccountService {
 
         let account_name = account_details.account_name;
 
-        let client = Client::builder()
-            .timeout(std::time::Duration::from_secs(10))
-            .build()
-            .map_err(|_| ApiError::Internal("HTTP client error".into()))?;
+        //make call to paystack via its client
+        let paystack_client = PaystackClient::new(
+            state.http_client.clone(),
+            &state.config.paystack_details.paystack_api_url,
+            state.config.paystack_details.paystack_secret_key.clone(),
+        )?;
 
-        let resp = client
-            .post(format!(
-                "{}/transferrecipient",
-                state.config.paystack_details.paystack_api_url
-            ))
-            .bearer_auth(
-                state
-                    .config
-                    .paystack_details
-                    .paystack_secret_key
-                    .expose_secret(),
-            )
-            .json(&json!({
-                "type": "nuban",
-                "name": account_name,
-                "account_number": req.account_number,
-                "bank_code": req.bank_code,
-                "currency": "NGN"
-            }))
-            .send()
-            .await
-            .map_err(|_| ApiError::Payment("Paystack recipient creation failed".into()))?;
+        let payload = PaystackClient::create_recipient(
+            &*account_name,
+            &req.account_number,
+            &req.bank_code,
+            CurrencyCode::NGN,
+        );
 
-        let body: PaystackRecipientResponse = resp
-            .json()
+        let recipient_code = paystack_client
+            .create_transfer_recipient(payload)
             .await
-            .map_err(|_| ApiError::Payment("Invalid Paystack response".into()))?;
+            .map_err(|_| ApiError::Payment("Unable to create transfer recipient".into()))?;
 
         let new_account = NewBankAccount {
             user_id: user_id_val,
@@ -135,7 +120,7 @@ impl BankAccountService {
             account_number: &req.account_number,
             account_name: Some(&*account_name),
             bank_code: &*req.bank_code,
-            provider_recipient_id: Some(&*body.data.recipient_code),
+            provider_recipient_id: Some(&*recipient_code),
             is_verified: true, // rename later
         };
 
@@ -146,3 +131,36 @@ impl BankAccountService {
         Ok(account)
     }
 }
+
+// let url = Self::paystack_url(
+// &state.config.paystack_details.paystack_api_url,
+// "transferrecipient",
+// )?;
+//
+// let payload = CreateRecipientRequest {
+// recipient_type: "nuban",
+// name: &*account_name,
+// account_number: &req.account_number,
+// bank_code: &req.bank_code,
+// currency: CurrencyCode::NGN,
+// };
+//
+// let resp = state
+// .http_client
+// .post(url)
+// .bearer_auth(
+// state
+// .config
+// .paystack_details
+// .paystack_secret_key
+// .expose_secret(),
+// )
+// .json(&payload)
+// .send()
+// .await
+// .map_err(|_| ApiError::Payment("Paystack recipient creation failed".into()))?;
+//
+// let body: PaystackRecipientResponse = resp
+// .json()
+// .await
+// .map_err(|_| ApiError::Payment("Invalid Paystack response".into()))?;
