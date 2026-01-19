@@ -1,6 +1,6 @@
 use crate::services::auth_service::token::TokenService;
 use argon2::{Argon2, Params, PasswordVerifier};
-use chrono::{ Utc};
+use chrono::Utc;
 use diesel::prelude::*;
 use password_hash::PasswordHasher;
 use payego_primitives::config::security_config::SecurityConfig;
@@ -88,10 +88,10 @@ impl RegisterService {
             1,     // parallelism
             None,
         )
-            .map_err(|e| {
-                error!("Argon2 params error: {}", e);
-                ApiError::Internal("Encryption configuration error".to_string())
-            })?;
+        .map_err(|e| {
+            error!("Argon2 params error: {}", e);
+            ApiError::Internal("Encryption configuration error".to_string())
+        })?;
         let argon2 = Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
         Ok(argon2)
     }

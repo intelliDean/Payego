@@ -21,3 +21,9 @@ pub struct WithdrawRequest {
 pub struct WithdrawResponse {
     pub transaction_id: Uuid,
 }
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct WalletSummaryDto {
+    pub currency: CurrencyCode,
+    pub balance: i64,
+}

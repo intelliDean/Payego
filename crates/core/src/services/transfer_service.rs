@@ -1,18 +1,6 @@
-use diesel::dsl::sql;
 use diesel::prelude::*;
-use diesel::sql_types::BigInt;
 use http::StatusCode;
 use payego_primitives::error::ApiError;
-use payego_primitives::schema::{transactions, wallet_ledger, wallets};
-use reqwest::Client;
-use secrecy::ExposeSecret;
-use serde_json::{json, Value};
-use std::sync::Arc;
-use serde::{Deserialize, Serialize};
-use tracing::{error, info};
-use utoipa::ToSchema;
-use uuid::Uuid;
-use validator::Validate;
 use payego_primitives::models::app_state::app_state::AppState;
 // use payego_primitives::models::dtos::dtos::{TransferRequest, WalletTransferRequest};
 use payego_primitives::models::enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent};
@@ -20,6 +8,12 @@ use payego_primitives::models::transaction::{NewTransaction, Transaction};
 use payego_primitives::models::transfer_dto::{TransferRequest, WalletTransferRequest};
 use payego_primitives::models::wallet::Wallet;
 use payego_primitives::models::wallet_ledger::NewWalletLedger;
+use payego_primitives::schema::{transactions, wallet_ledger, wallets};
+use reqwest::Client;
+use secrecy::ExposeSecret;
+use serde_json::{json, Value};
+use std::sync::Arc;
+use uuid::Uuid;
 
 
 pub struct TransferService;

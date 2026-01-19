@@ -6,26 +6,28 @@ use password_hash::PasswordHasher;
 use payego_primitives::config::security_config::{Claims, SecurityConfig};
 use payego_primitives::error::{ApiError, AuthError};
 use payego_primitives::models::authentication::{NewRefreshToken, RefreshToken};
-use payego_primitives::models::dtos::{token_dto::RefreshResult, {register_dto::{RegisterResponse, RegisterRequest} }};
+use payego_primitives::models::dtos::{
+    register_dto::{RegisterRequest, RegisterResponse},
+    token_dto::RefreshResult,
+};
+use payego_primitives::models::enum_types::CurrencyCode;
+use payego_primitives::models::user::NewUser;
 use payego_primitives::models::{
     app_state::app_state::AppState,
     dtos::login_dto::{LoginRequest, LoginResponse},
     user::User,
 };
 use payego_primitives::schema::refresh_tokens::dsl::*;
+use payego_primitives::schema::{blacklisted_tokens, users, wallets};
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use secrecy::{ExposeSecret, SecretString};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
-use uuid::Uuid;
-use tracing::{error, warn};
 use tracing::log::info;
+use tracing::{error, warn};
 use utoipa::ToSchema;
-use payego_primitives::models::enum_types::CurrencyCode;
-use payego_primitives::models::user::NewUser;
-use payego_primitives::schema::{blacklisted_tokens, users, wallets};
-
+use uuid::Uuid;
 
 
 pub struct TokenService;
@@ -109,16 +111,4 @@ impl TokenService {
         hasher.update(token.as_bytes());
         hex::encode(hasher.finalize())
     }
-
 }
-
-
-
-
-
-
-
-
-
-
-

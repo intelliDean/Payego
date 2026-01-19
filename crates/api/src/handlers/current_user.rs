@@ -3,12 +3,13 @@ use axum::{
     Json,
 };
 use diesel::prelude::*;
-use payego_core::services::auth_service::{token::TokenService, user::CurrentUserResponse};
+use payego_core::services::auth_service::{token::TokenService};
 use payego_primitives::config::security_config::Claims;
 use payego_primitives::error::{ApiError, AuthError};
 use payego_primitives::models::app_state::app_state::AppState;
 use std::sync::Arc;
 use payego_core::services::auth_service::user::UserService;
+use payego_primitives::models::token_dto::CurrentUserResponse;
 
 #[utoipa::path(
     get,

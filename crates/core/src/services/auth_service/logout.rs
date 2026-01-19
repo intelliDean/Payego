@@ -2,14 +2,11 @@ use argon2::{Params, PasswordVerifier};
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use payego_primitives::config::security_config::Claims;
+use payego_primitives::error::ApiError;
 use payego_primitives::models::{
-    app_state::app_state::AppState,
-    entities::authentication::NewBlacklistedToken
+    app_state::app_state::AppState, entities::authentication::NewBlacklistedToken,
 };
 use tracing::log::{error, info};
-use payego_primitives::error::ApiError;
-
-
 
 pub struct LogoutService;
 
@@ -38,7 +35,10 @@ impl LogoutService {
         use payego_primitives::schema::blacklisted_tokens::dsl::*;
 
         diesel::insert_into(blacklisted_tokens)
-            .values(NewBlacklistedToken { jti: jti_val, expires_at: expiration })
+            .values(NewBlacklistedToken {
+                jti: jti_val,
+                expires_at: expiration,
+            })
             .on_conflict(jti)
             .do_nothing()
             .execute(conn)

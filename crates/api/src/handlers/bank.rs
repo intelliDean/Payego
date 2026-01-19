@@ -12,7 +12,7 @@ use validator::Validate;
 use payego_core::services::bank_account_service::BankAccountService;
 use payego_primitives::models::app_state::app_state::AppState;
 use payego_primitives::models::bank::BankAccount;
-use payego_primitives::models::bank_dtos::BankRequest;
+use payego_primitives::models::bank_dtos::{BankAccountResponse, BankRequest};
 
 #[utoipa::path(
     post,
@@ -31,7 +31,7 @@ pub async fn add_bank_account(
     State(state): State<Arc<AppState>>,
     Extension(claims): Extension<Claims>,
     Json(req): Json<BankRequest>,
-) -> Result<(StatusCode, Json<BankAccount>), ApiError> {
+) -> Result<(StatusCode, Json<BankAccountResponse>), ApiError> {
     // 1. Validate request
     req.validate().map_err(|e| {
         error!("Validation error: {}", e);
@@ -45,5 +45,5 @@ pub async fn add_bank_account(
         req
     ).await?;
 
-    Ok((StatusCode::CREATED, Json(account)))
+    Ok((StatusCode::CREATED, Json(BankAccountResponse::from(account))))
 }

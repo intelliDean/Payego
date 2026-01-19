@@ -25,19 +25,8 @@ use tracing::log::info;
 use tracing::{error, warn};
 use utoipa::ToSchema;
 use uuid::Uuid;
-
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct WalletSummaryDto {
-    pub currency: CurrencyCode,
-    pub balance: i64,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct CurrentUserResponse {
-    pub email: String,
-    pub wallets: Vec<WalletSummaryDto>,
-}
+use payego_primitives::models::token_dto::CurrentUserResponse;
+use payego_primitives::models::withdrawal_dto::WalletSummaryDto;
 
 pub struct UserService;
 

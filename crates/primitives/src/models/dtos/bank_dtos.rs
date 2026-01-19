@@ -4,7 +4,7 @@ use uuid::Uuid;
 use validator::Validate;
 use crate::models::bank::{Bank, BankAccount};
 
-// --- BANK DTOS ---
+
 #[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]
 pub struct BankRequest {
     pub bank_name: String,
@@ -21,15 +21,7 @@ pub struct BankResponse {
 }
 
 
-#[derive(Debug, Serialize, ToSchema)]
-pub struct BankAccountResponse {
-    pub id: String,
-    pub bank_code: String,
-    pub account_number: String,
-    pub account_name: Option<String>,
-    pub bank_name: Option<String>,
-    pub is_verified: bool,
-}
+
 
 #[derive(Deserialize)]
 pub struct PaystackRecipientResponse {
@@ -66,13 +58,8 @@ pub struct PaystackBank {
     pub id: i64,
     pub name: String,
     pub code: String,
-
-    // #[serde(default)]
     pub currency: Option<String>,
-
-    // #[serde(default)]
     pub country: Option<String>,
-
     #[serde(rename = "active", default)]
     pub is_active: bool,
 }
@@ -124,6 +111,16 @@ pub struct BankListResponse {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+pub struct BankAccountResponse {
+    pub id: Uuid,
+    pub bank_code: String,
+    pub account_number: String,
+    pub account_name: Option<String>,
+    pub bank_name: Option<String>,
+    pub is_verified: bool,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
 pub struct BankAccountsResponse {
     pub bank_accounts: Vec<BankAccountResponse>,
 }
@@ -131,7 +128,7 @@ pub struct BankAccountsResponse {
 impl From<BankAccount> for BankAccountResponse {
     fn from(account: BankAccount) -> Self {
         Self {
-            id: account.id.to_string(),
+            id: account.id,
             bank_code: account.bank_code,
             account_number: account.account_number,
             account_name: account.account_name,
