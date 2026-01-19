@@ -7,7 +7,6 @@ use payego_primitives::models::app_state::app_state::AppState;
 use payego_primitives::models::dtos::withdrawal_dto::{WithdrawRequest, WithdrawResponse};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 

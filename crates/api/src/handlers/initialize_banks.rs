@@ -23,11 +23,9 @@ pub async fn initialize_banks(
     State(state): State<Arc<AppState>>,
 ) -> Result<StatusCode, ApiError> {
 
-    let mut conn = state.db.get().map_err(|e| {
-        ApiError::DatabaseConnection(e.to_string())
-    })?;
+    
 
-    let initialized = BankService::initialize_banks(&state, &mut conn).await?;
+    let initialized = BankService::initialize_banks(&state).await?;
 
     Ok(if initialized {
         StatusCode::CREATED

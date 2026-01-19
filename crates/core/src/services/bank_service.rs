@@ -30,12 +30,14 @@ const TTL: Duration = Duration::from_secs(60 * 10); // 10 minutes
 pub struct BankService;
 
 impl BankService {
-    pub async fn initialize_banks(
-        state: &Arc<AppState>,
-        conn: &mut PgConnection,
-    ) -> Result<bool, ApiError> {
+    pub async fn initialize_banks(state: &Arc<AppState>) -> Result<bool, ApiError> {
+        let mut conn = state
+            .db
+            .get()
+            .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
+
         // 1. Idempotency check
-        let existing: i64 = banks::table.count().get_result(conn)?;
+        let existing: i64 = banks::table.count().get_result(&mut conn)?;
         if existing > 0 {
             info!("Banks already initialized ({} records exist)", existing);
             return Ok(false);
@@ -111,18 +113,7 @@ impl BankService {
             return Err(ApiError::Payment("Paystack returned no banks".into()));
         }
 
-        let banks_to_insert: Vec<NewBank> = body
-            .data
-            .into_iter()
-            .map(|b| NewBank {
-                id: b.id,
-                name: b.name,
-                code: b.code,
-                currency: CurrencyCode::parse(&b.currency.unwrap()).unwrap(),
-                country: b.country.unwrap(),
-                is_active: b.is_active,
-            })
-            .collect();
+        let banks_to_insert = Self::insert_banks(body);
 
         info!("OneBank: {:?}", banks_to_insert[0].currency);
 
@@ -130,7 +121,7 @@ impl BankService {
             .values(&banks_to_insert)
             .on_conflict(banks::code)
             .do_nothing()
-            .execute(conn)?;
+            .execute(&mut conn)?;
 
         info!(
             "Successfully initialized {} Nigerian banks from Paystack",
@@ -138,6 +129,58 @@ impl BankService {
         );
 
         Ok(true)
+    }
+
+    fn insert_banks(body: PaystackResponse<Vec<PaystackBank>>) -> Vec<NewBank> {
+        let banks_to_insert: Vec<NewBank> = body
+            .data
+            .into_iter()
+            .filter_map(|b| {
+                let currency = match b.currency.as_deref() {
+                    Some(raw) => match CurrencyCode::parse(raw) {
+                        Ok(c) => c,
+                        Err(_) => {
+                            warn!(
+                            "Skipping bank due to invalid currency (id={bank_id}, code={bank_code})",
+                            bank_id = b.id,
+                            bank_code = b.code,
+                        );
+                            return None;
+                        }
+                    },
+                    None => {
+                        warn!(
+                            "Skipping bank due to missing country (id={bank_id}, code={bank_code})",
+                            bank_id = b.id,
+                            bank_code = b.code,
+                        );
+                        return None;
+                    }
+                };
+
+                let country = match b.country {
+                    Some(c) => c,
+                    None => {
+                        warn!(
+                            "Skipping bank due to missing country (id={bank_id}, code={bank_code})",
+                            bank_id = b.id,
+                            bank_code = b.code,
+                        );
+                        return None;
+                    }
+                };
+
+                Some(NewBank {
+                    id: b.id,
+                    name: b.name,
+                    code: b.code,
+                    currency,
+                    country,
+                    is_active: b.is_active,
+                })
+            })
+            .collect();
+        banks_to_insert
     }
 
     pub async fn resolve_account_details(

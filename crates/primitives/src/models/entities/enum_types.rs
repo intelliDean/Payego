@@ -12,6 +12,7 @@ use crate::error::ApiError;
 use strum::{Display, EnumString};
 use tracing::log::info;
 use utoipa::ToSchema;
+use crate::models::bank_dtos::PaystackBank;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, DbEnum, Display, EnumString, ToSchema)]
 #[ExistingTypePath = "crate::schema::sql_types::CurrencyCode"]

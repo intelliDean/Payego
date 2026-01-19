@@ -21,7 +21,9 @@ pub async fn get_transactions(
     State(state): State<Arc<AppState>>,
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<TransactionsResponse>, ApiError> {
-    let response = TransactionService::recent_transactions(&state, claims.user_id()?).await?;
+    
+    let response = 
+        TransactionService::recent_transactions(&state, claims.user_id()?).await?;
 
     Ok(Json(response))
 }
