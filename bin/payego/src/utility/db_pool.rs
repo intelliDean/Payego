@@ -1,9 +1,9 @@
-use std::env;
-use std::time::Duration;
-use diesel::PgConnection;
 use diesel::r2d2::{ConnectionManager, Pool};
+use diesel::PgConnection;
 use eyre::Report;
 use secrecy::{ExposeSecret, SecretString};
+use std::env;
+use std::time::Duration;
 use tracing::info;
 
 pub fn create_db_pool() -> Result<Pool<ConnectionManager<PgConnection>>, Report> {

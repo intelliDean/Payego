@@ -30,14 +30,13 @@ pub fn validate_password(password: &str) -> Result<(), ValidationError> {
         }
     }
 
+    // this, right here, is very important in the enforcing
     if !(has_lower && has_upper && has_digit && has_special) {
         return Err(error("password_policy_violation"));
     }
 
     Ok(())
 }
-
-
 
 fn error(code: &'static str) -> ValidationError {
     let mut err = ValidationError::new(code);

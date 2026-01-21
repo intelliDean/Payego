@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-
 #[derive(Deserialize, ToSchema)]
 pub struct CaptureRequest {
     pub order_id: String,
@@ -52,7 +51,6 @@ pub struct StripeWebhookContext {
     pub currency: String,
 }
 
-
 #[derive(Debug, Serialize, ToSchema)]
 pub struct OrderResponse {
     pub status: String,
@@ -95,7 +93,6 @@ pub struct PurchaseUnit {
 pub struct PayPalCaptureResponse {
     pub purchase_units: Vec<PurchaseUnit>,
 }
-
 
 #[derive(Deserialize)]
 pub struct PaystackTransferData {

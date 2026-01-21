@@ -2,6 +2,7 @@ use diesel::{
     ExpressionMethods, {Connection, RunQueryDsl}, {OptionalExtension, QueryDsl},
 };
 use http::StatusCode;
+use payego_primitives::models::providers_dto::PayPalCaptureResponse;
 pub use payego_primitives::{
     error::ApiError,
     models::{
@@ -23,7 +24,6 @@ use std::str::FromStr;
 use std::time::Duration;
 use tracing::log::error;
 use uuid::Uuid;
-use payego_primitives::models::providers_dto::PayPalCaptureResponse;
 
 #[derive(Clone)]
 pub struct PayPalService;
@@ -209,7 +209,6 @@ impl PayPalService {
             .and_then(|u| u.join("capture"))
             .map_err(|_| ApiError::Internal("Invalid PayPal capture URL".into()))?;
 
-
         let resp = client
             .post(url)
             .bearer_auth(token)
@@ -225,13 +224,10 @@ impl PayPalService {
                 ApiError::Payment("PayPal capture rejected".into())
             })?;
 
-        let body: PayPalCaptureResponse = resp
-            .json()
-            .await
-            .map_err(|e| {
-                tracing::error!(error = %e, "Invalid PayPal capture response");
-                ApiError::Payment("Invalid PayPal capture response".into())
-            })?;
+        let body: PayPalCaptureResponse = resp.json().await.map_err(|e| {
+            tracing::error!(error = %e, "Invalid PayPal capture response");
+            ApiError::Payment("Invalid PayPal capture response".into())
+        })?;
 
         let capture = body
             .purchase_units
@@ -248,4 +244,3 @@ impl PayPalService {
         })
     }
 }
-

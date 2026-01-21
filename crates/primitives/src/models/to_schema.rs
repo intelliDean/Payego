@@ -1,4 +1,3 @@
-
 #[macro_export]
 macro_rules! enum_to_schema {
     ($name:ident { $($variant:ident),* $(,)? }) => {

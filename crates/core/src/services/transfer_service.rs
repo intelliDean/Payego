@@ -1,6 +1,7 @@
 use crate::client::PaystackClient;
 use diesel::prelude::*;
 use http::StatusCode;
+use payego_primitives::models::providers_dto::PaystackTransferResponse;
 pub use payego_primitives::{
     config::security_config::Claims,
     error::ApiError,
@@ -19,7 +20,6 @@ use secrecy::ExposeSecret;
 use serde_json::{json, Value};
 use std::sync::Arc;
 use uuid::Uuid;
-use payego_primitives::models::providers_dto::PaystackTransferResponse;
 
 pub struct TransferService;
 
@@ -273,7 +273,6 @@ impl TransferService {
             .await
             .map_err(|_| ApiError::Payment("Unable to create transfer recipient".into()))?;
 
-
         //todo: turn this into client
         let base = Url::parse(&state.config.paystack_details.paystack_api_url)
             .map_err(|_| ApiError::Internal("Invalid Paystack base URL".into()))?;
@@ -311,13 +310,10 @@ impl TransferService {
 
         //todo===== end of client
 
-        let body: PaystackTransferResponse = resp
-            .json()
-            .await
-            .map_err(|e| {
-                tracing::error!(error = %e, "Invalid Paystack transfer response");
-                ApiError::Payment("Invalid Paystack response".into())
-            })?;
+        let body: PaystackTransferResponse = resp.json().await.map_err(|e| {
+            tracing::error!(error = %e, "Invalid Paystack transfer response");
+            ApiError::Payment("Invalid Paystack response".into())
+        })?;
 
         if !body.status {
             return Err(ApiError::Payment(body.message));
@@ -329,7 +325,6 @@ impl TransferService {
             .transfer_code;
 
         Ok(transfer_code)
-
     }
 
     async fn get_exchange_rate(

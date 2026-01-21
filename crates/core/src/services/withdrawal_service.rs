@@ -1,23 +1,23 @@
 use diesel::prelude::*;
 pub use payego_primitives::{
     config::security_config::Claims,
-    error::ApiError, models::{
+    error::ApiError,
+    models::{
         app_state::app_state::AppState,
         bank::BankAccount,
         dtos::withdrawal_dto::{WithdrawRequest, WithdrawResponse},
         enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent},
         transaction::NewTransaction,
         wallet::Wallet,
-        wallet_ledger::NewWalletLedger
+        wallet_ledger::NewWalletLedger,
     },
-    schema::{bank_accounts, transactions, wallet_ledger, wallets}    
+    schema::{bank_accounts, transactions, wallet_ledger, wallets},
 };
 
 use reqwest::Client;
 use secrecy::ExposeSecret;
 use serde_json::{json, Value};
 use uuid::Uuid;
-
 
 pub struct WithdrawalService;
 
@@ -34,7 +34,6 @@ impl WithdrawalService {
             .db
             .get()
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
-
 
         // ---- Load wallet (FOR UPDATE) ----
         let wallet = wallets::table
@@ -61,7 +60,7 @@ impl WithdrawalService {
             &req.currency,
             req.reference,
         )
-            .await?;
+        .await?;
 
         // ---- Atomic DB write ----
         conn.transaction(|conn| {
@@ -103,9 +102,9 @@ impl WithdrawalService {
 
             Ok(tx_id)
         })
-            .map(|tx_id| WithdrawResponse {
-                transaction_id: tx_id,
-            })
+        .map(|tx_id| WithdrawResponse {
+            transaction_id: tx_id,
+        })
     }
 
     fn convert_to_minor_units(amount: f64) -> Result<i64, ApiError> {
@@ -116,7 +115,6 @@ impl WithdrawalService {
         Ok((amount * 100.0).round() as i64)
     }
 
-
     async fn initiate_paystack_transfer(
         state: &AppState,
         bank: &BankAccount,
@@ -125,18 +123,25 @@ impl WithdrawalService {
         reference: Uuid,
     ) -> Result<String, ApiError> {
         let client = Client::new();
-        let key = state.config.paystack_details.paystack_secret_key.expose_secret();
+        let key = state
+            .config
+            .paystack_details
+            .paystack_secret_key
+            .expose_secret();
 
         let resp = client
-            .post(format!("{}/transfer", state.config.paystack_details.paystack_api_url))
+            .post(format!(
+                "{}/transfer",
+                state.config.paystack_details.paystack_api_url
+            ))
             .bearer_auth(key)
             .json(&json!({
-            "source": "balance",
-            "amount": amount_minor,
-            "recipient": bank.provider_recipient_id,
-            "reference": reference.to_string(),
-            "reason": format!("Withdrawal ({})", currency),
-        }))
+                "source": "balance",
+                "amount": amount_minor,
+                "recipient": bank.provider_recipient_id,
+                "reference": reference.to_string(),
+                "reason": format!("Withdrawal ({})", currency),
+            }))
             .send()
             .await?;
 
@@ -154,7 +159,3 @@ impl WithdrawalService {
             .ok_or_else(|| ApiError::Payment("Missing transfer_code".into()))
     }
 }
-
-
-
-

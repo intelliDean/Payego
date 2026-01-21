@@ -1,18 +1,29 @@
+use crate::config::swagger_config::ApiErrorResponse;
 use axum::{extract::State, Extension, Json};
 use payego_core::services::transaction_service::{
-    ApiError, AppState, TransactionService, TransactionsResponse, Claims
+    ApiError, AppState, Claims, TransactionService, TransactionsResponse,
 };
 use std::sync::Arc;
 
 #[utoipa::path(
     get,
-    path = "/api/transactions",
+    path = "/api/user/transactions",
+    summary = "Get list of user transactions",
+    description = "Retrieves a paginated list of the authenticated user's transaction history. \
+                   Includes deposits, withdrawals, internal transfers, external transfers, \
+                   top-ups, payments, and other wallet activities. \
+                   Results are ordered by creation date (newest first). \
+                   Supports filtering and pagination via query parameters.",
+    operation_id = "getUserTransactions",
+    tags = ["Transactions"],
+
     responses(
-        (status = 200, body = TransactionsResponse),
-        (status = 401),
-        (status = 500)
+        (status = 200,description = "Successfully retrieved paginated list of transactions",body = TransactionsResponse),
+        (status = 400,description = "Bad request – invalid query parameters (e.g. limit > 100, invalid date format)",body = ApiErrorResponse),
+        (status = 401,description = "Unauthorized – missing, invalid, or expired authentication token",body = ApiErrorResponse),
+        (status = 429,description = "Too many requests – rate limit exceeded",body = ApiErrorResponse),
+        (status = 500,description = "Internal server error – failed to retrieve transactions",body = ApiErrorResponse),
     ),
-    tag = "Transactions",
     security(("bearerAuth" = [])),
 )]
 pub async fn get_transactions(

@@ -1,23 +1,31 @@
+use crate::config::swagger_config::ApiErrorResponse;
 use axum::{
     extract::{Extension, State},
     http::StatusCode,
     Json,
 };
 use payego_core::services::auth_service::logout::{
-    LogoutService, Claims, ApiError, AppState, LogoutResponse
+    ApiError, AppState, Claims, LogoutResponse, LogoutService,
 };
 use std::sync::Arc;
 
 #[utoipa::path(
     post,
-    path = "/api/logout",
+    path = "/api/auth/logout",
+    tag = "Authentication",
+    summary = "Log out the current user",
+    description = "Invalidates the current JWT access token (and optionally any associated refresh tokens or sessions). \
+                   After successful logout, the client should discard the token locally and no longer use it for authenticated requests. \
+                   This endpoint requires a valid token — calling it with an already expired or invalid token may return 401. \
+                   This is a best-effort operation; the server may not always be able to revoke tokens immediately in distributed systems.",
+    operation_id = "logoutUser",
     responses(
-        (status = 200, description = "Logout successful", body = LogoutResponse),
-        (status = 401, description = "Unauthorized"),
-        (status = 500, description = "Internal server error")
+        ( status = 200, description = "Logout successful — current session/token has been invalidated", body = LogoutResponse),
+        ( status = 401, description = "Unauthorized — missing, invalid, expired, or already revoked token", body = ApiErrorResponse),
+        ( status = 429, description = "Too many requests — rate limit exceeded on logout attempts", body = ApiErrorResponse),
+        ( status = 500, description = "Internal server error — logout could not be processed", body = ApiErrorResponse),
     ),
     security(("bearerAuth" = [])),
-    tag = "Auth"
 )]
 pub async fn logout(
     State(state): State<Arc<AppState>>,

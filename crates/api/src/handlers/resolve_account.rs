@@ -1,3 +1,4 @@
+use crate::config::swagger_config::ApiErrorResponse;
 use axum::{
     extract::{Query, State},
     Json,
@@ -16,17 +17,24 @@ static BANK_CODE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\d{3,5}$").unwrap(
 
 #[utoipa::path(
     get,
-    path = "/api/resolve_account",
-    params(
-        ("bank_code" = String, Query, description = "Bank code (3-5 digits)"),
-        ("account_number" = String, Query, description = "Account number (10 digits)")
-    ),
+    path = "/api/bank/resolve",
+    tag = "Bank",
+    summary = "Resolve bank account name",
+    description = "Verifies a bank account number and retrieves the account holder's name using the Paystack Resolve Account API. \
+                   This helps confirm the correct recipient before initiating transfers or payments. \
+                   Requires valid Nigerian bank code (from Paystack supported banks list) and 10-digit account number. \
+                   The endpoint is rate-limited and depends on Paystack availability — cache results when possible for repeated lookups.",
+    operation_id = "resolveAccountName",
     responses(
-        (status = 200, description = "Account resolved", body = ResolveAccountResponse),
-        (status = 400, description = "Invalid bank code or account number"),
-        (status = 502, description = "Paystack API error")
+        ( status = 200, description = "Account successfully resolved — returns account name and other verification details", body = ResolveAccountResponse),
+        ( status = 400, description = "Bad request — invalid bank code, account number format, or missing required parameters", body = ApiErrorResponse),
+        ( status = 401, description = "Unauthorized — missing or invalid authentication token", body = ApiErrorResponse),
+        ( status = 404, description = "Not found — bank code not supported or account does not exist", body = ApiErrorResponse),
+        ( status = 429, description = "Too many requests — rate limit exceeded (per user or globally)", body = ApiErrorResponse),
+        ( status = 502, description = "Bad gateway — Paystack API is unavailable or returned an unexpected error", body = ApiErrorResponse),
+        ( status = 503, description = "Service unavailable — Paystack account resolution temporarily down or maintenance", body = ApiErrorResponse),
     ),
-    tag = "Verification"
+    security(()),
 )]
 pub async fn resolve_account(
     State(state): State<Arc<AppState>>,

@@ -8,7 +8,7 @@ pub use payego_primitives::{
     models::{
         app_state::app_state::AppState,
         wallet::Wallet,
-        wallet_dto::{WalletDto, WalletsResponse}
+        wallet_dto::{WalletDto, WalletsResponse},
     },
     schema::wallets,
 };

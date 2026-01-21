@@ -4,6 +4,7 @@ use http::StatusCode;
 use std::fmt;
 use stripe::WebhookError;
 use thiserror::Error;
+use utoipa::ToSchema;
 
 #[derive(Debug)]
 pub enum ApiError {
@@ -135,10 +136,9 @@ impl From<ApiError> for (StatusCode, String) {
                 AuthError::InvalidToken(msg) => {
                     (StatusCode::UNAUTHORIZED, format!("Invalid token: {}", msg))
                 }
-                AuthError::InvalidCredentials => (
-                    StatusCode::UNAUTHORIZED,
-                    "Invalid credentials".to_string(),
-                ),
+                AuthError::InvalidCredentials => {
+                    (StatusCode::UNAUTHORIZED, "Invalid credentials".to_string())
+                }
                 AuthError::BlacklistedToken => (
                     StatusCode::UNAUTHORIZED,
                     "Token has been invalidated".to_string(),
@@ -178,7 +178,6 @@ impl From<ApiError> for (StatusCode, String) {
             //
             //         )
             // },
-
         }
     }
 }
@@ -218,8 +217,6 @@ impl From<AuthError> for ApiError {
         ApiError::Auth(err)
     }
 }
-
-
 
 #[derive(Debug, Error)]
 pub enum PaystackError {

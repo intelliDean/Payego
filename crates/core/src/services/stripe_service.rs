@@ -7,9 +7,7 @@ use uuid::Uuid;
 
 pub use payego_primitives::{
     error::ApiError,
-    models::{
-        app_state::app_state::AppState, providers_dto::StripeWebhookContext
-    }
+    models::{app_state::app_state::AppState, providers_dto::StripeWebhookContext},
 };
 
 pub struct StripeService;

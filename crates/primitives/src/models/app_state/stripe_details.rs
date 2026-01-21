@@ -1,7 +1,7 @@
-use std::env;
+use crate::error::ApiError;
 use eyre::Report;
 use secrecy::SecretString;
-use crate::error::ApiError;
+use std::env;
 
 #[derive(Debug, Clone)]
 pub struct StripeInfo {

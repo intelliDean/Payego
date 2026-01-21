@@ -49,8 +49,3 @@ pub struct NewTransaction<'a> {
     pub description: Option<&'a str>,
     pub metadata: Value,
 }
-
-
-
-
-

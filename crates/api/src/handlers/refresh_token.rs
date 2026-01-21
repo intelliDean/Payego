@@ -1,3 +1,4 @@
+use crate::config::swagger_config::ApiErrorResponse;
 use axum::{extract::State, Json};
 use payego_core::services::auth_service::token::{
     ApiError, AppState, LoginResponse, RefreshRequest, SecurityConfig, TokenService,
@@ -9,13 +10,28 @@ use validator::Validate;
 #[utoipa::path(
     post,
     path = "/api/auth/refresh",
-    request_body = RefreshRequest,
-    responses(
-        (status = 200, description = "Token refreshed successfully", body = LoginResponse),
-        (status = 401, description = "Invalid or expired refresh token"),
-        (status = 500, description = "Internal server error")
+    tag = "Authentication",
+    summary = "Refresh access token using refresh token",
+    description = "Exchanges a valid refresh token for a new access token (and optionally a new refresh token). \
+                   Used to extend user sessions without requiring re-login. \
+                   The old refresh token may be invalidated (rotation pattern) or remain valid depending on your security policy. \
+                   This is a **public endpoint** — no bearer access token is required, only the refresh token in the body. \
+                   Refresh tokens typically have longer lifetimes than access tokens but shorter than session cookies.",
+    operation_id = "refreshToken",
+    request_body(
+        content = RefreshRequest,
+        description = "Payload containing the current refresh token. \
+                       May also include device identifier or client metadata for enhanced security in some implementations.",
     ),
-    tag = "Auth"
+    responses(
+        ( status = 200, description = "Token refreshed successfully — returns new access token (and possibly new refresh token)", body = LoginResponse),
+        ( status = 400, description = "Bad request — invalid or malformed refresh token format", body = ApiErrorResponse),
+        ( status = 401, description = "Unauthorized — refresh token is invalid, expired, revoked, or already used (in rotation mode)", body = ApiErrorResponse),
+        ( status = 403, description = "Forbidden — refresh token was revoked (e.g. user logged out from all devices, suspicious activity detected)", body = ApiErrorResponse),
+        ( status = 429, description = "Too many requests — rate limit exceeded on refresh attempts", body = ApiErrorResponse),
+        ( status = 500, description = "Internal server error — token refresh could not be processed", body = ApiErrorResponse),
+    ),
+    security(()),
 )]
 pub async fn refresh_token(
     State(state): State<Arc<AppState>>,

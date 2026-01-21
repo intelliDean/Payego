@@ -1,3 +1,4 @@
+use crate::config::swagger_config::ApiErrorResponse;
 use axum::{
     extract::{Extension, State},
     Json,
@@ -9,16 +10,26 @@ use std::sync::Arc;
 
 #[utoipa::path(
     get,
-    path = "/api/wallets",
+    path = "/api/user/wallets",
+    tag = "Wallet",
+    summary = "List all user wallets and balances",
+    description = "Retrieves the list of wallets belonging to the authenticated user, \
+                   including balance, currency, wallet type (main, savings, bonus, etc.), \
+                   status (active/frozen), last transaction timestamp, and other metadata. \
+                   Typically used to display the user's total available funds, \
+                   per-currency balances, or to let the user select a source wallet for transfers/payments. \
+                   Only returns wallets associated with the current authenticated user.",
+    operation_id = "getUserWallets",
     responses(
-        (status = 200, description = "List of user wallets", body = WalletsResponse),
-        (status = 401, description = "Unauthorized"),
-        (status = 500, description = "Internal server error")
+        ( status = 200, description = "Successfully retrieved list of user wallets with current balances", body = WalletsResponse),
+        ( status = 401, description = "Unauthorized – missing, invalid, or expired authentication token", body = ApiErrorResponse),
+        ( status = 403, description = "Forbidden – insufficient permissions (rare, usually role-based)", body = ApiErrorResponse),
+        ( status = 429, description = "Too many requests – rate limit exceeded for wallet balance queries", body = ApiErrorResponse),
+        ( status = 500, description = "Internal server error – failed to retrieve wallet information", body = ApiErrorResponse),
     ),
-    security(("bearerAuth" = [])),
-    tag = "Wallets"
+    security(("bearerAuth" = []))
 )]
-pub async fn get_wallets(
+pub async fn get_user_wallets(
     State(state): State<Arc<AppState>>,
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<WalletsResponse>, ApiError> {

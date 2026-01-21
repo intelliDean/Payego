@@ -18,7 +18,6 @@ pub struct NewBlacklistedToken<'a> {
     pub expires_at: DateTime<Utc>,
 }
 
-
 #[derive(Queryable, Identifiable, Associations)]
 #[diesel(table_name = crate::schema::refresh_tokens)]
 #[diesel(belongs_to(crate::models::entities::user::User))]
@@ -32,10 +31,9 @@ pub struct RefreshToken {
     pub updated_at: DateTime<Utc>,
 }
 
-
 #[derive(Insertable, Deserialize)]
 #[diesel(table_name = crate::schema::refresh_tokens)]
-pub struct NewRefreshToken <'a> {
+pub struct NewRefreshToken<'a> {
     pub user_id: Uuid,
     pub token_hash: &'a str,
     pub expires_at: DateTime<Utc>,

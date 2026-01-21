@@ -1,5 +1,5 @@
+pub mod add_bank;
 pub mod all_banks;
-pub mod bank;
 pub mod current_user;
 pub mod get_transaction;
 pub mod health;
@@ -17,9 +17,9 @@ pub mod send_verification;
 pub mod social_login;
 pub mod stripe_webhook;
 pub mod top_up;
-pub mod transaction;
 pub mod transfer_external;
 pub mod transfer_internal;
 pub mod user_bank_accounts;
+pub mod user_transaction;
 pub mod user_wallets;
 pub mod withdraw;

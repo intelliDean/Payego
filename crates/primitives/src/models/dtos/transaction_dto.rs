@@ -1,9 +1,9 @@
+use crate::models::enum_types::{CurrencyCode, PaymentState, TransactionIntent};
+use crate::models::transaction::Transaction;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
-use crate::models::enum_types::{CurrencyCode, PaymentState, TransactionIntent};
-use crate::models::transaction::Transaction;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct TransactionSummaryDto {

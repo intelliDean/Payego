@@ -1,12 +1,12 @@
 pub mod bank_dtos;
-pub mod providers_dto;
+pub mod clients_dto;
 pub mod conversion_dto;
-pub mod withdrawal_dto;
-pub mod register_dto;
 pub mod login_dto;
+pub mod providers_dto;
+pub mod register_dto;
 pub mod token_dto;
 pub mod top_up_dto;
 pub mod transaction_dto;
 pub mod transfer_dto;
 pub mod wallet_dto;
-pub mod clients_dto;
+pub mod withdrawal_dto;

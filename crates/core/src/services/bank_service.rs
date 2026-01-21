@@ -210,7 +210,7 @@ impl BankService {
             return Ok(cached);
         }
 
-        let mut url = Url::parse(&state.config.paystack_details.paystack_api_url,)
+        let mut url = Url::parse(&state.config.paystack_details.paystack_api_url)
             .map_err(|_| ApiError::Internal("Invalid Paystack base URL".into()))?;
 
         url.set_path("bank/resolve");
@@ -218,9 +218,16 @@ impl BankService {
             .append_pair("account_number", account_number)
             .append_pair("bank_code", bank_code);
 
-        let resp = state.http_client
+        let resp = state
+            .http_client
             .get(url)
-            .bearer_auth(&state.config.paystack_details.paystack_secret_key.expose_secret())
+            .bearer_auth(
+                &state
+                    .config
+                    .paystack_details
+                    .paystack_secret_key
+                    .expose_secret(),
+            )
             .header("User-Agent", "Payego/1.0")
             .send()
             .await
@@ -289,5 +296,3 @@ impl BankService {
         ACCOUNT_CACHE.insert(key, (value, Instant::now()));
     }
 }
-
-

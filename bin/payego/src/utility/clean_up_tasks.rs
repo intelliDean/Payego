@@ -1,13 +1,13 @@
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
-use diesel::{  RunQueryDsl};
+use diesel::RunQueryDsl;
 use payego_primitives::models::app_state::app_state::AppState;
 use payego_primitives::schema::{blacklisted_tokens, refresh_tokens};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::interval;
+use tracing::error;
 use tracing::log::{debug, info};
-use tracing::{error};
 
 const DAILY_CLEANUP_INTERVAL: Duration = Duration::from_secs(60 * 60 * 24);
 
@@ -46,7 +46,7 @@ async fn cleanup_blacklisted_tokens(state: Arc<AppState>) {
         match diesel::delete(
             blacklisted_tokens::table.filter(blacklisted_tokens::expires_at.lt(diesel::dsl::now)),
         )
-            .execute(&mut conn)
+        .execute(&mut conn)
         {
             Ok(0) => debug!("No expired blacklisted tokens"),
             Ok(n) => info!("Removed {} blacklisted tokens", n),
@@ -70,7 +70,7 @@ async fn cleanup_refresh_tokens(state: Arc<AppState>) {
         match diesel::delete(
             refresh_tokens::table.filter(refresh_tokens::expires_at.lt(diesel::dsl::now)),
         )
-            .execute(&mut conn)
+        .execute(&mut conn)
         {
             Ok(0) => debug!("No expired refresh tokens"),
             Ok(n) => info!("Removed {} refresh tokens", n),

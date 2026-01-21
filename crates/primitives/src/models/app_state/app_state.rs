@@ -21,6 +21,10 @@ impl AppState {
     pub fn new(db: DbPool, config: AppConfig) -> Result<Arc<Self>> {
         let http = Client::builder().timeout(Duration::from_secs(10)).build()?;
 
-        Ok(Arc::new(Self { db, http_client: http, config }))
+        Ok(Arc::new(Self {
+            db,
+            http_client: http,
+            config,
+        }))
     }
 }

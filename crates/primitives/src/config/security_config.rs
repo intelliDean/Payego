@@ -1,6 +1,6 @@
 use crate::{
+    error::{ApiError, AuthError},
     models::app_state::app_state::AppState,
-    error::{ApiError, AuthError}
 };
 use axum::http::Request;
 use axum::middleware::Next;
@@ -135,10 +135,11 @@ impl SecurityConfig {
         mut req: Request<axum::body::Body>,
         next: Next,
     ) -> Result<Response, Response> {
-        let token =
-            Self::extract_bearer_token(req.headers()).map_err(|e| ApiError::from(e).into_response())?;
+        let token = Self::extract_bearer_token(req.headers())
+            .map_err(|e| ApiError::from(e).into_response())?;
 
-        let claims = Self::verify_token(&state, &token).map_err(|e| ApiError::from(e).into_response())?;
+        let claims =
+            Self::verify_token(&state, &token).map_err(|e| ApiError::from(e).into_response())?;
 
         let mut conn = state.db.get().map_err(|_| {
             (

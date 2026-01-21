@@ -11,7 +11,8 @@ use tracing::log::error;
         (status = 200, description = "System is healthy"),
         (status = 503, description = "System is unhealthy")
     ),
-    tag = "Health"
+    tag = "Health",
+    security(())
 )]
 pub async fn health_check(State(state): State<Arc<AppState>>) -> StatusCode {
     match state.db.get() {
@@ -22,12 +23,12 @@ pub async fn health_check(State(state): State<Arc<AppState>>) -> StatusCode {
                 Err(e) => {
                     error!("Health check DB query failed: {}", e);
                     StatusCode::SERVICE_UNAVAILABLE
-                },
+                }
             }
         }
         Err(e) => {
             error!("Health check DB connection failed: {}", e);
-            return StatusCode::SERVICE_UNAVAILABLE
-        },
+            return StatusCode::SERVICE_UNAVAILABLE;
+        }
     }
 }

@@ -1,20 +1,17 @@
 use diesel::prelude::*;
 pub use payego_primitives::{
-    error::ApiError,
     config::security_config::Claims,
+    error::ApiError,
     models::{
         app_state::app_state::AppState,
         conversion_dto::{ConvertRequest, ExchangeRateResponse},
         dtos::conversion_dto::ConvertResponse,
-        enum_types::{
-            CurrencyCode, PaymentProvider, PaymentState, TransactionIntent,
-        },
+        enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent},
         transaction::{NewTransaction, Transaction},
         wallet::Wallet,
         wallet_ledger::NewWalletLedger,
     },
     schema::{transactions, wallet_ledger, wallets},
-
 };
 use reqwest::{Client, Url};
 use serde_json::json;
@@ -182,14 +179,12 @@ impl ConversionService {
 
         // let url = format!("{}/{}", base_url.trim_end_matches('/'), from);
 
-
-        let mut url = Url::parse(base_url)
-            .map_err(|_| ApiError::Internal("Invalid FX base URL".into()))?;
+        let mut url =
+            Url::parse(base_url).map_err(|_| ApiError::Internal("Invalid FX base URL".into()))?;
 
         url.path_segments_mut()
             .map_err(|_| ApiError::Internal("Invalid FX URL path".into()))?
             .push(from.to_string().as_str());
-
 
         let resp = client
             .get(url)
@@ -217,12 +212,3 @@ impl ConversionService {
             .ok_or_else(|| ApiError::Payment("Exchange rate not found".into()))
     }
 }
-
-
-
-
-
-
-
-
-

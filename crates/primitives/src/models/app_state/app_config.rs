@@ -1,10 +1,9 @@
-
+use crate::models::app_state::jwt_details::JWTInfo;
 use crate::models::app_state::paypal_details::PaypalInfo;
 use crate::models::app_state::paystack_details::PaystackInfo;
 use crate::models::app_state::stripe_details::StripeInfo;
 use eyre::Report;
 use std::env;
-use crate::models::app_state::jwt_details::JWTInfo;
 
 #[derive(Debug, Clone)]
 pub struct AppConfig {
@@ -32,7 +31,9 @@ impl AppConfig {
 
             app_url: env::var("APP_URL").unwrap_or_else(|_| "http://localhost:8080".into()),
 
-            conversion_fee_bps: env::var("FEE_BPS").unwrap_or_else(|_| "100".into()).parse()?,
+            conversion_fee_bps: env::var("FEE_BPS")
+                .unwrap_or_else(|_| "100".into())
+                .parse()?,
             stripe_details: StripeInfo::new()?,
 
             paystack_details: PaystackInfo::new()?,

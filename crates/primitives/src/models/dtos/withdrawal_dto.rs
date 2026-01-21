@@ -1,8 +1,8 @@
+use crate::models::enum_types::CurrencyCode;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
-use crate::models::enum_types::CurrencyCode;
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]
 pub struct WithdrawRequest {

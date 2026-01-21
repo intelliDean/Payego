@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use crate::models::enum_types::CurrencyCode;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use utoipa::ToSchema;
 use validator::Validate;
-use crate::models::enum_types::CurrencyCode;
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct ConvertRequest {
@@ -14,8 +14,6 @@ pub struct ConvertRequest {
     pub idempotency_key: String,
 }
 
-
-
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ConvertResponse {
     pub transaction_id: String,
@@ -26,6 +24,6 @@ pub struct ConvertResponse {
 
 #[derive(Debug, Deserialize)]
 pub struct ExchangeRateResponse {
-   pub rates: HashMap<String, f64>,
-   pub error: Option<String>,
+    pub rates: HashMap<String, f64>,
+    pub error: Option<String>,
 }

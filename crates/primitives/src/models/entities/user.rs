@@ -3,9 +3,7 @@ use diesel::{Identifiable, Insertable, Queryable};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(
-    Debug, Clone, Queryable, Identifiable, Serialize
-)]
+#[derive(Debug, Clone, Queryable, Identifiable, Serialize)]
 #[diesel(table_name = crate::schema::users)]
 pub struct User {
     pub id: Uuid,

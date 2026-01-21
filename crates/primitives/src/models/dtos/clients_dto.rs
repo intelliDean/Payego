@@ -1,7 +1,6 @@
 use crate::models::enum_types::CurrencyCode;
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Serialize)]
 pub struct CreateTransferRecipientRequest<'a> {
     #[serde(rename = "type")]

@@ -57,7 +57,9 @@ async fn test_token_with_wrong_secret_rejected() {
 #[test]
 fn test_password_hashing() {
     use argon2::{
-        password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+        password_hash::{
+            rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString,
+        },
         Argon2,
     };
 

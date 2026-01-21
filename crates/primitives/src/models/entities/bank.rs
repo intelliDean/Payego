@@ -1,9 +1,9 @@
+use crate::models::entities::enum_types::CurrencyCode;
 use chrono::{DateTime, Utc};
 use diesel::{Associations, Identifiable, Insertable, Queryable};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
-use crate::models::entities::enum_types::CurrencyCode;
 
 #[derive(Queryable, Identifiable, Debug, Clone, Serialize, ToSchema, Deserialize)]
 #[diesel(table_name = crate::schema::banks)]

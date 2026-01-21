@@ -1,3 +1,62 @@
+use crate::config::swagger_config::ApiErrorResponse;
+use axum::body::Bytes;
+use axum::extract::State;
+use http::{HeaderMap, StatusCode};
+use payego_core::services::{
+    stripe_service::{ApiError, AppState, StripeService},
+    transaction_service::TransactionService,
+};
+use std::sync::Arc;
+
+#[utoipa::path(
+    post,
+    path = "/api/webhooks/stripe",
+    tag = "Webhooks",
+    summary = "Receive and process Stripe webhook events",
+    description = "Public endpoint that receives asynchronous event notifications from Stripe \
+                   (e.g. `payment_intent.succeeded`, `charge.refunded`, `invoice.payment_succeeded`, \
+                   `customer.subscription.created`, etc.). \
+                   The server **must** verify the request signature using the `Stripe-Signature` header \
+                   and your Stripe webhook signing secret before processing the payload. \
+                   Always respond with HTTP **200 OK** as quickly as possible — even if internal processing fails — \
+                   to prevent Stripe from retrying the event (Stripe retries aggressively on non-2xx responses). \
+                   This is a **public endpoint** (no authentication required). \
+                   Stripe may send duplicate events; your handler **must be idempotent** (use event `id` as idempotency key). \
+                   Events are sent as JSON with `id`, `type`, `data.object`, and other metadata.",
+    operation_id = "receiveStripeWebhook",
+    request_body(
+        content = String,
+        description = "Raw JSON payload of the Stripe event. \
+                       **Do not** parse this body directly in the schema — verify signature first using the raw bytes/string.",
+    ),
+    responses(
+        ( status = 200, description = "Webhook successfully received and acknowledged. \
+                           Stripe requires 200 OK — do **not** return 4xx or 5xx even if processing fails later."),
+        ( status = 400, description = "Bad request — invalid payload format, failed signature verification, \
+                           missing required headers, or malformed JSON", body = ApiErrorResponse),
+        ( status = 422, description = "Unprocessable entity — valid signature but event structure invalid \
+                           (missing `id`, `type`, or expected fields in `data.object`)", body = ApiErrorResponse),
+        ( status = 429, description = "Too many requests — rate limit exceeded (protects your server from flood)", body = ApiErrorResponse),
+        ( status = 500, description = "Internal server error — should be avoided. \
+                           Stripe will retry on 5xx responses (up to 3 days with exponential backoff).", body = ApiErrorResponse),
+    ),
+    security(()),
+)]
+pub async fn stripe_webhook(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Result<StatusCode, ApiError> {
+    let Some(ctx) = StripeService::extract_context(&state, headers, &body)? else {
+        // Ignore unrelated events but ACK
+        return Ok(StatusCode::OK);
+    };
+
+    TransactionService::apply_stripe_webhook(&state, ctx)?;
+
+    Ok(StatusCode::OK)
+}
+
 // use payego_primitives::models::AppState;
 // use payego_primitives::error::ApiError;
 // use crate::handlers::paypal_capture::Transaction;
@@ -229,37 +288,3 @@
 // }
 
 //===
-
-use axum::body::Bytes;
-use axum::extract::State;
-use http::{HeaderMap, StatusCode};
-use payego_core::services::{
-    stripe_service::{ApiError, AppState, StripeService},
-    transaction_service::TransactionService,
-};
-use std::sync::Arc;
-
-#[utoipa::path(
-    post,
-    path = "/api/webhook/stripe",
-    request_body = String,
-    responses(
-        (status = 200, description = "Webhook received"),
-        (status = 400, description = "Invalid webhook payload or signature")
-    ),
-    tag = "Webhook"
-)]
-pub async fn stripe_webhook(
-    State(state): State<Arc<AppState>>,
-    headers: HeaderMap,
-    body: Bytes,
-) -> Result<StatusCode, ApiError> {
-    let Some(ctx) = StripeService::extract_context(&state, headers, &body)? else {
-        // Ignore unrelated events but ACK
-        return Ok(StatusCode::OK);
-    };
-
-    TransactionService::apply_stripe_webhook(&state, ctx)?;
-
-    Ok(StatusCode::OK)
-}

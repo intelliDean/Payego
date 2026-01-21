@@ -7,7 +7,7 @@ use std::env;
 pub struct PaypalInfo {
     pub paypal_client_id: String,
     pub paypal_secret: SecretString,
-    pub paypal_api_url: String
+    pub paypal_api_url: String,
 }
 
 impl PaypalInfo {
@@ -22,7 +22,7 @@ impl PaypalInfo {
                     .into(),
             ),
             paypal_api_url: env::var("PAYPAL_API_URL")
-                .unwrap_or_else(|_| "https://api-m.sandbox.paypal.com".into())
+                .unwrap_or_else(|_| "https://api-m.sandbox.paypal.com".into()),
         })
     }
 }

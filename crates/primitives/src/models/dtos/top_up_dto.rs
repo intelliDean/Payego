@@ -1,7 +1,7 @@
+use crate::models::enum_types::{CurrencyCode, PaymentProvider};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
-use crate::models::enum_types::{CurrencyCode, PaymentProvider};
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]
 pub struct TopUpRequest {
@@ -9,6 +9,7 @@ pub struct TopUpRequest {
     pub amount: f64,
 
     pub provider: PaymentProvider,
+    #[schema(example = "NGN")]
     pub currency: CurrencyCode,
 
     #[validate(length(min = 8, max = 128))]

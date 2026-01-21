@@ -1,9 +1,8 @@
+use crate::models::bank::{Bank, BankAccount};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
-use crate::models::bank::{Bank, BankAccount};
-
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]
 pub struct BankRequest {
@@ -19,9 +18,6 @@ pub struct BankResponse {
     pub account_number: String,
     pub account_name: String,
 }
-
-
-
 
 #[derive(Deserialize)]
 pub struct PaystackRecipientResponse {
@@ -75,14 +71,12 @@ pub struct ResolveAccountResponse {
     pub account_name: String,
 }
 
-
 #[derive(Debug, Deserialize)]
 pub struct PaystackResolveResponse {
-   pub  status: bool,
+    pub status: bool,
     pub message: String,
     pub data: Option<PaystackAccountData>,
 }
-
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct BankDto {

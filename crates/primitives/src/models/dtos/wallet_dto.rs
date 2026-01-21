@@ -1,8 +1,8 @@
+use crate::models::enum_types::CurrencyCode;
+use crate::models::wallet::Wallet;
 use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
-use crate::models::enum_types::CurrencyCode;
-use crate::models::wallet::Wallet;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct WalletDto {

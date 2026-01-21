@@ -3,9 +3,7 @@ use diesel::{Associations, Identifiable, Insertable, Queryable};
 use serde::Serialize;
 use uuid::Uuid;
 
-#[derive(
-    Debug, Clone, Queryable, Identifiable, Associations, Serialize
-)]
+#[derive(Debug, Clone, Queryable, Identifiable, Associations, Serialize)]
 #[diesel(table_name = crate::schema::wallet_ledger)]
 #[diesel(belongs_to(crate::models::entities::wallet::Wallet))]
 #[diesel(belongs_to(crate::models::entities::transaction::Transaction))]

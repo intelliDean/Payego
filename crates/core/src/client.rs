@@ -1,4 +1,5 @@
 use payego_primitives::error::{ApiError, PaystackError};
+use payego_primitives::models::bank_dtos::PaystackResolveResponse;
 pub use payego_primitives::models::clients_dto::{
     CreateTransferRecipientRequest, CreateTransferRecipientResponse,
 };
@@ -6,7 +7,6 @@ use payego_primitives::models::enum_types::CurrencyCode;
 use reqwest::{Client, Url};
 use secrecy::{ExposeSecret, SecretString};
 use tracing::warn;
-use payego_primitives::models::bank_dtos::PaystackResolveResponse;
 
 #[derive(Clone)]
 pub struct PaystackClient {
@@ -33,7 +33,6 @@ impl PaystackClient {
         bank_code: &'a str,
         currency: CurrencyCode,
     ) -> CreateTransferRecipientRequest<'a> {
-
         CreateTransferRecipientRequest {
             recipient_type: "nuban",
             name,
@@ -115,15 +114,14 @@ impl PaystackClient {
             return Err(ApiError::Payment("Paystack request failed".into()));
         }
 
-        let body: PaystackResolveResponse =
-            serde_json::from_str(&body_text).map_err(|e| {
-                tracing::error!(
-                    error = %e,
-                    response = %body_text.chars().take(200).collect::<String>(),
-                    "Invalid JSON from Paystack"
-                );
-                ApiError::Payment("Invalid Paystack response".into())
-            })?;
+        let body: PaystackResolveResponse = serde_json::from_str(&body_text).map_err(|e| {
+            tracing::error!(
+                error = %e,
+                response = %body_text.chars().take(200).collect::<String>(),
+                "Invalid JSON from Paystack"
+            );
+            ApiError::Payment("Invalid Paystack response".into())
+        })?;
 
         if !body.status {
             tracing::warn!(
