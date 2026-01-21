@@ -24,7 +24,7 @@ async fn test_user_registration_success() {
 
     let email = format!("test_{}@example.com", Uuid::new_v4());
     let response = server
-        .post("/api/register")
+        .post("/api/auth/register")
         .json(&json!({
             "email": email,
             "password": "SecurePass123!",
@@ -62,13 +62,13 @@ async fn test_duplicate_email_rejected() {
 
     // First registration
     server
-        .post("/api/register")
+        .post("/api/auth/register")
         .json(&reg_data)
         .await
         .assert_status(StatusCode::CREATED);
 
     // Attempt duplicate
-    let response = server.post("/api/register").json(&reg_data).await;
+    let response = server.post("/api/auth/register").json(&reg_data).await;
 
     // Status should be BAD_REQUEST (400)
     response.assert_status(StatusCode::BAD_REQUEST);

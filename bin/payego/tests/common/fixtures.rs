@@ -1,5 +1,5 @@
 use fake::{Fake, Faker};
-use payego_primitives::models::RegisterRequest;
+use payego_primitives::models::register_dto::RegisterRequest;
 use uuid::Uuid;
 
 /// Create a test user registration request with random data

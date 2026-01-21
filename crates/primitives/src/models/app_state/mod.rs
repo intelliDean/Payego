@@ -1,6 +1,6 @@
 pub mod app_config;
 pub mod app_state;
-mod jwt_details;
-mod paypal_details;
-mod paystack_details;
-mod stripe_details;
+pub mod jwt_details;
+pub mod paypal_details;
+pub mod paystack_details;
+pub mod stripe_details;

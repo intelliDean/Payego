@@ -3,7 +3,12 @@ use axum_test::TestServer;
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
 use diesel::PgConnection;
-use payego_primitives::models::AppState;
+use payego_primitives::models::app_state::app_state::AppState;
+use payego_primitives::models::app_state::app_config::AppConfig;
+use payego_primitives::models::app_state::jwt_details::JWTInfo;
+use payego_primitives::models::app_state::stripe_details::StripeInfo;
+use payego_primitives::models::app_state::paystack_details::PaystackInfo;
+use payego_primitives::models::app_state::paypal_details::PaypalInfo;
 use secrecy::SecretString;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -34,24 +39,48 @@ pub fn create_test_db_pool() -> Pool<ConnectionManager<PgConnection>> {
 /// Create a test AppState
 pub fn create_test_app_state() -> Arc<AppState> {
     static INIT: std::sync::Once = std::sync::Once::new();
-    let state_arc = Arc::new(AppState {
-        db: create_test_db_pool(),
+    
+    // Construct configuration objects
+    let jwt_config = JWTInfo {
         jwt_secret: SecretString::from("test_secret_key_minimum_32_characters_long_for_testing"),
         jwt_expiration_hours: 2,
         jwt_issuer: "paye".to_string(),
         jwt_audience: "paye_api".to_string(),
-        client: Default::default(),
+    };
+
+    let stripe_config = StripeInfo {
         stripe_secret_key: SecretString::from("sk_test_fake_key_for_testing_only"),
-        app_url: "http://localhost:8080".to_string(),
-        exchange_api_url: "http://localhost:8080/mock/exchange".to_string(),
-        paypal_api_url: "http://localhost:8080/mock/paypal".to_string(),
         stripe_api_url: "http://localhost:8080/mock/stripe".to_string(),
-        stripe_webhook_secret: Default::default(),
-        paystack_api_url: "http://localhost:8080/mock/paystack".to_string(),
+        stripe_webhook_secret: SecretString::from("test_stripe_webhook_secret"),
+    };
+
+    let paystack_config = PaystackInfo {
         paystack_secret_key: SecretString::from("sk_test_fake_paystack_key"),
-        paystack_webhook_secret: Default::default(),
+        paystack_api_url: "http://localhost:8080/mock/paystack".to_string(),
+        paystack_webhook_secret: SecretString::from("test_paystack_webhook_secret"),
+    };
+
+    let paypal_config = PaypalInfo {
         paypal_client_id: "test_paypal_client_id".to_string(),
         paypal_secret: SecretString::from("test_paypal_secret"),
+         paypal_api_url: "http://localhost:8080/mock/paypal".to_string(),
+    };
+
+    let app_config = AppConfig {
+        jwt_details: jwt_config,
+        app_url: "http://localhost:8080".to_string(),
+        conversion_fee_bps: 100,
+        stripe_details: stripe_config,
+        paystack_details: paystack_config,
+        paypal_details: paypal_config,
+        exchange_api_url: "http://localhost:8080/mock/exchange".to_string(),
+        default_country: "Nigeria".to_string(),
+    };
+
+    let state_arc = Arc::new(AppState {
+        db: create_test_db_pool(),
+        http_client: reqwest::Client::new(),
+        config: app_config,
     });
 
     INIT.call_once(|| {
@@ -61,6 +90,14 @@ pub fn create_test_app_state() -> Arc<AppState> {
             .db
             .get()
             .expect("Failed to get DB connection for migrations");
+        
+        // Force clean database
+        use diesel::sql_query;
+        let _ = sql_query("DROP SCHEMA public CASCADE").execute(&mut conn).expect("Failed to drop schema");
+        let _ = sql_query("CREATE SCHEMA public").execute(&mut conn).expect("Failed to create schema");
+        let _ = sql_query("GRANT ALL ON SCHEMA public TO postgres").execute(&mut conn).expect("Failed to grant postgres");
+        let _ = sql_query("GRANT ALL ON SCHEMA public TO public").execute(&mut conn).expect("Failed to grant public");
+
         run_test_migrations(&mut conn);
         cleanup_test_db(&mut conn);
     });
@@ -78,7 +115,7 @@ pub async fn create_test_user(server: &TestServer, email: &str) -> (String, Stri
     use serde_json::json;
 
     let response = server
-        .post("/api/register")
+        .post("/api/auth/register")
         .json(&json!({
             "email": email,
             "password": "SecurePass123!",

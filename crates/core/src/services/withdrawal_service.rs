@@ -78,7 +78,7 @@ impl WithdrawalService {
                     user_id,
                     counterparty_id: None,
                     intent: TransactionIntent::Payout,
-                    amount: -amount_minor,
+                    amount: amount_minor,
                     currency: wallet.currency,
                     txn_state: PaymentState::Pending,
                     provider: Some(PaymentProvider::Paystack),
@@ -98,7 +98,7 @@ impl WithdrawalService {
                 .values(NewWalletLedger {
                     wallet_id: wallet.id,
                     transaction_id: tx_id,
-                    amount: -amount_minor,
+                    amount: amount_minor,
                 })
                 .execute(conn)?;
 

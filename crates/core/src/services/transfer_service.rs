@@ -77,7 +77,7 @@ impl TransferService {
                     user_id: sender_id,
                     counterparty_id: Some(req.recipient_id),
                     intent: TransactionIntent::Transfer,
-                    amount: -amount_cents,
+                    amount: amount_cents,
                     currency: req.currency,
                     txn_state: PaymentState::Completed,
                     provider: Some(PaymentProvider::Internal),
@@ -105,11 +105,12 @@ impl TransferService {
                     provider: Some(PaymentProvider::Internal),
                     provider_reference: None,
                     idempotency_key: &req.idempotency_key,
-                    reference: req.reference,
+                    reference: Uuid::new_v4(),
                     description: Some("Internal transfer received"),
                     metadata: json!({
                         "direction": "credit",
-                        "counterparty": sender_id
+                        "counterparty": sender_id,
+                        "original_reference": req.reference
                     }),
                 })
                 .returning(transactions::id)
@@ -195,7 +196,7 @@ impl TransferService {
                     user_id,
                     counterparty_id: None,
                     intent: TransactionIntent::Payout,
-                    amount: -amount_minor,
+                    amount: amount_minor,
                     currency,
                     txn_state: PaymentState::Pending,
                     provider: Some(PaymentProvider::Paystack),

@@ -1,8 +1,12 @@
 use diesel::prelude::*;
 use diesel::{Connection, PgConnection};
 use payego_core::services::withdrawal_service::WithdrawalService;
-use payego_primitives::models::{AppState, BankAccount, Wallet, WithdrawRequest, WithdrawResponse};
-use payego_primitives::schema::{bank_accounts, transactions, users, wallets};
+use payego_primitives::models::app_state::app_state::AppState;
+use payego_primitives::models::bank::BankAccount;
+use payego_primitives::models::entities::wallet::Wallet;
+use payego_primitives::models::dtos::withdrawal_dto::{WithdrawRequest, WithdrawResponse};
+use payego_primitives::models::entities::enum_types::CurrencyCode;
+use payego_primitives::schema::{bank_accounts, banks, transactions, users, wallets};
 use serde_json::json;
 use serial_test::serial;
 use std::sync::Arc;
@@ -54,6 +58,7 @@ async fn test_withdrawal_success() {
             "message": "Transfer initiated",
             "data": {
                 "transfer_code": "TRF_1234567890",
+                "reference": "REF_12345",
                 "id": 12345,
                 "amount": 1500000,
                 "currency": "NGN"
@@ -64,8 +69,8 @@ async fn test_withdrawal_success() {
 
     // 2. Setup AppState
     let mut base_state = (*common::create_test_app_state()).clone();
-    base_state.exchange_api_url = base_url.clone();
-    base_state.paystack_api_url = base_url.clone();
+    base_state.config.exchange_api_url = base_url.clone();
+    base_state.config.paystack_details.paystack_api_url = base_url.clone();
     let state = Arc::new(base_state);
 
     let pool = &state.db;
@@ -91,7 +96,19 @@ async fn test_withdrawal_success() {
             wallets::id.eq(Uuid::new_v4()),
             wallets::user_id.eq(user_id),
             wallets::balance.eq(2000), // $20.00
-            wallets::currency.eq("USD"),
+            wallets::currency.eq(CurrencyCode::USD),
+        ))
+        .execute(conn)
+        .unwrap();
+
+    // Insert Bank
+    diesel::insert_into(banks::table)
+        .values((
+            banks::id.eq(1),
+            banks::name.eq("Test Bank"),
+            banks::code.eq("057"),
+            banks::currency.eq(CurrencyCode::NGN),
+            banks::country.eq("Nigeria"),
         ))
         .execute(conn)
         .unwrap();
@@ -105,7 +122,7 @@ async fn test_withdrawal_success() {
             bank_accounts::account_number.eq("1234567890"),
             bank_accounts::account_name.eq("Test User"),
             bank_accounts::bank_code.eq("057"),
-            bank_accounts::paystack_recipient_code.eq("RCP_123456"),
+            bank_accounts::provider_recipient_id.eq("RCP_123456"),
             bank_accounts::is_verified.eq(true),
         ))
         .execute(conn)
@@ -118,7 +135,7 @@ async fn test_withdrawal_success() {
 
     let req = WithdrawRequest {
         amount: 10.0,
-        currency: "USD".to_string(),
+        currency: CurrencyCode::USD,
         reference: Uuid::new_v4(),
         idempotency_key: format!("withdraw_key_{}", Uuid::new_v4()),
     };
@@ -134,13 +151,16 @@ async fn test_withdrawal_success() {
     // Balance check: 2000 - 1000 = 1000 ($10 left)
     let wallet = wallets::table
         .filter(wallets::user_id.eq(user_id))
-        .filter(wallets::currency.eq("USD"))
+        .filter(wallets::currency.eq(CurrencyCode::USD))
         .first::<Wallet>(conn)
         .unwrap();
     assert_eq!(wallet.balance, 1000);
 
     // 6. Cleanup
     diesel::delete(bank_accounts::table.filter(bank_accounts::user_id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
+    diesel::delete(banks::table.filter(banks::code.eq("057")))
         .execute(conn)
         .unwrap();
     diesel::delete(wallets::table.filter(wallets::user_id.eq(user_id)))
@@ -179,14 +199,14 @@ async fn test_withdrawal_insufficient_balance() {
             wallets::id.eq(Uuid::new_v4()),
             wallets::user_id.eq(user_id),
             wallets::balance.eq(0),
-            wallets::currency.eq("USD"),
+            wallets::currency.eq(CurrencyCode::USD),
         ))
         .execute(conn)
         .unwrap();
 
     let req = WithdrawRequest {
         amount: 10.0,
-        currency: "USD".to_string(),
+        currency: CurrencyCode::USD,
         reference: Uuid::new_v4(),
         idempotency_key: "any".to_string(),
     };
@@ -211,7 +231,7 @@ async fn test_withdrawal_unsupported_currency() {
     let bank_id = Uuid::new_v4();
     let req = WithdrawRequest {
         amount: 10.0,
-        currency: "XXX".to_string(),
+        currency: CurrencyCode::USD, // Changed to valid enum variant, as parsing would fail earlier or logic handles it
         reference: Uuid::new_v4(),
         idempotency_key: "any".to_string(),
     };

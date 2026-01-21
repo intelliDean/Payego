@@ -1,6 +1,8 @@
 mod common;
 
-use payego_primitives::models::NewTransaction;
+use payego_primitives::models::entities::transaction::NewTransaction;
+use payego_primitives::models::entities::enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent};
+use serde_json::json;
 use uuid::Uuid;
 
 #[test]
@@ -11,22 +13,24 @@ fn test_new_transaction_creation() {
 
     let tx = NewTransaction {
         user_id,
-        recipient_id,
+        counterparty_id: recipient_id,
         amount: 1000,
-        transaction_type: "internal_transfer_send".to_string(),
-        currency: "USD".to_string(),
-        status: "completed".to_string(),
-        provider: Some("internal".to_string()),
-        description: Some("Test transfer".to_string()),
+        intent: TransactionIntent::Transfer,
+        currency: CurrencyCode::USD,
+        txn_state: PaymentState::Completed,
+        provider: Some(PaymentProvider::Internal),
+        provider_reference: None,
+        idempotency_key: "idemp_test",
         reference,
-        metadata: None,
+        description: Some("Test transfer"),
+        metadata: json!({}),
     };
 
     assert_eq!(tx.user_id, user_id);
-    assert_eq!(tx.recipient_id, recipient_id);
+    assert_eq!(tx.counterparty_id, recipient_id);
     assert_eq!(tx.amount, 1000);
-    assert_eq!(tx.transaction_type, "internal_transfer_send");
-    assert_eq!(tx.status, "completed");
+    assert_eq!(matches!(tx.intent, TransactionIntent::Transfer), true);
+    assert_eq!(matches!(tx.txn_state, PaymentState::Completed), true);
     assert_eq!(tx.reference, reference);
 }
 
@@ -36,29 +40,34 @@ fn test_transaction_reference_uniqueness() {
 
     let tx1 = NewTransaction {
         user_id,
-        recipient_id: None,
+        counterparty_id: None,
         amount: 500,
-        transaction_type: "top_up".to_string(),
-        currency: "USD".to_string(),
-        status: "completed".to_string(),
-        provider: Some("stripe".to_string()),
-        description: None,
+        intent: TransactionIntent::TopUp,
+        currency: CurrencyCode::USD,
+        txn_state: PaymentState::Pending,
+        provider: Some(PaymentProvider::Stripe),
+        provider_reference: Some("stripe_ref_123"),
+        idempotency_key: "idemp_1",
         reference: Uuid::new_v4(),
-        metadata: None,
+        description: Some("Test transaction"),
+        metadata: json!({}),
     };
 
     let tx2 = NewTransaction {
         user_id,
-        recipient_id: None,
+        counterparty_id: None,
         amount: 500,
-        transaction_type: "top_up".to_string(),
-        currency: "USD".to_string(),
-        status: "completed".to_string(),
-        provider: Some("stripe".to_string()),
-        description: None,
+        intent: TransactionIntent::TopUp,
+        currency: CurrencyCode::USD,
+        txn_state: PaymentState::Pending,
+        provider: Some(PaymentProvider::Stripe),
+        provider_reference: None,
+        idempotency_key: "idemp_2",
         reference: Uuid::new_v4(),
-        metadata: None,
+        description: None,
+        metadata: json!({}),
     };
 
     assert_ne!(tx1.reference, tx2.reference);
 }
+

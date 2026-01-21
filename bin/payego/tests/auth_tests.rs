@@ -1,7 +1,7 @@
 mod common;
 
 use common::create_test_app_state;
-use payego_primitives::config::security_config::{create_token, verify_token};
+use payego_primitives::config::security_config::SecurityConfig;
 use serial_test::serial;
 
 #[tokio::test]
@@ -11,13 +11,13 @@ async fn test_create_and_verify_token() {
     let user_id = "test-user-123";
 
     // Create token
-    let token = create_token(&state, user_id).expect("Failed to create token");
+    let token = SecurityConfig::create_token(&state, user_id).expect("Failed to create token");
 
     // Verify it's not empty
     assert!(!token.is_empty());
 
     // Verify token
-    let claims = verify_token(&state, &token).expect("Failed to verify token");
+    let claims = SecurityConfig::verify_token(&state, &token).expect("Failed to verify token");
 
     // Check claims
     assert_eq!(claims.sub, user_id);
@@ -29,7 +29,7 @@ async fn test_invalid_token_rejected() {
     let state = create_test_app_state();
 
     // Try to verify an invalid token
-    let result = verify_token(&state, "invalid.token.here");
+    let result = SecurityConfig::verify_token(&state, "invalid.token.here");
 
     assert!(result.is_err());
 }
@@ -40,16 +40,16 @@ async fn test_token_with_wrong_secret_rejected() {
     let user_id = "test-user-456";
 
     // Create token with correct secret
-    let token = create_token(&state, user_id).expect("Failed to create token");
+    let token = SecurityConfig::create_token(&state, user_id).expect("Failed to create token");
 
     // Create a different state with different secret
     let mut different_state = (*state).clone();
     use secrecy::SecretString;
-    different_state.jwt_secret =
+    different_state.config.jwt_details.jwt_secret =
         SecretString::from("different_secret_key_minimum_32_characters_long");
 
     // Try to verify with wrong secret
-    let result = verify_token(&std::sync::Arc::new(different_state), &token);
+    let result = SecurityConfig::verify_token(&std::sync::Arc::new(different_state), &token);
 
     assert!(result.is_err());
 }
