@@ -14,10 +14,12 @@ pub use payego_primitives::{
     schema::{bank_accounts, transactions, wallet_ledger, wallets},
 };
 
-use reqwest::Client;
+use reqwest::{Client, Url};
 use secrecy::ExposeSecret;
 use serde_json::{json, Value};
+use tracing::log::warn;
 use uuid::Uuid;
+use payego_primitives::models::providers_dto::{PaystackResponse, PaystackTransData};
 
 pub struct WithdrawalService;
 
@@ -122,40 +124,53 @@ impl WithdrawalService {
         currency: &CurrencyCode,
         reference: Uuid,
     ) -> Result<String, ApiError> {
-        let client = Client::new();
         let key = state
             .config
             .paystack_details
             .paystack_secret_key
             .expose_secret();
 
-        let resp = client
-            .post(format!(
-                "{}/transfer",
-                state.config.paystack_details.paystack_api_url
-            ))
+        let mut url = Url::parse(&state.config.paystack_details.paystack_api_url)
+            .map_err(|_| ApiError::Internal("Invalid Paystack base URL".into()))?;
+
+        url.set_path("transfer");
+
+        let resp = state
+            .http_client
+            .post(url)
             .bearer_auth(key)
             .json(&json!({
-                "source": "balance",
-                "amount": amount_minor,
-                "recipient": bank.provider_recipient_id,
-                "reference": reference.to_string(),
-                "reason": format!("Withdrawal ({})", currency),
-            }))
+        "source": "balance",
+        "amount": amount_minor,
+        "recipient": bank.provider_recipient_id,
+        "reference": reference.to_string(),
+        "reason": format!("Withdrawal ({})", currency),
+    }))
             .send()
-            .await?;
+            .await
+            .map_err(|_| ApiError::Payment("Failed to reach Paystack".into()))?;
 
-        let body: Value = resp.json().await?;
-
-        if body["status"] != true {
-            return Err(ApiError::Payment(
-                body["message"].as_str().unwrap_or("Paystack failed").into(),
-            ));
+        if !resp.status().is_success() {
+            // warn!(status = %resp.status(), "Paystack HTTP error");
+            return Err(ApiError::Payment("Paystack transfer failed".into()));
         }
 
-        body["data"]["transfer_code"]
-            .as_str()
-            .map(String::from)
-            .ok_or_else(|| ApiError::Payment("Missing transfer_code".into()))
+        let body: PaystackResponse<PaystackTransData> = resp
+            .json()
+            .await
+            .map_err(|_| ApiError::Payment("Invalid Paystack response".into()))?;
+
+        if !body.status {
+            // warn!(message = %body.message, "Paystack rejected transfer");
+            return Err(ApiError::Payment("Transfer rejected by Paystack".into()));
+        }
+
+        let data = body.data.ok_or_else(|| {
+            ApiError::Payment("Paystack response missing data".into())
+        })?;
+
+        Ok(data.transfer_code)
+
     }
 }
+

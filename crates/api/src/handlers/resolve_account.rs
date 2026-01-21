@@ -12,9 +12,9 @@ use payego_core::services::bank_service::{
     ApiError, AppState, BankService, ResolveAccountRequest, ResolveAccountResponse,
 };
 
-static ACCOUNT_NUMBER_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\d{10}$").unwrap());
-static BANK_CODE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\d{3,5}$").unwrap());
+static ACCOUNT_NUMBER_RE: Lazy<Result<Regex, regex::Error>> = Lazy::new(|| Regex::new(r"^\d{10}$"));
 
+static BANK_CODE_RE: Lazy<Result<Regex, regex::Error>> = Lazy::new(|| Regex::new(r"^\d{3,5}$"));
 #[utoipa::path(
     get,
     path = "/api/bank/resolve",
@@ -40,17 +40,7 @@ pub async fn resolve_account(
     State(state): State<Arc<AppState>>,
     Query(req): Query<ResolveAccountRequest>,
 ) -> Result<Json<ResolveAccountResponse>, ApiError> {
-    if !ACCOUNT_NUMBER_RE.is_match(&req.account_number) {
-        return Err(ApiError::Internal(
-            "Account number must be 10 digits".to_string(),
-        ));
-    }
-
-    if !BANK_CODE_RE.is_match(&req.bank_code) {
-        return Err(ApiError::Internal(
-            "Bank code must be 3–5 digits".to_string(),
-        ));
-    }
+    validate_account_number(&req)?;
 
     info!(
         "Resolving account ****{} @ {}",
@@ -64,4 +54,28 @@ pub async fn resolve_account(
     Ok(Json(ResolveAccountResponse {
         account_name: resolved.account_name,
     }))
+}
+
+fn validate_account_number(req: &ResolveAccountRequest) -> Result<(), ApiError> {
+    if !ACCOUNT_NUMBER_RE
+        .as_ref()
+        .map_err(|_| ApiError::Internal("Account number regex misconfigured".into()))?
+        .is_match(&req.account_number)
+    {
+        return Err(ApiError::Internal(
+            "Account number must be 10 digits".to_string(),
+        ));
+    }
+
+    if !BANK_CODE_RE
+        .as_ref()
+        .map_err(|_| ApiError::Internal("Account number regex misconfigured".into()))?
+        .is_match(&req.bank_code)
+    {
+        return Err(ApiError::Internal(
+            "Bank code must be 3–5 digits".to_string(),
+        ));
+    }
+
+    Ok(())
 }

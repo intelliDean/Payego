@@ -34,3 +34,5 @@ hmac.workspace = true
 once_cell = "1.21.3"
 subtle = "2.6.1"
 strum = "0.26.3"
+governor = "0.10.4"
+nonzero_ext = "0.3.0"

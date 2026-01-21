@@ -32,21 +32,31 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::handlers::paypal_order::get_paypal_order;
 use crate::handlers::refresh_token::refresh_token;
 use payego_primitives::config::security_config::SecurityConfig;
-use tower::ServiceBuilder;
+use tower::{ServiceBuilder, ServiceExt};
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
+use tower_governor::governor::GovernorConfig;
 use tower_http::{
     request_id::{MakeRequestUuid, SetRequestIdLayer},
     trace::TraceLayer,
 };
 
+const REQUESTS_PER_SECOND: u64 = 2;
+const BURST_SIZE: u32 = 10;
+
+//this fails at compile time and not runtime
+const _: () = assert!(REQUESTS_PER_SECOND > 0);
+const _: () = assert!(BURST_SIZE > 0);
+
+
 pub fn create_router(state: Arc<AppState>) -> Router {
     // rate limiting configuration
+
     let governor_conf = Arc::new(
         GovernorConfigBuilder::default()
-            .per_second(2) // 2 requests per second = 120 per minute
-            .burst_size(10)
+            .per_second(REQUESTS_PER_SECOND) // 2 requests per second = 120 per minute
+            .burst_size(BURST_SIZE)
             .finish()
-            .unwrap(),
+            .expect("Invalid rate limiter configuration: "),
     );
 
     // public routes (no authentication)

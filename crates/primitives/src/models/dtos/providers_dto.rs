@@ -105,3 +105,19 @@ pub struct PaystackTransferResponse {
     pub message: String,
     pub data: Option<PaystackTransferData>,
 }
+
+
+//===
+
+#[derive(Debug, Deserialize)]
+pub struct PaystackResponse<T> {
+    pub status: bool,
+    pub message: String,
+    pub data: Option<T>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PaystackTransData {
+    pub transfer_code: String,
+    pub reference: String,
+}
