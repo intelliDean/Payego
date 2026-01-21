@@ -147,6 +147,10 @@ impl From<ApiError> for (StatusCode, String) {
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Internal server error: {}", msg),
                 ),
+                AuthError::DuplicateEmail => (
+                    StatusCode::BAD_REQUEST,
+                    "Email already exist".to_string(),
+                ),
             },
             ApiError::Payment(msg) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -197,6 +201,7 @@ pub enum AuthError {
     InvalidCredentials,
     BlacklistedToken,
     InternalError(String),
+    DuplicateEmail,
 }
 
 impl fmt::Display for AuthError {
@@ -208,6 +213,7 @@ impl fmt::Display for AuthError {
             AuthError::InvalidCredentials => write!(f, "Invalid credentials"),
             AuthError::BlacklistedToken => write!(f, "Token has been invalidated"),
             AuthError::InternalError(msg) => write!(f, "Internal error: {}", msg),
+            AuthError::DuplicateEmail => write!(f, "Email already exist"),
         }
     }
 }

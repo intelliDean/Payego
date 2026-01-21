@@ -104,12 +104,9 @@ impl PaymentService {
         reference: Uuid,
         amount_cents: i64,
     ) -> Result<(Option<String>, Option<String>), ApiError> {
-        let client = StripeClient::new(
-            state
-                .config
-                .stripe_details
-                .stripe_secret_key
-                .expose_secret(),
+        let client = StripeClient::from_url(
+            state.config.stripe_details.stripe_api_url.as_str(),
+            state.config.stripe_details.stripe_secret_key.expose_secret(),
         );
 
         let currency = Currency::from_str(&req.currency.to_string().to_lowercase())

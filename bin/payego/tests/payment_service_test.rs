@@ -3,7 +3,9 @@ use diesel::r2d2::ConnectionManager;
 use diesel::{r2d2, Connection, PgConnection};
 use dotenvy::dotenv;
 use payego_core::services::payment_service::PaymentService;
-use payego_primitives::models::{AppState, TopUpRequest, TopUpResponse, Wallet};
+use payego_primitives::models::app_state::app_state::AppState;
+use payego_primitives::models::top_up_dto::{TopUpRequest, TopUpResponse};
+use payego_primitives::models::entities::wallet::Wallet;
 use payego_primitives::schema::{transactions, users};
 use serde_json::json;
 use serial_test::serial;
@@ -12,6 +14,8 @@ use std::sync::Arc;
 use uuid::Uuid;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
+
+mod common;
 
 fn get_test_pool() -> r2d2::Pool<ConnectionManager<PgConnection>> {
     dotenv().ok();
@@ -57,8 +61,12 @@ async fn test_top_up_paypal_init_success() {
         .mount(&mock_server)
         .await;
 
-    // 2. Setup DB
-    let pool = get_test_pool();
+    // 3. Setup AppState
+    let mut base_state = (*common::create_test_app_state()).clone();
+    base_state.config.paypal_details.paypal_api_url = base_url.clone();
+    let state = Arc::new(base_state);
+
+    let pool = &state.db;
     let conn = &mut pool.get().unwrap();
 
     let user_id = Uuid::new_v4();
@@ -75,34 +83,14 @@ async fn test_top_up_paypal_init_success() {
         .unwrap();
 
     use secrecy::SecretString;
-    // 3. Setup AppState
-    let state = Arc::new(AppState {
-        db: pool.clone(),
-        jwt_secret: SecretString::from("secret"),
-        jwt_expiration_hours: 2,
-        jwt_issuer: "paye".to_string(),
-        jwt_audience: "paye_api".to_string(),
-        client: Default::default(),
-        stripe_secret_key: SecretString::from("sk_test"),
-        app_url: "http://localhost:8080".to_string(),
-        exchange_api_url: "http://unused".to_string(),
-        paypal_api_url: base_url.clone(),
-        stripe_api_url: "http://unused".to_string(),
-        stripe_webhook_secret: Default::default(),
-        paystack_api_url: "http://unused".to_string(),
-        paystack_secret_key: SecretString::from("sk_test_paystack"),
-        paystack_webhook_secret: Default::default(),
-        paypal_client_id: "test_client_id".to_string(),
-        paypal_secret: SecretString::from("test_secret"),
-    });
+    use payego_primitives::models::entities::enum_types::{CurrencyCode, PaymentProvider};
 
     // 4. Call Service
     let req = TopUpRequest {
-        amount: 50.0, // $50.00
-        currency: "USD".to_string(),
-        provider: "paypal".to_string(),
-        idempotency_key: "topup_key_1".to_string(),
-        reference: Uuid::new_v4(),
+        amount: 1000.0, // $10.00
+        currency: CurrencyCode::USD,
+        provider: PaymentProvider::Paypal,
+        idempotency_key: "topup_1".to_string(),
     };
 
     // Need to set PAYPAL vars for test
@@ -124,16 +112,16 @@ async fn test_top_up_paypal_init_success() {
 
     // 5. Verify Transaction
     // The service inserts a transaction with "pending" status.
-    use payego_primitives::models::Transaction;
+    use payego_primitives::models::transaction::Transaction;
     let tx = transactions::table
         .filter(transactions::user_id.eq(user_id))
         .filter(transactions::metadata.is_not_null()) // check if it has metadata
         .first::<Transaction>(conn)
         .unwrap();
 
-    assert_eq!(tx.amount, 5000); // 50 * 100
-    assert_eq!(tx.provider, Some("paypal".to_string()));
-    assert_eq!(tx.status, "pending");
+    assert_eq!(tx.amount, 100000); // 1000 * 100
+    assert_eq!(tx.provider, Some(payego_primitives::models::entities::enum_types::PaymentProvider::Paypal));
+    assert_eq!(tx.txn_state, payego_primitives::models::entities::enum_types::PaymentState::Pending);
 
     // 6. Cleanup
     diesel::delete(transactions::table.filter(transactions::user_id.eq(user_id)))

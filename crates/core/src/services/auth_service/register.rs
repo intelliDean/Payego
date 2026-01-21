@@ -45,7 +45,7 @@ impl RegisterService {
             .map_err(|e| {
                 if Self::is_unique_violation(&e) {
                     info!("auth.register: duplicate email");
-                    ApiError::Auth(AuthError::InternalError("Email already exist".to_string()))
+                    ApiError::Auth(AuthError::DuplicateEmail)
                 } else {
                     error!("auth.register: failed to insert user");
                     ApiError::Internal("Registration failed".into())

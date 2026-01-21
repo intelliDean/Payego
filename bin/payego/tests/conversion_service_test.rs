@@ -1,7 +1,10 @@
 use diesel::prelude::*;
 use diesel::{Connection, PgConnection};
 use payego_core::services::conversion_service::ConversionService;
-use payego_primitives::models::{AppState, ConvertRequest, Wallet};
+use payego_primitives::models::entities::enum_types::CurrencyCode;
+use payego_primitives::models::app_state::app_state::AppState;
+use payego_primitives::models::conversion_dto::ConvertRequest;
+use payego_primitives::models::entities::wallet::Wallet;
 use payego_primitives::schema::{transactions, users, wallets};
 use serde_json::json;
 use serial_test::serial;
@@ -31,7 +34,7 @@ async fn test_convert_currency_success() {
 
     // 2. Setup AppState
     let mut base_state = (*common::create_test_app_state()).clone();
-    base_state.exchange_api_url = exchange_api_url;
+    base_state.config.exchange_api_url = exchange_api_url;
     let state = Arc::new(base_state);
 
     let pool = &state.db;
@@ -55,7 +58,7 @@ async fn test_convert_currency_success() {
             wallets::id.eq(Uuid::new_v4()),
             wallets::user_id.eq(user_id),
             wallets::balance.eq(10000), // $100.00
-            wallets::currency.eq("USD"),
+            wallets::currency.eq(CurrencyCode::USD),
         ))
         .execute(conn)
         .unwrap();
@@ -65,16 +68,16 @@ async fn test_convert_currency_success() {
             wallets::id.eq(Uuid::new_v4()),
             wallets::user_id.eq(user_id),
             wallets::balance.eq(0),
-            wallets::currency.eq("NGN"),
+            wallets::currency.eq(CurrencyCode::NGN),
         ))
         .execute(conn)
         .unwrap();
 
     // 4. Call Service
     let req = ConvertRequest {
-        amount: 10.0,
-        from_currency: "USD".to_string(),
-        to_currency: "NGN".to_string(),
+        amount_cents: 1000,
+        from_currency: CurrencyCode::USD,
+        to_currency: CurrencyCode::NGN,
         idempotency_key: format!("key_{}", Uuid::new_v4()),
     };
 
@@ -94,7 +97,7 @@ async fn test_convert_currency_success() {
     // Verify DB state
     let wallet_usd = wallets::table
         .filter(wallets::user_id.eq(user_id))
-        .filter(wallets::currency.eq("USD"))
+        .filter(wallets::currency.eq(CurrencyCode::USD))
         .first::<Wallet>(conn)
         .unwrap();
     // 10000 - 1000 = 9000
@@ -102,7 +105,7 @@ async fn test_convert_currency_success() {
 
     let wallet_ngn = wallets::table
         .filter(wallets::user_id.eq(user_id))
-        .filter(wallets::currency.eq("NGN"))
+        .filter(wallets::currency.eq(CurrencyCode::NGN))
         .first::<Wallet>(conn)
         .unwrap();
     // 14850 * 100 = 1485000
@@ -136,7 +139,7 @@ async fn test_convert_currency_insufficient_balance() {
 
     // 2. Setup AppState
     let mut base_state = (*common::create_test_app_state()).clone();
-    base_state.exchange_api_url = exchange_api_url;
+    base_state.config.exchange_api_url = exchange_api_url;
     let state = Arc::new(base_state);
 
     let pool = &state.db;
@@ -160,7 +163,7 @@ async fn test_convert_currency_insufficient_balance() {
             wallets::id.eq(Uuid::new_v4()),
             wallets::user_id.eq(user_id),
             wallets::balance.eq(500), // $5.00
-            wallets::currency.eq("USD"),
+            wallets::currency.eq(CurrencyCode::USD),
         ))
         .execute(conn)
         .unwrap();
@@ -170,16 +173,16 @@ async fn test_convert_currency_insufficient_balance() {
             wallets::id.eq(Uuid::new_v4()),
             wallets::user_id.eq(user_id),
             wallets::balance.eq(0),
-            wallets::currency.eq("NGN"),
+            wallets::currency.eq(CurrencyCode::NGN),
         ))
         .execute(conn)
         .unwrap();
 
     // 4. Call Service with amount > balance
     let req = ConvertRequest {
-        amount: 10.0, // $10.00
-        from_currency: "USD".to_string(),
-        to_currency: "NGN".to_string(),
+        amount_cents: 1000, // $10.00
+        from_currency: CurrencyCode::USD,
+        to_currency: CurrencyCode::NGN,
         idempotency_key: format!("key_{}", Uuid::new_v4()),
     };
 
@@ -205,9 +208,9 @@ async fn test_convert_currency_same_currency() {
     let user_id = Uuid::new_v4();
 
     let req = ConvertRequest {
-        amount: 10.0,
-        from_currency: "USD".to_string(),
-        to_currency: "USD".to_string(),
+        amount_cents: 1000,
+        from_currency: CurrencyCode::USD,
+        to_currency: CurrencyCode::USD,
         idempotency_key: "any".to_string(),
     };
 
