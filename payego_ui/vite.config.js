@@ -14,7 +14,7 @@ export default defineConfig({
     exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**', '**/cypress/**', '**/.{idea,git,cache,output,temp}/**'],
     server: {
       deps: {
-        inline: [/@exodus\/bytes/],
+        inline: [/@exodus\/bytes/, /html-encoding-sniffer/],
       },
     },
   },
