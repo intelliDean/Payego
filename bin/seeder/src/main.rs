@@ -2,12 +2,12 @@ use argon2::{
     password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
     Argon2,
 };
-use diesel::prelude::*;
 use diesel::pg::PgConnection;
+use diesel::prelude::*;
 use dotenvy::dotenv;
-use payego_primitives::models::entities::user::{User, NewUser};
-use payego_primitives::models::entities::wallet::NewWallet;
 use payego_primitives::models::entities::enum_types::CurrencyCode;
+use payego_primitives::models::entities::user::{NewUser, User};
+use payego_primitives::models::entities::wallet::NewWallet;
 use std::env;
 use std::str::FromStr;
 use uuid::Uuid;
@@ -43,7 +43,7 @@ fn main() {
     // 3. Seed Wallets
     seed_wallet(&mut conn, user_id, "USD", 100000); // $1000.00
     seed_wallet(&mut conn, user_id, "NGN", 5000000); // ₦50,000.00
-    // Admin gets rich
+                                                     // Admin gets rich
     seed_wallet(&mut conn, admin_id, "USD", 100000000); // $1M
 
     println!("✅ Database seeded successfully!");
@@ -74,7 +74,7 @@ fn seed_user(conn: &mut PgConnection, u_email: &str, u_username: &str, u_passwor
     }
 
     let hashed = hash_password(u_password);
-    
+
     let new_user = NewUser {
         email: u_email,
         password_hash: &hashed,
@@ -99,13 +99,13 @@ fn seed_wallet(conn: &mut PgConnection, u_id: Uuid, curr: &str, amt: i64) {
         user_id: u_id,
         currency: currency_enum,
     };
-    
+
     // We want to set balance, but NewWallet might not have balance field?
-    // Let's check NewWallet definition again. 
+    // Let's check NewWallet definition again.
     // It only has user_id and currency. Balance likely defaults to 0.
     // If I want to seed with balance, I might need to update it after insert OR add balance to NewWallet if possible (but I can't change primitives easily).
     // Or I can insert then update.
-    
+
     let _ = diesel::insert_into(wallets::table)
         .values(&new_wallet)
         .execute(conn)
@@ -114,11 +114,15 @@ fn seed_wallet(conn: &mut PgConnection, u_id: Uuid, curr: &str, amt: i64) {
     // Update balance
     // Need to find the wallet we just inserted or assume we can target it by user+currency
     use payego_primitives::schema::wallets::dsl::*;
-    
-    diesel::update(wallets.filter(user_id.eq(u_id)).filter(currency.eq(currency_enum)))
-        .set(balance.eq(amt))
-        .execute(conn)
-        .expect("Error updating wallet balance");
-        
+
+    diesel::update(
+        wallets
+            .filter(user_id.eq(u_id))
+            .filter(currency.eq(currency_enum)),
+    )
+    .set(balance.eq(amt))
+    .execute(conn)
+    .expect("Error updating wallet balance");
+
     println!("Created {} wallet for user {}", curr, u_id);
 }
