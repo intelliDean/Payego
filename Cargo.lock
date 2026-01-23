@@ -2079,6 +2079,7 @@ dependencies = [
  "eyre",
  "fake",
  "http 1.4.0",
+ "once_cell",
  "payego-api",
  "payego-core",
  "payego-primitives",
@@ -2102,6 +2103,7 @@ dependencies = [
  "argon2",
  "async-stripe",
  "axum",
+ "axum-prometheus",
  "chrono",
  "diesel",
  "governor",
@@ -2192,6 +2194,20 @@ dependencies = [
  "utoipa",
  "uuid 1.19.0",
  "validator",
+]
+
+[[package]]
+name = "payego-seeder"
+version = "0.1.0"
+dependencies = [
+ "argon2",
+ "diesel",
+ "dotenvy",
+ "payego-primitives",
+ "rand 0.7.3",
+ "secrecy",
+ "tokio",
+ "uuid 1.19.0",
 ]
 
 [[package]]

@@ -106,7 +106,6 @@ pub struct PaystackTransferResponse {
     pub data: Option<PaystackTransferData>,
 }
 
-
 //===
 
 #[derive(Debug, Deserialize)]

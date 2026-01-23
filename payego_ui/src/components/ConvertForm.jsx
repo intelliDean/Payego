@@ -1,12 +1,12 @@
-import React, {useState, useEffect} from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
-import {Link, useNavigate} from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import ErrorBoundary from "./ErrorBoundary";
 
 const SUPPORTED_CURRENCIES = [
     'USD', 'EUR', 'GBP', 'AUD', 'BRL', 'CAD', 'CHF', 'CNY', 'HKD', 'INR',
     'JPY', 'KRW', 'MXN', 'NGN', 'NOK', 'NZD', 'SEK', 'SGD', 'TRY', 'ZAR',
-].sort((a, b) => a.localeCompare(b, 'en', {sensitivity: 'base'}));
+].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
 
 function ConvertForm() {
     const [amount, setAmount] = useState("");
@@ -78,7 +78,7 @@ function ConvertForm() {
                 }
 
                 const walletsResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/wallets`, {
-                    headers: {Authorization: `Bearer ${token}`},
+                    headers: { Authorization: `Bearer ${token}` },
                 });
 
                 console.log('Fetched wallets:', walletsResponse.data.wallets); // Debug
@@ -137,7 +137,7 @@ function ConvertForm() {
 
         try {
             const token = localStorage.getItem("jwt_token") || sessionStorage.getItem("jwt_token");
-            const response = await axios.post(
+            await axios.post(
                 `${import.meta.env.VITE_API_URL}/api/convert_currency`,
                 {
                     amount: parseFloat(amount),

@@ -4,7 +4,7 @@ pub use payego_primitives::{
     config::security_config::Claims,
     error::ApiError,
     models::{
-        app_state::app_state::AppState, entities::authentication::NewBlacklistedToken,
+        app_state::AppState, entities::authentication::NewBlacklistedToken,
         token_dto::LogoutResponse,
     },
 };

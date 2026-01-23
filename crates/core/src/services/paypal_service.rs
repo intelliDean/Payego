@@ -6,7 +6,7 @@ use payego_primitives::models::providers_dto::PayPalCaptureResponse;
 pub use payego_primitives::{
     error::ApiError,
     models::{
-        app_state::app_state::AppState,
+        app_state::AppState,
         dtos::providers_dto::{CaptureResponse, PayPalOrderResponse, PayPalTokenResponse},
         enum_types::{CurrencyCode, PaymentProvider, PaymentState},
         providers_dto::CaptureRequest,
@@ -180,7 +180,7 @@ impl PayPalService {
             // ── Update balance
             diesel::update(wallets::table)
                 .filter(wallets::id.eq(wallet.id))
-                .set(wallets::balance.eq((wallets::balance + transaction.amount)))
+                .set(wallets::balance.eq(wallets::balance + transaction.amount))
                 .execute(conn)?;
 
             Ok(())
@@ -231,8 +231,8 @@ impl PayPalService {
 
         let capture = body
             .purchase_units
-            .get(0)
-            .and_then(|pu| pu.payments.captures.get(0))
+            .first()
+            .and_then(|pu| pu.payments.captures.first())
             .ok_or_else(|| ApiError::Payment("Missing PayPal capture data".into()))?;
 
         let currency = CurrencyCode::from_str(&capture.amount.currency_code)

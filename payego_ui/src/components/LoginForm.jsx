@@ -58,7 +58,7 @@ function LoginForm({ setAuth }) {
 
         try {
             const response = await axios.post(
-                `${import.meta.env.VITE_API_URL}/api/login`,
+                `${import.meta.env.VITE_API_URL}/api/auth/login`,
                 { email, password },
                 { headers: { 'Content-Type': 'application/json' } }
             );
@@ -81,7 +81,7 @@ function LoginForm({ setAuth }) {
 
         try {
             const response = await axios.post(
-                `${import.meta.env.VITE_API_URL}/api/social_login`,
+                `${import.meta.env.VITE_API_URL}/api/auth/social_login`,
                 { id_token: credentialResponse.credential, provider: 'google' },
                 { headers: { 'Content-Type': 'application/json' } }
             );
@@ -115,7 +115,7 @@ function LoginForm({ setAuth }) {
 
         try {
             await axios.post(
-                `${import.meta.env.VITE_API_URL}/api/forgot_password`,
+                `${import.meta.env.VITE_API_URL}/api/auth/forgot_password`,
                 { email },
                 { headers: { 'Content-Type': 'application/json' } }
             );
@@ -151,7 +151,7 @@ function LoginForm({ setAuth }) {
 
         try {
             await axios.post(
-                `${import.meta.env.VITE_API_URL}/api/reset_password`,
+                `${import.meta.env.VITE_API_URL}/api/auth/reset_password`,
                 { email, token: resetToken, new_password: newPassword },
                 { headers: { 'Content-Type': 'application/json' } }
             );

@@ -1,4 +1,3 @@
-use crate::error::ApiError;
 use eyre::{eyre, Report};
 use secrecy::SecretString;
 use std::env;
@@ -18,7 +17,7 @@ impl PaypalInfo {
 
             paypal_secret: SecretString::new(
                 env::var("PAYPAL_SECRET")
-                    .map_err(|_| ApiError::Token("PAYPAL_SECRET must be set".into()))?
+                    .map_err(|_| eyre!("PAYPAL_SECRET must be set"))?
                     .into(),
             ),
             paypal_api_url: env::var("PAYPAL_API_URL")

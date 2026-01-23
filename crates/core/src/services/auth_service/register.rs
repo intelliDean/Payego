@@ -6,7 +6,7 @@ pub use payego_primitives::{
     config::security_config::SecurityConfig,
     error::{ApiError, AuthError},
     models::{
-        app_state::app_state::AppState,
+        app_state::AppState,
         dtos::register_dto::{RegisterRequest, RegisterResponse},
         user::NewUser,
         user::User,

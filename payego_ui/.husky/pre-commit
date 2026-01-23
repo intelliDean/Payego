@@ -1,0 +1,22 @@
+#!/bin/sh
+
+
+# Color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
+echo "${GREEN}🦀 Checking Rust formatting...${NC}"
+if ! cargo fmt -- --check; then
+  echo "${RED}❌ Rust formatting failed. Run 'cargo fmt' to fix.${NC}"
+  exit 1
+fi
+
+echo "${GREEN}💅 Checking Frontend Lint...${NC}"
+cd payego_ui
+if ! npm run lint; then
+  echo "${RED}❌ Frontend linting failed. Run 'npm run lint' in payego_ui to fix.${NC}"
+  exit 1
+fi
+
+echo "${GREEN}✅ All checks passed!${NC}"

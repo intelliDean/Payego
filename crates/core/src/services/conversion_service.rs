@@ -3,7 +3,7 @@ pub use payego_primitives::{
     config::security_config::Claims,
     error::ApiError,
     models::{
-        app_state::app_state::AppState,
+        app_state::AppState,
         conversion_dto::{ConvertRequest, ExchangeRateResponse},
         dtos::conversion_dto::ConvertResponse,
         enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent},

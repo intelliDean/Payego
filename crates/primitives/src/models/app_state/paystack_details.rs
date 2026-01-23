@@ -1,4 +1,4 @@
-use crate::error::ApiError;
+use eyre::eyre;
 use eyre::Report;
 use secrecy::SecretString;
 use std::env;
@@ -15,7 +15,7 @@ impl PaystackInfo {
         Ok(Self {
             paystack_secret_key: SecretString::new(
                 env::var("PAYSTACK_SECRET_KEY")
-                    .map_err(|_| ApiError::Token("PAYSTACK_SECRET_KEY must be set".into()))?
+                    .map_err(|_| eyre!("PAYSTACK_SECRET_KEY must be set"))?
                     .into(),
             ),
             paystack_api_url: env::var("PAYSTACK_API_URL")
@@ -23,7 +23,7 @@ impl PaystackInfo {
 
             paystack_webhook_secret: SecretString::new(
                 env::var("PAYSTACK_WEBHOOK_SECRET")
-                    .map_err(|_| ApiError::Token("PAYSTACK_WEBHOOK_SECRET must be set".into()))?
+                    .map_err(|_| eyre!("PAYSTACK_WEBHOOK_SECRET must be set"))?
                     .into(),
             ),
         })

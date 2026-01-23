@@ -3,7 +3,7 @@ pub use payego_primitives::{
     config::security_config::Claims,
     error::{ApiError, AuthError},
     models::{
-        app_state::app_state::AppState,
+        app_state::AppState,
         entities::enum_types::PaymentState,
         enum_types::{CurrencyCode, TransactionIntent},
         providers_dto::StripeWebhookContext,
@@ -91,7 +91,7 @@ impl TransactionService {
 
     pub async fn recent_transactions(
         state: &AppState,
-        user_id: Uuid,
+        uid: Uuid,
     ) -> Result<TransactionsResponse, ApiError> {
         use payego_primitives::schema::transactions::dsl::*;
 
@@ -101,7 +101,7 @@ impl TransactionService {
         })?;
 
         let rows = transactions
-            .filter(user_id.eq(user_id))
+            .filter(user_id.eq(uid))
             .order(created_at.desc())
             .limit(RECENT_TX_LIMIT)
             .select((id, intent, amount, currency, created_at, txn_state))

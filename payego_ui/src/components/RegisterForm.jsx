@@ -99,7 +99,7 @@ function RegisterForm({ setAuth }) {
 
         try {
             const response = await axios.post(
-                `${import.meta.env.VITE_API_URL}/api/register`,
+                `${import.meta.env.VITE_API_URL}/api/auth/register`,
                 {
                     email,
                     password,

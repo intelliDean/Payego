@@ -3,12 +3,12 @@ use axum_test::TestServer;
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
 use diesel::PgConnection;
-use payego_primitives::models::app_state::app_state::AppState;
 use payego_primitives::models::app_state::app_config::AppConfig;
 use payego_primitives::models::app_state::jwt_details::JWTInfo;
-use payego_primitives::models::app_state::stripe_details::StripeInfo;
-use payego_primitives::models::app_state::paystack_details::PaystackInfo;
 use payego_primitives::models::app_state::paypal_details::PaypalInfo;
+use payego_primitives::models::app_state::paystack_details::PaystackInfo;
+use payego_primitives::models::app_state::stripe_details::StripeInfo;
+use payego_primitives::models::app_state::AppState;
 use secrecy::SecretString;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -17,6 +17,7 @@ pub mod fixtures;
 pub mod helpers;
 
 /// Create a test database pool
+#[allow(dead_code)]
 pub fn create_test_db_pool() -> Pool<ConnectionManager<PgConnection>> {
     let database_url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
         "postgresql://postgres:%40Tiptop2059!@localhost:5432/payego_test".to_string()
@@ -37,9 +38,10 @@ pub fn create_test_db_pool() -> Pool<ConnectionManager<PgConnection>> {
 }
 
 /// Create a test AppState
+#[allow(dead_code)]
 pub fn create_test_app_state() -> Arc<AppState> {
     static INIT: std::sync::Once = std::sync::Once::new();
-    
+
     // Construct configuration objects
     let jwt_config = JWTInfo {
         jwt_secret: SecretString::from("test_secret_key_minimum_32_characters_long_for_testing"),
@@ -63,7 +65,7 @@ pub fn create_test_app_state() -> Arc<AppState> {
     let paypal_config = PaypalInfo {
         paypal_client_id: "test_paypal_client_id".to_string(),
         paypal_secret: SecretString::from("test_paypal_secret"),
-         paypal_api_url: "http://localhost:8080/mock/paypal".to_string(),
+        paypal_api_url: "http://localhost:8080/mock/paypal".to_string(),
     };
 
     let app_config = AppConfig {
@@ -90,13 +92,21 @@ pub fn create_test_app_state() -> Arc<AppState> {
             .db
             .get()
             .expect("Failed to get DB connection for migrations");
-        
+
         // Force clean database
         use diesel::sql_query;
-        let _ = sql_query("DROP SCHEMA public CASCADE").execute(&mut conn).expect("Failed to drop schema");
-        let _ = sql_query("CREATE SCHEMA public").execute(&mut conn).expect("Failed to create schema");
-        let _ = sql_query("GRANT ALL ON SCHEMA public TO postgres").execute(&mut conn).expect("Failed to grant postgres");
-        let _ = sql_query("GRANT ALL ON SCHEMA public TO public").execute(&mut conn).expect("Failed to grant public");
+        let _ = sql_query("DROP SCHEMA public CASCADE")
+            .execute(&mut conn)
+            .expect("Failed to drop schema");
+        let _ = sql_query("CREATE SCHEMA public")
+            .execute(&mut conn)
+            .expect("Failed to create schema");
+        let _ = sql_query("GRANT ALL ON SCHEMA public TO postgres")
+            .execute(&mut conn)
+            .expect("Failed to grant postgres");
+        let _ = sql_query("GRANT ALL ON SCHEMA public TO public")
+            .execute(&mut conn)
+            .expect("Failed to grant public");
 
         run_test_migrations(&mut conn);
         cleanup_test_db(&mut conn);
@@ -106,11 +116,19 @@ pub fn create_test_app_state() -> Arc<AppState> {
 }
 
 /// Create a test application Router
+#[allow(dead_code)]
 pub fn create_test_app(state: Arc<AppState>) -> Router {
-    payego_api::app::create_router(state)
+    use axum_prometheus::{metrics_exporter_prometheus::PrometheusHandle, PrometheusMetricLayer};
+    use once_cell::sync::Lazy;
+
+    static METRICS: Lazy<(PrometheusMetricLayer<'static>, PrometheusHandle)> =
+        Lazy::new(PrometheusMetricLayer::pair);
+
+    payego_api::app::create_router(state, METRICS.0.clone(), METRICS.1.clone())
 }
 
 /// Helper to create a test user and get its token
+#[allow(dead_code)]
 pub async fn create_test_user(server: &TestServer, email: &str) -> (String, String) {
     use serde_json::json;
 

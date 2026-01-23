@@ -49,6 +49,7 @@ axum-prometheus = "0.10.0"
 strum = { version = "0.26", features = ["derive"] }
 diesel-derive-enum = { version = "2.1", features = ["postgres"] }
 thiserror = "2.0.17"
+once_cell = "1.21.3"
 
 # Workspace local dependencies
 payego-primitives = { path = "crates/primitives" }

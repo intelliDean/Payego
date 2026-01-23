@@ -5,7 +5,7 @@ use common::{create_test_app, create_test_app_state};
 use diesel::prelude::*;
 use http::StatusCode;
 use payego_primitives::models::entities::enum_types::CurrencyCode;
-use payego_primitives::models::transaction::NewTransaction;
+
 use serde_json::json;
 use serial_test::serial;
 use std::sync::Arc;
@@ -17,7 +17,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 #[serial]
 async fn test_top_up_idempotency() {
     let state = create_test_app_state();
-    let reference = Uuid::new_v4();
+    let _reference = Uuid::new_v4();
 
     // Setup WireMock for PayPal
     let mock_server = MockServer::start().await;
@@ -54,7 +54,8 @@ async fn test_top_up_idempotency() {
     let mut base_state = (*state).clone();
     base_state.config.paypal_details.paypal_api_url = paypal_url.clone();
     base_state.config.paypal_details.paypal_client_id = "test_client".to_string();
-    base_state.config.paypal_details.paypal_secret = secrecy::SecretString::new("test_secret".to_string().into());
+    base_state.config.paypal_details.paypal_secret =
+        secrecy::SecretString::new("test_secret".to_string().into());
     let state = Arc::new(base_state);
 
     // Run migrations and cleanup
@@ -68,7 +69,7 @@ async fn test_top_up_idempotency() {
     let server = TestServer::new(app).unwrap();
     let (auth_token, _) = common::create_test_user(&server, "test_topup@example.com").await;
 
-    let reference = Uuid::new_v4();
+    let _reference = Uuid::new_v4();
     let top_up_data = json!({
         "amount": 100.0,
         "provider": "Paypal",
@@ -103,7 +104,9 @@ async fn test_top_up_idempotency() {
     // Verify only one transaction exists in DB
     let mut conn = state.db.get().expect("Failed to get DB connection");
     let count = payego_primitives::schema::transactions::table
-        .filter(payego_primitives::schema::transactions::reference.eq(Uuid::parse_str(tx_id1).unwrap()))
+        .filter(
+            payego_primitives::schema::transactions::reference.eq(Uuid::parse_str(tx_id1).unwrap()),
+        )
         .count()
         .get_result::<i64>(&mut conn)
         .unwrap();

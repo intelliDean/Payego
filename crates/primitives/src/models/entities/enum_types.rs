@@ -1,16 +1,12 @@
 use crate::error::ApiError;
-use chrono::Utc;
 use diesel_derive_enum::DbEnum;
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use std::str::FromStr;
 // Kept for mixed usage if needed, but aiming for separation
 
 //cargo run -- src/.../entities/your_file.rs
 
-use crate::models::bank_dtos::PaystackBank;
 use strum::{Display, EnumString};
-use tracing::log::info;
 use utoipa::ToSchema;
 
 #[derive(

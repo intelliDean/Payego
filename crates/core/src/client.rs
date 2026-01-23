@@ -92,7 +92,7 @@ impl PaystackClient {
         let resp = self
             .http
             .get(url)
-            .bearer_auth(&self.secret_key.expose_secret())
+            .bearer_auth(self.secret_key.expose_secret())
             .header("User-Agent", "Payego/1.0")
             .send()
             .await

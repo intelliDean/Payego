@@ -1,4 +1,3 @@
-use crate::error::ApiError;
 use eyre::Report;
 use secrecy::SecretString;
 use std::env;
@@ -13,11 +12,12 @@ pub struct JWTInfo {
 
 impl JWTInfo {
     pub fn new() -> Result<JWTInfo, Report> {
-        let jwt_secret =
-            env::var("JWT_SECRET").expect("JWT_SECRET must be set in environment variables");
+        use eyre::eyre;
+        let jwt_secret = env::var("JWT_SECRET")
+            .map_err(|_| eyre!("JWT_SECRET must be set in environment variables"))?;
 
         if jwt_secret.len() < 32 {
-            panic!("JWT_SECRET must be at least 32 characters long");
+            return Err(eyre!("JWT_SECRET must be at least 32 characters long"));
         }
 
         Ok(Self {
@@ -25,17 +25,13 @@ impl JWTInfo {
             jwt_expiration_hours: env::var("JWT_EXPIRATION_HOURS")
                 .unwrap_or_else(|_| "2".into())
                 .parse()
-                .map_err(|e| {
-                    ApiError::Token(format!("Invalid JWT expiration configuration: {}", e))
-                })?,
+                .map_err(|e| eyre!("Invalid JWT expiration configuration: {}", e))?,
 
-            jwt_issuer: env::var("ISSUER").map_err(|e| {
-                ApiError::Token(format!("Issuer environment variable not set: {}", e))
-            })?,
+            jwt_issuer: env::var("ISSUER")
+                .map_err(|_| eyre!("ISSUER environment variable not set"))?,
 
-            jwt_audience: env::var("AUDIENCE").map_err(|e| {
-                ApiError::Token(format!("Audience environment variable not set: {}", e))
-            })?,
+            jwt_audience: env::var("AUDIENCE")
+                .map_err(|_| eyre!("AUDIENCE environment variable not set"))?,
         })
     }
 }

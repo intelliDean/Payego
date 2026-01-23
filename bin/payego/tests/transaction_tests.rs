@@ -1,7 +1,9 @@
 mod common;
 
+use payego_primitives::models::entities::enum_types::{
+    CurrencyCode, PaymentProvider, PaymentState, TransactionIntent,
+};
 use payego_primitives::models::entities::transaction::NewTransaction;
-use payego_primitives::models::entities::enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent};
 use serde_json::json;
 use uuid::Uuid;
 
@@ -29,8 +31,8 @@ fn test_new_transaction_creation() {
     assert_eq!(tx.user_id, user_id);
     assert_eq!(tx.counterparty_id, recipient_id);
     assert_eq!(tx.amount, 1000);
-    assert_eq!(matches!(tx.intent, TransactionIntent::Transfer), true);
-    assert_eq!(matches!(tx.txn_state, PaymentState::Completed), true);
+    assert!(matches!(tx.intent, TransactionIntent::Transfer));
+    assert!(matches!(tx.txn_state, PaymentState::Completed));
     assert_eq!(tx.reference, reference);
 }
 
@@ -70,4 +72,3 @@ fn test_transaction_reference_uniqueness() {
 
     assert_ne!(tx1.reference, tx2.reference);
 }
-
