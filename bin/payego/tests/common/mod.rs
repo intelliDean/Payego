@@ -19,19 +19,18 @@ pub mod helpers;
 /// Create a test database pool
 #[allow(dead_code)]
 pub fn create_test_db_pool() -> Pool<ConnectionManager<PgConnection>> {
-    let database_url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
-        "postgresql://postgres:%40Tiptop2059!@localhost:5432/payego_test".to_string()
-    });
+    let database_url = std::env::var("TEST_DATABASE_URL")
+        .or_else(|_| std::env::var("DATABASE_URL"))
+        .unwrap_or_else(|_| {
+            "postgresql://postgres:%40Tiptop2059!@localhost:5432/payego_test".to_string()
+        });
 
-    let manager = ConnectionManager::<PgConnection>::new(database_url);
-    // Use build_unchecked if we want to allow tests to run without a live DB,
-    // but here we just use builder().build() and handle it better if possible.
-    // For now, let's just use build() but don't panic if it's just a unit test.
+    let manager = ConnectionManager::<PgConnection>::new(&database_url);
     Pool::builder()
         .max_size(5)
         .build(manager)
         .unwrap_or_else(|e| {
-            eprintln!("Warning: Failed to create test database pool: {}. Tests requiring a database will fail.", e);
+            eprintln!("Warning: Failed to create test database pool for {}: {}. Tests requiring a database will fail.", database_url, e);
             // Return a pool anyway, it will only fail when .get() is called
             Pool::builder().build_unchecked(ConnectionManager::<PgConnection>::new("postgres://invalid"))
         })

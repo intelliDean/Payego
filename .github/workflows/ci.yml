@@ -72,6 +72,7 @@ jobs:
       - name: Run Tests
         env:
           DATABASE_URL: postgres://postgres:password@localhost:5432/payego
+          TEST_DATABASE_URL: postgres://postgres:password@localhost:5432/payego
           APP_ENV: test
           JWT_SECRET: super_secret_testing_key_must_be_long_enough
           RUST_LOG: info
