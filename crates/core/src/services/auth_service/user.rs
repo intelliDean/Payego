@@ -3,7 +3,7 @@ pub use payego_primitives::{
     config::security_config::Claims,
     error::{ApiError, AuthError},
     models::{
-        app_state::app_state::AppState, enum_types::CurrencyCode, token_dto::CurrentUserResponse,
+        app_state::AppState, enum_types::CurrencyCode, token_dto::CurrentUserResponse,
         withdrawal_dto::WalletSummaryDto,
     },
     schema::{users, wallets},

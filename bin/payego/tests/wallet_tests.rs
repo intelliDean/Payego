@@ -52,7 +52,7 @@ fn test_transfer_request_validation() {
         "idempotency_key": "idemp_4"
     }))
     .unwrap();
-    // Assuming validation on account_number length exists in the model, 
+    // Assuming validation on account_number length exists in the model,
     // but at least we fix the missing field error.
     // Actually, I'll just check if it fails validation.
     // If not, I'll just keep it to fix the deserialization error first.

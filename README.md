@@ -42,6 +42,27 @@ Built with a philosophy of **"Safety First"**, Payego leverages Rust's memory sa
 
 ### Backend (`/src`)
 The backend follows a **Clean Architecture** pattern:
+
+```mermaid
+graph TD
+    Client[Client / Frontend] -->|HTTP / JSON| API[Payego API Crate]
+    
+    subgraph "Payego Backend"
+        API -->|Calls| Core[Payego Core Crate]
+        Core -->|Uses| Primitives[Payego Primitives Crate]
+        API -->|Uses| Primitives
+        
+        Core -->|Business Logic| Services[Services]
+        Services -->|Database Access| Models[Models / Diesel]
+    end
+    
+    Services -->|External API| Stripe[Stripe]
+    Services -->|External API| PayPal[PayPal]
+    Services -->|External API| Paystack[Paystack]
+    
+    Models -->|SQL| DB[(PostgreSQL)]
+```
+
 -   **Handlers** (`src/handlers`): Thin layer responsible only for HTTP request parsing and response formatting.
 -   **Services** (`src/services`): Contain all business logic (e.g., `TransferService`, `PaymentService`, `AuthService`). This layer is unit-testable.
 -   **Models** (`src/models`):
@@ -144,13 +165,19 @@ npm test
 
 ## 🐳 Docker Deployment
 
-To spin up the entire stack (Postgres + Backend + Frontend is WIP) or just backend dependencies:
+The simplest way to run Payego in production or development is using Docker Compose.
 
-```bash
-docker-compose up -d
-```
+1.  **Configure environment**: Copy `.env.example` to `.env` and fill in your secrets.
+2.  **Launch stack**:
+    ```bash
+    docker-compose up -d --build
+    ```
 
-This creates a Postgres container pre-configured for the application.
+This command builds the optimized production image, starts the application, initializes the PostgreSQL database, and automatically runs all migrations.
+
+-   **Backend**: `http://localhost:8081` (Internal 8080)
+-   **Database**: `localhost:5434` (Internal 5432)
+-   **Metrics**: `http://localhost:8081/api/metrics`
 
 ---
 

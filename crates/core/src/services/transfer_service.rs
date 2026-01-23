@@ -6,7 +6,7 @@ pub use payego_primitives::{
     config::security_config::Claims,
     error::ApiError,
     models::{
-        app_state::app_state::AppState,
+        app_state::AppState,
         enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent},
         transaction::{NewTransaction, Transaction},
         transfer_dto::{TransferRequest, WalletTransferRequest},
@@ -17,7 +17,7 @@ pub use payego_primitives::{
 };
 use reqwest::{Client, Url};
 use secrecy::ExposeSecret;
-use serde_json::{json, Value};
+use serde_json::json;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -169,7 +169,7 @@ impl TransferService {
 
         conn.transaction::<_, ApiError, _>(|conn| {
             // ── 1. Idempotency (hard guarantee)
-            if let Some(existing) = transactions::table
+            if let Some(_existing) = transactions::table
                 .filter(transactions::user_id.eq(user_id))
                 .filter(transactions::idempotency_key.eq(&req.idempotency_key))
                 .first::<Transaction>(conn)
@@ -326,25 +326,5 @@ impl TransferService {
             .transfer_code;
 
         Ok(transfer_code)
-    }
-
-    async fn get_exchange_rate(
-        base_url: &str,
-        from_currency: &str,
-        to_currency: &str,
-    ) -> Result<f64, ApiError> {
-        let client = Client::new();
-        let resp = client
-            .get(format!("{}/{}", base_url, from_currency))
-            .send()
-            .await
-            .map_err(|e: reqwest::Error| ApiError::Payment(e.to_string()))?;
-        let body = resp
-            .json::<Value>()
-            .await
-            .map_err(|e: reqwest::Error| ApiError::Payment(e.to_string()))?;
-        body["rates"][to_currency]
-            .as_f64()
-            .ok_or_else(|| ApiError::Payment("Invalid rate".to_string()))
     }
 }

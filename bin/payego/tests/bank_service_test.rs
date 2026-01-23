@@ -1,24 +1,17 @@
 use diesel::prelude::*;
-use diesel::r2d2::ConnectionManager;
-use diesel::{r2d2, Connection, PgConnection};
-use dotenvy::dotenv;
 use payego_core::services::bank_account_service::BankAccountService;
-use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::bank_dtos::BankRequest;
 use payego_primitives::models::bank::BankAccount;
+use payego_primitives::models::bank_dtos::BankRequest;
+use payego_primitives::models::entities::enum_types::CurrencyCode;
 use payego_primitives::schema::{bank_accounts, banks, users};
 use serde_json::json;
 use serial_test::serial;
-use std::env;
 use std::sync::Arc;
-use payego_primitives::models::entities::enum_types::CurrencyCode;
 use uuid::Uuid;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 mod common;
-
-
 
 #[tokio::test]
 #[serial]
@@ -56,8 +49,6 @@ async fn test_add_bank_account_success() {
         })))
         .mount(&mock_server)
         .await;
-
-
 
     // 3. Setup AppState
     let mut base_state = (*common::create_test_app_state()).clone();

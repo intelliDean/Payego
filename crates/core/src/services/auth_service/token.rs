@@ -5,7 +5,7 @@ pub use payego_primitives::{
     config::security_config::SecurityConfig,
     error::{ApiError, AuthError},
     models::{
-        app_state::app_state::AppState,
+        app_state::AppState,
         authentication::{NewRefreshToken, RefreshToken},
         dtos::login_dto::LoginResponse,
         token_dto::RefreshRequest,
@@ -26,11 +26,7 @@ impl TokenService {
     ) -> Result<String, ApiError> {
         use rand::rngs::OsRng;
 
-        let raw_token: String = OsRng
-            .sample_iter(&Alphanumeric)
-            .take(64)
-            .map(char::from)
-            .collect();
+        let raw_token: String = OsRng.sample_iter(&Alphanumeric).take(64).collect();
 
         let hashed_token = Self::hash_token(&raw_token);
         let expiry = Utc::now() + Duration::days(7);

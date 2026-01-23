@@ -1,6 +1,6 @@
 use crate::{
     error::{ApiError, AuthError},
-    models::app_state::app_state::AppState,
+    models::AppState,
 };
 use axum::http::Request;
 use axum::middleware::Next;
@@ -8,12 +8,10 @@ use axum::response::{IntoResponse, Response};
 use axum::{extract::State, http::StatusCode};
 use chrono::{Duration, Utc};
 use diesel::prelude::*;
-use eyre::Report;
 use http::HeaderMap;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
-use std::env;
 use std::sync::Arc;
 use tracing::error;
 use uuid::Uuid;
@@ -149,9 +147,7 @@ impl SecurityConfig {
                 .into_response()
         })?;
 
-        if Self::is_jti_blacklisted(&mut conn, &claims.jti)
-            .map_err(|e| ApiError::from(e).into_response())?
-        {
+        if Self::is_jti_blacklisted(&mut conn, &claims.jti).map_err(|e| e.into_response())? {
             return Err(ApiError::from(AuthError::BlacklistedToken).into_response());
         }
 

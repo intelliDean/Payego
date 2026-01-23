@@ -1,11 +1,9 @@
 use diesel::prelude::*;
-use diesel::{Connection, PgConnection};
 use payego_core::services::conversion_service::ConversionService;
-use payego_primitives::models::entities::enum_types::CurrencyCode;
-use payego_primitives::models::app_state::app_state::AppState;
 use payego_primitives::models::conversion_dto::ConvertRequest;
+use payego_primitives::models::entities::enum_types::CurrencyCode;
 use payego_primitives::models::entities::wallet::Wallet;
-use payego_primitives::schema::{transactions, users, wallets};
+use payego_primitives::schema::{users, wallets};
 use serde_json::json;
 use serial_test::serial;
 use std::sync::Arc;

@@ -35,7 +35,7 @@ function PayPalPayment({ paymentId, transactionId, currency, amount }) {
                         console.log('Creating PayPal order with paymentId:', paymentId);
                         return Promise.resolve(paymentId);
                     }}
-                    onApprove={async (data, actions) => {
+                    onApprove={async (data) => {
                         console.log('PayPal onApprove data:', data);
                         setLoading(true);
                         setError(null);

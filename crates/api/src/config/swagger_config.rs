@@ -11,7 +11,6 @@ use crate::handlers::{
     user_transaction::__path_get_user_transaction, user_wallets::__path_get_user_wallets,
     withdraw::__path_withdraw,
 };
-use serde_json::json;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::openapi::SecurityRequirement;
 use utoipa::{Modify, OpenApi, ToSchema};

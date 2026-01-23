@@ -1,4 +1,4 @@
-use crate::client::{CreateTransferRecipientRequest, PaystackClient};
+use crate::client::PaystackClient;
 use diesel::prelude::*;
 use tracing::{error, warn};
 use uuid::Uuid;
@@ -8,7 +8,7 @@ use payego_primitives::models::enum_types::CurrencyCode;
 pub use payego_primitives::{
     config::security_config::Claims,
     error::{ApiError, AuthError},
-    models::{app_state::app_state::AppState, bank::BankAccount},
+    models::{app_state::AppState, bank::BankAccount},
     models::{
         bank::NewBankAccount,
         dtos::bank_dtos::{
@@ -103,7 +103,7 @@ impl BankAccountService {
         )?;
 
         let payload = PaystackClient::create_recipient(
-            &*account_name,
+            &account_name,
             &req.account_number,
             &req.bank_code,
             CurrencyCode::NGN,
@@ -118,9 +118,9 @@ impl BankAccountService {
             user_id: user_id_val,
             bank_name: Some(&req.bank_name),
             account_number: &req.account_number,
-            account_name: Some(&*account_name),
-            bank_code: &*req.bank_code,
-            provider_recipient_id: Some(&*recipient_code),
+            account_name: Some(&account_name),
+            bank_code: &req.bank_code,
+            provider_recipient_id: Some(&recipient_code),
             is_verified: true, // rename later
         };
 

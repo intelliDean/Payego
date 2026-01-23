@@ -1,31 +1,15 @@
 use diesel::prelude::*;
-use diesel::r2d2::ConnectionManager;
-use diesel::{r2d2, Connection, PgConnection};
-use dotenvy::dotenv;
 use payego_core::services::payment_service::PaymentService;
-use payego_primitives::models::app_state::app_state::AppState;
-use payego_primitives::models::top_up_dto::{TopUpRequest, TopUpResponse};
-use payego_primitives::models::entities::wallet::Wallet;
+use payego_primitives::models::top_up_dto::TopUpRequest;
 use payego_primitives::schema::{transactions, users};
 use serde_json::json;
 use serial_test::serial;
-use std::env;
 use std::sync::Arc;
 use uuid::Uuid;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 mod common;
-
-fn get_test_pool() -> r2d2::Pool<ConnectionManager<PgConnection>> {
-    dotenv().ok();
-    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let manager = ConnectionManager::<PgConnection>::new(db_url);
-    r2d2::Pool::builder()
-        .max_size(5)
-        .build(manager)
-        .expect("Failed to create pool")
-}
 
 #[tokio::test]
 #[serial]
@@ -82,8 +66,8 @@ async fn test_top_up_paypal_init_success() {
         .execute(conn)
         .unwrap();
 
-    use secrecy::SecretString;
     use payego_primitives::models::entities::enum_types::{CurrencyCode, PaymentProvider};
+    use std::env;
 
     // 4. Call Service
     let req = TopUpRequest {
@@ -120,8 +104,14 @@ async fn test_top_up_paypal_init_success() {
         .unwrap();
 
     assert_eq!(tx.amount, 100000); // 1000 * 100
-    assert_eq!(tx.provider, Some(payego_primitives::models::entities::enum_types::PaymentProvider::Paypal));
-    assert_eq!(tx.txn_state, payego_primitives::models::entities::enum_types::PaymentState::Pending);
+    assert_eq!(
+        tx.provider,
+        Some(payego_primitives::models::entities::enum_types::PaymentProvider::Paypal)
+    );
+    assert_eq!(
+        tx.txn_state,
+        payego_primitives::models::entities::enum_types::PaymentState::Pending
+    );
 
     // 6. Cleanup
     diesel::delete(transactions::table.filter(transactions::user_id.eq(user_id)))

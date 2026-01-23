@@ -22,9 +22,15 @@ use crate::handlers::{
     user_wallets::get_user_wallets,
     withdraw::withdraw,
 };
-use axum::{middleware, response::IntoResponse, routing::post, Router};
+use axum::{
+    middleware,
+    response::IntoResponse,
+    routing::{get, post},
+    Router,
+};
+use axum_prometheus::{metrics_exporter_prometheus::PrometheusHandle, PrometheusMetricLayer};
 // use payego_primitives::config::security_config::auth_middleware;
-use payego_primitives::models::app_state::app_state::AppState;
+use payego_primitives::models::app_state::AppState;
 use std::sync::Arc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -32,9 +38,8 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::handlers::paypal_order::get_paypal_order;
 use crate::handlers::refresh_token::refresh_token;
 use payego_primitives::config::security_config::SecurityConfig;
-use tower::{ServiceBuilder, ServiceExt};
+use tower::ServiceBuilder;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
-use tower_governor::governor::GovernorConfig;
 use tower_http::{
     request_id::{MakeRequestUuid, SetRequestIdLayer},
     trace::TraceLayer,
@@ -47,8 +52,11 @@ const BURST_SIZE: u32 = 10;
 const _: () = assert!(REQUESTS_PER_SECOND > 0);
 const _: () = assert!(BURST_SIZE > 0);
 
-
-pub fn create_router(state: Arc<AppState>) -> Router {
+pub fn create_router(
+    state: Arc<AppState>,
+    metric_layer: PrometheusMetricLayer<'static>,
+    metric_handle: PrometheusHandle,
+) -> Router {
     // rate limiting configuration
 
     let governor_conf = Arc::new(
@@ -60,7 +68,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     );
 
     // public routes (no authentication)
-    let public_router = create_public_routers();
+    let public_router = create_public_routers(metric_handle);
 
     // protected routes (require JWT authentication)
     let protected_router = create_secured_routers(&state);
@@ -73,7 +81,14 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .layer(
             ServiceBuilder::new()
                 .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
-                .layer(TraceLayer::new_for_http()),
+                .layer(TraceLayer::new_for_http())
+                .layer(metric_layer)
+                .layer(
+                    tower_http::cors::CorsLayer::new()
+                        .allow_origin(tower_http::cors::Any)
+                        .allow_methods(tower_http::cors::Any)
+                        .allow_headers(tower_http::cors::Any),
+                ),
         );
 
     // disable rate limiting in test environment to avoid "Unable To Extract Key!" errors
@@ -85,7 +100,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
 }
 
 fn create_secured_routers(state: &Arc<AppState>) -> Router<Arc<AppState>> {
-    let protected_router = Router::new()
+    Router::new()
         .route(
             "/api/user/current",
             axum::routing::get(current_user_details),
@@ -127,12 +142,15 @@ fn create_secured_routers(state: &Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(middleware::from_fn_with_state(
             state.clone(),
             SecurityConfig::auth_middleware,
-        ));
-    protected_router
+        ))
 }
 
-fn create_public_routers() -> Router<Arc<AppState>> {
-    let public_router = Router::new()
+fn create_public_routers(metric_handle: PrometheusHandle) -> Router<Arc<AppState>> {
+    Router::new()
+        .route(
+            "/api/metrics",
+            get(move || std::future::ready(metric_handle.render())),
+        )
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/api/auth/register", post(register))
         .route("/api/auth/login", axum::routing::post(login))
@@ -142,8 +160,7 @@ fn create_public_routers() -> Router<Arc<AppState>> {
         // .route("/api/bank/init", axum::routing::post(initialize_banks))
         .route("/api/banks/all", axum::routing::get(all_banks))
         .route("/api/bank/resolve", axum::routing::get(resolve_account))
-        .route("/api/health", axum::routing::get(health_check));
-    public_router
+        .route("/api/health", axum::routing::get(health_check))
 }
 
 async fn https_redirect_middleware(

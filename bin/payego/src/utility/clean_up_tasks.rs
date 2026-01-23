@@ -1,7 +1,7 @@
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel::RunQueryDsl;
-use payego_primitives::models::app_state::app_state::AppState;
+use payego_primitives::models::app_state::AppState;
 use payego_primitives::schema::{blacklisted_tokens, refresh_tokens};
 use std::sync::Arc;
 use std::time::Duration;

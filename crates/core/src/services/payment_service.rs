@@ -1,23 +1,21 @@
 use diesel::prelude::*;
 use http::header::{CONTENT_TYPE, USER_AGENT};
-use payego_primitives::models::providers_dto::{PayPalOrderResp, PayPalOrderResponse};
+use payego_primitives::models::providers_dto::PayPalOrderResp;
 pub use payego_primitives::{
     config::security_config::Claims,
     error::ApiError,
     models::{
-        app_state::app_state::AppState,
+        app_state::AppState,
         enum_types::{PaymentProvider, PaymentState, TransactionIntent},
         top_up_dto::{TopUpRequest, TopUpResponse},
         transaction::{NewTransaction, Transaction},
     },
     schema::transactions,
 };
-use reqwest::{Client, Url};
+use reqwest::Url;
 use secrecy::ExposeSecret;
-use serde::Deserialize;
 use serde_json::json;
 use std::str::FromStr;
-use std::time::Duration;
 use stripe::{
     CheckoutSession, CheckoutSessionMode, Client as StripeClient, CreateCheckoutSession,
     CreateCheckoutSessionLineItems, CreateCheckoutSessionLineItemsPriceData,
@@ -106,7 +104,11 @@ impl PaymentService {
     ) -> Result<(Option<String>, Option<String>), ApiError> {
         let client = StripeClient::from_url(
             state.config.stripe_details.stripe_api_url.as_str(),
-            state.config.stripe_details.stripe_secret_key.expose_secret(),
+            state
+                .config
+                .stripe_details
+                .stripe_secret_key
+                .expose_secret(),
         );
 
         let currency = Currency::from_str(&req.currency.to_string().to_lowercase())

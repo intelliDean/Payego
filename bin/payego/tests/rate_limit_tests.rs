@@ -3,7 +3,6 @@ mod common;
 use axum_test::TestServer;
 use common::{create_test_app, create_test_app_state};
 use http::StatusCode;
-use serde_json::json;
 
 #[tokio::test]
 async fn test_rate_limiting() {

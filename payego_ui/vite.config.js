@@ -11,6 +11,12 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/setupTests.js',
     css: true,
+    exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**', '**/cypress/**', '**/.{idea,git,cache,output,temp}/**'],
+    server: {
+      deps: {
+        inline: [/@exodus\/bytes/, /html-encoding-sniffer/],
+      },
+    },
   },
 });
 

@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 pub use payego_primitives::{
     error::ApiError,
-    models::{app_state::app_state::AppState, providers_dto::StripeWebhookContext},
+    models::{app_state::AppState, providers_dto::StripeWebhookContext},
 };
 
 pub struct StripeService;
@@ -23,7 +23,7 @@ impl StripeService {
             .and_then(|v| v.to_str().ok())
             .ok_or(ApiError::Payment("Missing Stripe signature".into()))?;
 
-        let payload_str = std::str::from_utf8(&body)
+        let payload_str = std::str::from_utf8(body)
             .map_err(|_| ApiError::Payment("Invalid UTF-8 Stripe payload".into()))?;
 
         Webhook::construct_event(
@@ -43,7 +43,7 @@ impl StripeService {
         headers: HeaderMap,
         body: &Bytes,
     ) -> Result<Option<StripeWebhookContext>, ApiError> {
-        let event = Self::construct_event(&state, headers, &body)?;
+        let event = Self::construct_event(state, headers, body)?;
 
         match event.type_ {
             EventType::CheckoutSessionCompleted => {

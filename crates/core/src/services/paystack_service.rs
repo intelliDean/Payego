@@ -5,7 +5,7 @@ use http::HeaderMap;
 pub use payego_primitives::{
     error::ApiError,
     models::{
-        app_state::app_state::AppState,
+        app_state::AppState,
         dtos::providers_dto::PaystackWebhook,
         entities::enum_types::{PaymentState, TransactionIntent},
         transaction::Transaction,
@@ -36,11 +36,11 @@ impl PaystackService {
                 .paystack_details
                 .paystack_webhook_secret
                 .expose_secret(),
-            &body,
+            body,
             signature,
         )?;
 
-        let payload: PaystackWebhook = serde_json::from_slice(&body)
+        let payload: PaystackWebhook = serde_json::from_slice(body)
             .map_err(|_| ApiError::Payment("Invalid webhook payload".into()))?;
 
         let mut conn = state

@@ -1,8 +1,8 @@
 use axum::{extract::State, http::StatusCode, Json};
 use diesel::prelude::*;
-use payego_primitives::models::app_state::app_state::AppState;
-use std::sync::Arc;
+use payego_primitives::models::app_state::AppState;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tracing::log::error;
 use utoipa::ToSchema;
 
@@ -29,18 +29,16 @@ pub async fn health_check(State(state): State<Arc<AppState>>) -> Json<HealthStat
         Ok(mut conn) => {
             // Check if we can execute a simple query
             match diesel::sql_query("SELECT 1").execute(&mut conn) {
-                Ok(_) => { Json(HealthStatus {
-                    status:  StatusCode::OK.to_string(),
+                Ok(_) => Json(HealthStatus {
+                    status: StatusCode::OK.to_string(),
                     message: "API is healthy".to_string(),
-                })
-                },
+                }),
                 Err(e) => {
                     error!("Health check DB query failed: {}", e);
                     Json(HealthStatus {
                         status: StatusCode::SERVICE_UNAVAILABLE.to_string(),
                         message: "Health check DB query failed".to_string(),
                     })
-
                 }
             }
         }

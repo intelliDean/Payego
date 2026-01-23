@@ -1,4 +1,4 @@
-use crate::error::ApiError;
+use eyre::eyre;
 use eyre::Report;
 use secrecy::SecretString;
 use std::env;
@@ -15,9 +15,7 @@ impl StripeInfo {
         Ok(Self {
             stripe_secret_key: SecretString::new(
                 env::var("STRIPE_SECRET_KEY")
-                    .map_err(|_| {
-                        ApiError::Token("STRIPE_SECRET_KEY environment variable must be set".into())
-                    })?
+                    .map_err(|_| eyre!("STRIPE_SECRET_KEY environment variable must be set"))?
                     .into(),
             ),
             stripe_api_url: env::var("STRIPE_API_URL")
@@ -25,7 +23,7 @@ impl StripeInfo {
 
             stripe_webhook_secret: SecretString::new(
                 env::var("STRIPE_WEBHOOK_SECRET")
-                    .map_err(|_| ApiError::Token("STRIPE_WEBHOOK_SECRET must be set".into()))?
+                    .map_err(|_| eyre!("STRIPE_WEBHOOK_SECRET must be set"))?
                     .into(),
             ),
         })

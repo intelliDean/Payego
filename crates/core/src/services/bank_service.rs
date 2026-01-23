@@ -4,7 +4,7 @@ use once_cell::sync::Lazy;
 pub use payego_primitives::{
     error::ApiError,
     models::{
-        app_state::app_state::AppState,
+        app_state::AppState,
         bank::{Bank, NewBank, NewBankAccount},
         bank_dtos::{
             BankDto, BankListResponse, PaystackBank, PaystackResolveResponse, PaystackResponse,
@@ -50,14 +50,7 @@ impl BankService {
             .expose_secret();
 
         // safety check to prevent sending empty bearer token
-        if state
-            .config
-            .paystack_details
-            .paystack_secret_key
-            .expose_secret()
-            .trim()
-            .is_empty()
-        {
+        if secret_key.trim().is_empty() {
             return Err(ApiError::Internal("Paystack secret key is empty".into()));
         }
 
@@ -222,7 +215,7 @@ impl BankService {
             .http_client
             .get(url)
             .bearer_auth(
-                &state
+                state
                     .config
                     .paystack_details
                     .paystack_secret_key
@@ -235,8 +228,6 @@ impl BankService {
                 tracing::error!(error = %e, "Failed to reach Paystack");
                 ApiError::Payment("Paystack service unavailable".into())
             })?;
-
-        let status = resp.status();
 
         let body: PaystackResolveResponse = resp.json().await?;
 
@@ -277,7 +268,7 @@ impl BankService {
             })?;
 
         Ok(BankListResponse {
-            banks: banks.into_iter().map(|b| BankDto::from(b)).collect(),
+            banks: banks.into_iter().map(BankDto::from).collect(),
         })
     }
 

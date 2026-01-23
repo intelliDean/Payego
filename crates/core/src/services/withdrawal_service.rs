@@ -3,7 +3,7 @@ pub use payego_primitives::{
     config::security_config::Claims,
     error::ApiError,
     models::{
-        app_state::app_state::AppState,
+        app_state::AppState,
         bank::BankAccount,
         dtos::withdrawal_dto::{WithdrawRequest, WithdrawResponse},
         enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent},
@@ -14,12 +14,11 @@ pub use payego_primitives::{
     schema::{bank_accounts, transactions, wallet_ledger, wallets},
 };
 
-use reqwest::{Client, Url};
-use secrecy::ExposeSecret;
-use serde_json::{json, Value};
-use tracing::log::warn;
-use uuid::Uuid;
 use payego_primitives::models::providers_dto::{PaystackResponse, PaystackTransData};
+use reqwest::Url;
+use secrecy::ExposeSecret;
+use serde_json::json;
+use uuid::Uuid;
 
 pub struct WithdrawalService;
 
@@ -38,9 +37,10 @@ impl WithdrawalService {
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
         // ---- Load wallet (FOR UPDATE) ----
+
         let wallet = wallets::table
             .filter(wallets::user_id.eq(user_id))
-            .filter(wallets::currency.eq(CurrencyCode::from(req.currency)))
+            .filter(wallets::currency.eq(req.currency))
             .for_update()
             .first::<Wallet>(&mut conn)?;
 
@@ -140,12 +140,12 @@ impl WithdrawalService {
             .post(url)
             .bearer_auth(key)
             .json(&json!({
-        "source": "balance",
-        "amount": amount_minor,
-        "recipient": bank.provider_recipient_id,
-        "reference": reference.to_string(),
-        "reason": format!("Withdrawal ({})", currency),
-    }))
+                "source": "balance",
+                "amount": amount_minor,
+                "recipient": bank.provider_recipient_id,
+                "reference": reference.to_string(),
+                "reason": format!("Withdrawal ({})", currency),
+            }))
             .send()
             .await
             .map_err(|_| ApiError::Payment("Failed to reach Paystack".into()))?;
@@ -165,12 +165,10 @@ impl WithdrawalService {
             return Err(ApiError::Payment("Transfer rejected by Paystack".into()));
         }
 
-        let data = body.data.ok_or_else(|| {
-            ApiError::Payment("Paystack response missing data".into())
-        })?;
+        let data = body
+            .data
+            .ok_or_else(|| ApiError::Payment("Paystack response missing data".into()))?;
 
         Ok(data.transfer_code)
-
     }
 }
-

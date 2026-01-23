@@ -1,6 +1,6 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import {useNavigate} from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 function TransferForm() {
     const [amount, setAmount] = useState('');
@@ -22,7 +22,7 @@ function TransferForm() {
             try {
                 // Fetch user wallets
                 const walletResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/wallets`, {
-                    headers: {Authorization: `Bearer ${localStorage.getItem('jwt_token')}`},
+                    headers: { Authorization: `Bearer ${localStorage.getItem('jwt_token')}` },
                 });
                 setWallets(walletResponse.data.wallets || []);
                 if (walletResponse.data.wallets.length > 0) {
@@ -74,7 +74,7 @@ function TransferForm() {
             setAccountName('');
 
             try {
-                console.log('Resolving account:', {bank_code: bankCode, account_number: accountNumber});
+                console.log('Resolving account:', { bank_code: bankCode, account_number: accountNumber });
                 const response = await axios.get(
                     `${import.meta.env.VITE_API_URL}/api/resolve_account`,
                     {
@@ -151,7 +151,7 @@ function TransferForm() {
         try {
             const endpoint = transferType === 'internal' ? '/api/transfer/internal' : '/api/transfer/external';
             const payload = transferType === 'internal'
-                ? {amount: parseFloat(amount), recipient_email: recipientEmail, currency}
+                ? { amount: parseFloat(amount), recipient_email: recipientEmail, currency }
                 : {
                     amount: parseFloat(amount),
                     currency,
@@ -160,7 +160,7 @@ function TransferForm() {
                     account_name: accountName
                 };
 
-            const response = await axios.post(
+            await axios.post(
                 `${import.meta.env.VITE_API_URL}${endpoint}`,
                 payload,
                 {

@@ -1,10 +1,7 @@
 use crate::utility::shutdown::shutdown_signal;
 use axum::Router;
 use eyre::Report;
-use std::env;
 use std::net::SocketAddr;
-use tokio::net::TcpListener;
-use tracing::log::info;
 
 pub async fn serve(router: Router) -> Result<(), Report> {
     let host = std::env::var("HOST").unwrap_or_else(|_| "0.0.0.0".into());

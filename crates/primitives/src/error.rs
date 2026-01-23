@@ -4,7 +4,6 @@ use http::StatusCode;
 use std::fmt;
 use stripe::WebhookError;
 use thiserror::Error;
-use utoipa::ToSchema;
 
 #[derive(Debug)]
 pub enum ApiError {
@@ -147,10 +146,9 @@ impl From<ApiError> for (StatusCode, String) {
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Internal server error: {}", msg),
                 ),
-                AuthError::DuplicateEmail => (
-                    StatusCode::BAD_REQUEST,
-                    "Email already exist".to_string(),
-                ),
+                AuthError::DuplicateEmail => {
+                    (StatusCode::BAD_REQUEST, "Email already exist".to_string())
+                }
             },
             ApiError::Payment(msg) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
