@@ -17,9 +17,10 @@ const topUpSchema = z.object({
 
 type TopUpFormValues = z.infer<typeof topUpSchema>;
 
-const SUPPORTED_CURRENCIES: Currency[] = [
-    'USD', 'EUR', 'GBP', 'NGN'
-];
+const SUPPORTED_CURRENCIES: Currency[] = ([
+    'USD', 'EUR', 'GBP', 'NGN', 'CAD', 'AUD', 'CHF', 'JPY', 'CNY', 'SEK',
+    'NZD', 'MXN', 'SGD', 'HKD', 'NOK', 'KRW', 'TRY', 'INR', 'BRL', 'ZAR'
+].sort() as Currency[]);
 
 const TopUpForm: React.FC = () => {
     const navigate = useNavigate();

@@ -52,7 +52,7 @@ impl PayPalService {
             .post(url)
             .basic_auth(client_id, Some(secret))
             .form(&[("grant_type", "client_credentials")])
-            .timeout(Duration::from_secs(5)) // to override the default which I set to be 10
+            .timeout(Duration::from_secs(30)) // Increased to 30s for slow Sandbox responses
             .send()
             .await
             .map_err(|e| {
@@ -91,7 +91,7 @@ impl PayPalService {
             .http_client
             .get(url)
             .bearer_auth(token)
-            .timeout(Duration::from_secs(5)) //override the default
+            .timeout(Duration::from_secs(30)) // Increased to 30s
             .send()
             .await
             .map_err(|e| {
@@ -204,14 +204,13 @@ impl PayPalService {
             .map_err(|_| ApiError::Internal("Invalid PayPal base URL".into()))?;
 
         let url = base
-            .join("v2/checkout/orders/")
-            .and_then(|u| u.join(order_id))
-            .and_then(|u| u.join("capture"))
+            .join(&format!("v2/checkout/orders/{}/capture", order_id))
             .map_err(|_| ApiError::Internal("Invalid PayPal capture URL".into()))?;
 
         let resp = client
             .post(url)
             .bearer_auth(token)
+            .header("Content-Type", "application/json")
             .send()
             .await
             .map_err(|e| {

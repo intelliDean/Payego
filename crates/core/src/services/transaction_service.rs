@@ -1,4 +1,6 @@
+use chrono::Utc;
 use diesel::prelude::*;
+use stripe::PaymentIntent;
 pub use payego_primitives::{
     config::security_config::Claims,
     error::{ApiError, AuthError},
@@ -6,11 +8,11 @@ pub use payego_primitives::{
         app_state::AppState,
         entities::enum_types::PaymentState,
         enum_types::{CurrencyCode, TransactionIntent},
-        providers_dto::StripeWebhookContext,
         transaction::Transaction,
         transaction_dto::{TransactionResponse, TransactionSummaryDto, TransactionsResponse},
+        wallet_ledger::NewWalletLedger,
     },
-    schema::{transactions, wallets},
+    schema::{transactions, wallet_ledger, wallets},
 };
 use tracing::{error, info, warn};
 use uuid::Uuid;
@@ -20,19 +22,30 @@ const RECENT_TX_LIMIT: i64 = 5;
 pub struct TransactionService;
 
 impl TransactionService {
-    pub fn apply_stripe_webhook(
+
+    pub fn handle_payment_intent_succeeded(
         state: &AppState,
-        ctx: StripeWebhookContext,
+        pay_int: PaymentIntent,
     ) -> Result<(), ApiError> {
+        let tx_ref = pay_int
+            .metadata
+            .get("transaction_reference")
+            .ok_or(ApiError::Payment("Missing transaction_reference".into()))?;
+
+        let transaction_ref = Uuid::parse_str(tx_ref)
+            .map_err(|_| ApiError::Payment("Invalid transaction_reference".into()))?;
+
+        let amount = pay_int.amount_received;
+        let currency = pay_int.currency.to_string().to_uppercase();
+        let provider_reference = pay_int.id.clone();
 
         let mut conn = state.db.get().map_err(|e| {
-            tracing::error!("DB connection error: {}", e);
             ApiError::DatabaseConnection(e.to_string())
         })?;
 
         conn.transaction(|conn| {
             let tx = transactions::table
-                .filter(transactions::reference.eq(ctx.transaction_ref))
+                .filter(transactions::reference.eq(transaction_ref))
                 .for_update()
                 .first::<Transaction>(conn)
                 .optional()?
@@ -40,35 +53,94 @@ impl TransactionService {
 
             // 🔒 Idempotency
             if tx.txn_state == PaymentState::Completed {
-                info!("Stripe webhook already processed for transaction reference: {}", tx.reference);
+                info!("Transaction already completed: {}", tx.reference);
                 return Ok(());
             }
 
-            info!("Processing Stripe webhook for transaction Reference: {}, Currency: {}, ID: {}", tx.reference, tx.currency, tx.id);
-            // 🧪 Currency validation
-            if ctx.currency != tx.currency.to_string() {
-                error!("Stripe Webhook Currency Mismatch: Event Currency={}, DB Transaction Currency={}", ctx.currency, tx.currency.to_string());
+            // 🧪 Currency check
+            if tx.currency.to_string() != currency {
                 return Err(ApiError::Payment("Currency mismatch".into()));
             }
 
+            // Update transaction
             diesel::update(transactions::table.find(tx.id))
                 .set((
                     transactions::txn_state.eq(PaymentState::Completed),
-                    transactions::provider_reference.eq(Some(ctx.provider_reference)),
-                    transactions::updated_at.eq(chrono::Utc::now()),
+                    transactions::provider_reference.eq(Some(provider_reference.to_string())),
+                    transactions::updated_at.eq(Utc::now()),
                 ))
-                .execute(conn)?;
+                .execute(&mut *conn)?;
 
-            // 💰 Update Wallet Balance
-            diesel::update(wallets::table)
-                .filter(wallets::user_id.eq(tx.user_id))
-                .filter(wallets::currency.eq(tx.currency))
-                .set(wallets::balance.eq(wallets::balance + tx.amount as i64))
-                .execute(conn)?;
+            // 💰 Wallet UPSERT (critical)
+            let wallet_id = diesel::insert_into(wallets::table)
+                .values((
+                    wallets::user_id.eq(tx.user_id),
+                    wallets::currency.eq(tx.currency),
+                    wallets::balance.eq(amount),
+                ))
+                .on_conflict(diesel::dsl::sql::<diesel::sql_types::Record<(diesel::sql_types::Uuid, payego_primitives::schema::sql_types::CurrencyCode)>>("(user_id, currency)"))
+                .do_update()
+                .set(wallets::balance.eq(wallets::balance + amount))
+                .returning(wallets::id)
+                .get_result::<Uuid>(&mut *conn)?;
+
+            // 📝 Ledger Entry
+            diesel::insert_into(wallet_ledger::table)
+                .values(NewWalletLedger {
+                    wallet_id,
+                    transaction_id: tx.id,
+                    amount,
+                })
+                .execute(&mut *conn)?;
 
             Ok(())
         })
     }
+    pub fn handle_payment_intent_failed(
+        state: &AppState,
+        pi: PaymentIntent,
+    ) -> Result<(), ApiError> {
+        let tx_ref = match pi.metadata.get("transaction_reference") {
+            Some(v) => v,
+            None => return Ok(()), // nothing to do
+        };
+
+        let transaction_ref = Uuid::parse_str(tx_ref).ok();
+
+        if let Some(tx_ref) = transaction_ref {
+            let mut conn = state.db.get().map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
+            diesel::update(transactions::table)
+                .filter(transactions::reference.eq(tx_ref))
+                .set(transactions::txn_state.eq(PaymentState::Failed))
+                .execute(&mut *conn)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn handle_payment_intent_canceled(
+        state: &AppState,
+        pi: PaymentIntent,
+    ) -> Result<(), ApiError> {
+        let tx_ref = match pi.metadata.get("transaction_reference") {
+            Some(v) => v,
+            None => return Ok(()),
+        };
+
+        let transaction_ref = Uuid::parse_str(tx_ref).ok();
+
+        if let Some(tx_ref) = transaction_ref {
+            let mut conn = state.db.get().map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
+            diesel::update(transactions::table)
+                .filter(transactions::reference.eq(tx_ref))
+                .set(transactions::txn_state.eq(PaymentState::Cancelled))
+                .execute(&mut *conn)?;
+        }
+
+        Ok(())
+    }
+
+
 
     pub async fn get_user_transaction(
         state: &AppState,

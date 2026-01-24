@@ -12,6 +12,9 @@ import WithdrawForm from './components/WithdrawForm';
 import ConvertForm from './components/ConvertForm';
 import SuccessPage from './components/SuccessPage';
 import LandingPage from "./components/LandingPage";
+import Wallets from './components/Wallets';
+import Transactions from './components/Transactions';
+import Profile from './components/Profile';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { isAuthenticated, isLoading } = useAuth();
@@ -80,6 +83,9 @@ function App() {
                         <Route path="/transfer" element={<ProtectedRoute><TransferForm /></ProtectedRoute>} />
                         <Route path="/withdraw" element={<ProtectedRoute><WithdrawForm /></ProtectedRoute>} />
                         <Route path="/convert" element={<ProtectedRoute><ConvertForm /></ProtectedRoute>} />
+                        <Route path="/wallets" element={<ProtectedRoute><Wallets /></ProtectedRoute>} />
+                        <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
+                        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                         <Route path="/success" element={<SuccessPage />} />
                     </Routes>
                 </div>

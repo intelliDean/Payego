@@ -5,7 +5,7 @@ export interface User {
     created_at: string;
 }
 
-export type Currency = 'USD' | 'EUR' | 'GBP' | 'NGN'; // Extend as per backend
+export type Currency = 'USD' | 'EUR' | 'GBP' | 'NGN' | 'CAD' | 'AUD' | 'CHF' | 'JPY' | 'CNY' | 'SEK' | 'NZD' | 'MXN' | 'SGD' | 'HKD' | 'NOK' | 'KRW' | 'TRY' | 'INR' | 'BRL' | 'ZAR';
 
 export interface Wallet {
     id: string;

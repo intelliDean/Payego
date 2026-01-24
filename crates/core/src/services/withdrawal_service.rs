@@ -98,7 +98,7 @@ impl WithdrawalService {
                 .values(NewWalletLedger {
                     wallet_id: wallet.id,
                     transaction_id: tx_id,
-                    amount: amount_minor,
+                    amount: -amount_minor,
                 })
                 .execute(conn)?;
 

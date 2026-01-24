@@ -2,12 +2,10 @@ use payego_primitives::error::ApiErrorResponse;
 use axum::body::Bytes;
 use axum::extract::State;
 use http::{HeaderMap, StatusCode};
-use payego_core::services::{
-    stripe_service::{ApiError, AppState, StripeService},
-    transaction_service::TransactionService,
-};
+use payego_core::services::stripe_service::{ApiError, AppState, StripeService};
 use std::sync::Arc;
-use tracing::{info, error};
+use tracing::info;
+use payego_core::services::stripe_service::WebhookOutcome;
 
 #[utoipa::path(
     post,
@@ -43,35 +41,35 @@ use tracing::{info, error};
     ),
     security(()),
 )]
+
+
+
 pub async fn stripe_webhook(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<StatusCode, ApiError> {
-    info!("Stripe Webhook received, extracting context...");
-    let ctx_result = StripeService::extract_context(&state, headers, &body);
-    
-    let ctx = match ctx_result {
-        Ok(Some(ctx)) => ctx,
-        Ok(None) => {
-            info!("Received unhandled Stripe event type or empty context. Acknowledging with 200 OK.");
-            return Ok(StatusCode::OK);
-        }
-        Err(e) => {
-            error!("Stripe Webhook extraction error: {:?}", e);
-            return Err(e);
-        }
-    };
+    info!("Stripe webhook received");
 
-    info!("Stripe Context extracted: {:?}. Applying to transaction service...", ctx);
-    if let Err(e) = TransactionService::apply_stripe_webhook(&state, ctx) {
-        error!("Error applying Stripe webhook to transaction: {:?}", e);
-        return Err(e);
+    let event = StripeService::construct_event(&state, headers, &body)?;
+
+    match StripeService::handle_event(&state, event)? {
+        WebhookOutcome::Processed => {
+            info!("Stripe webhook processed");
+            Ok(StatusCode::OK)
+        }
+        WebhookOutcome::Ignored => {
+            info!("Stripe webhook ignored");
+            Ok(StatusCode::OK)
+        }
     }
-
-    info!("Stripe Webhook processed successfully!");
-    Ok(StatusCode::OK)
 }
+
+
+
+
+
+
 
 // use payego_primitives::models::AppState;
 // use payego_primitives::error::ApiError;

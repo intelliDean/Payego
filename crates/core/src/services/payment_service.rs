@@ -102,7 +102,8 @@ impl PaymentService {
         reference: Uuid,
         amount_cents: i64,
     ) -> Result<(Option<String>, Option<String>), ApiError> {
-        let client = StripeClient::from_url(
+
+        let stripe_client = StripeClient::from_url(
             state.config.stripe_details.stripe_api_url.as_str(),
             state
                 .config
@@ -115,7 +116,7 @@ impl PaymentService {
             .map_err(|_| ApiError::Payment("Invalid currency".into()))?;
 
         let session = CheckoutSession::create(
-            &client,
+            &stripe_client,
             CreateCheckoutSession {
                 mode: Some(CheckoutSessionMode::Payment),
                 success_url: Some(&format!(
@@ -136,6 +137,14 @@ impl PaymentService {
                     }),
                     ..Default::default()
                 }]),
+                payment_intent_data: Some(stripe::CreateCheckoutSessionPaymentIntentData {
+                    metadata: Some(
+                        [("transaction_reference".into(), reference.to_string())]
+                            .into_iter()
+                            .collect(),
+                    ),
+                    ..Default::default()
+                }),
                 metadata: Some(
                     [("transaction_reference".into(), reference.to_string())]
                         .into_iter()
@@ -173,7 +182,7 @@ impl PaymentService {
         let token_resp = state
             .http_client
             .post(url)
-            .timeout(std::time::Duration::from_secs(5)) // i want this to override the default which is 10secs
+            .timeout(std::time::Duration::from_secs(30)) // increased to 30secs for sandbox
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .header(USER_AGENT, "Payego/1.0 (Rust backend)")
             .basic_auth(client_id, Some(secret))
@@ -181,7 +190,7 @@ impl PaymentService {
             .send()
             .await
             .map_err(|e| {
-                tracing::error!("PayPal OAuth request failed: {}", e);
+                tracing::error!("PayPal OAuth request failed: {:?}", e);
                 ApiError::Payment("PayPal authentication failed".into())
             })?;
 

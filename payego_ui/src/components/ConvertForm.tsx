@@ -19,7 +19,10 @@ const convertSchema = z.object({
 
 type ConvertFormValues = z.infer<typeof convertSchema>;
 
-const SUPPORTED_CURRENCIES: Currency[] = ['USD', 'EUR', 'GBP', 'NGN'];
+const SUPPORTED_CURRENCIES: Currency[] = ([
+    'USD', 'EUR', 'GBP', 'NGN', 'CAD', 'AUD', 'CHF', 'JPY', 'CNY', 'SEK',
+    'NZD', 'MXN', 'SGD', 'HKD', 'NOK', 'KRW', 'TRY', 'INR', 'BRL', 'ZAR'
+].sort() as Currency[]);
 
 const ConvertForm: React.FC = () => {
     const navigate = useNavigate();

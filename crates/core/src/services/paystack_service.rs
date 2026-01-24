@@ -9,8 +9,9 @@ pub use payego_primitives::{
         dtos::providers_dto::PaystackWebhook,
         entities::enum_types::{PaymentState, TransactionIntent},
         transaction::Transaction,
+        wallet_ledger::NewWalletLedger,
     },
-    schema::{transactions, wallets},
+    schema::{transactions, wallet_ledger, wallets},
 };
 use secrecy::ExposeSecret;
 use std::sync::Arc;
@@ -84,10 +85,20 @@ impl PaystackService {
 
                     // 💰 Refund ONLY for payout intents
                     if matches!(tx.intent, TransactionIntent::Payout) {
-                        diesel::update(wallets::table)
+                        let wallet_id = diesel::update(wallets::table)
                             .filter(wallets::user_id.eq(tx.user_id))
                             .filter(wallets::currency.eq(tx.currency))
                             .set(wallets::balance.eq(wallets::balance + tx.amount.abs()))
+                            .returning(wallets::id)
+                            .get_result::<Uuid>(conn)?;
+
+                        // 📝 Ledger Entry (Refund)
+                        diesel::insert_into(wallet_ledger::table)
+                            .values(NewWalletLedger {
+                                wallet_id,
+                                transaction_id: tx.id,
+                                amount: tx.amount.abs(),
+                            })
                             .execute(conn)?;
                     }
                 }
