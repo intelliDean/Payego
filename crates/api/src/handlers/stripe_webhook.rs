@@ -1,4 +1,4 @@
-use crate::config::swagger_config::ApiErrorResponse;
+use payego_primitives::error::ApiErrorResponse;
 use axum::body::Bytes;
 use axum::extract::State;
 use http::{HeaderMap, StatusCode};
@@ -7,6 +7,7 @@ use payego_core::services::{
     transaction_service::TransactionService,
 };
 use std::sync::Arc;
+use tracing::{info, error};
 
 #[utoipa::path(
     post,
@@ -47,13 +48,28 @@ pub async fn stripe_webhook(
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<StatusCode, ApiError> {
-    let Some(ctx) = StripeService::extract_context(&state, headers, &body)? else {
-        // Ignore unrelated events but ACK
-        return Ok(StatusCode::OK);
+    info!("Stripe Webhook received, extracting context...");
+    let ctx_result = StripeService::extract_context(&state, headers, &body);
+    
+    let ctx = match ctx_result {
+        Ok(Some(ctx)) => ctx,
+        Ok(None) => {
+            info!("Received unhandled Stripe event type or empty context. Acknowledging with 200 OK.");
+            return Ok(StatusCode::OK);
+        }
+        Err(e) => {
+            error!("Stripe Webhook extraction error: {:?}", e);
+            return Err(e);
+        }
     };
 
-    TransactionService::apply_stripe_webhook(&state, ctx)?;
+    info!("Stripe Context extracted: {:?}. Applying to transaction service...", ctx);
+    if let Err(e) = TransactionService::apply_stripe_webhook(&state, ctx) {
+        error!("Error applying Stripe webhook to transaction: {:?}", e);
+        return Err(e);
+    }
 
+    info!("Stripe Webhook processed successfully!");
     Ok(StatusCode::OK)
 }
 

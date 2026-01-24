@@ -1,9 +1,13 @@
 use axum::response::{IntoResponse, Response};
+use axum::Json;
 use diesel::r2d2;
 use http::StatusCode;
+use serde::Serialize;
+use serde_json::json;
 use std::fmt;
 use stripe::WebhookError;
 use thiserror::Error;
+use utoipa::ToSchema;
 
 #[derive(Debug)]
 pub enum ApiError {
@@ -171,23 +175,208 @@ impl From<ApiError> for (StatusCode, String) {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Internal error: {}", msg),
             ),
-            // ApiError::PaystackError(e) => match e {
-            //     PaystackError::Configuration(msg) => (
-            //
-            //         ),
-            //     PaystackError::RequestFailed => (),
-            //     PaystackError::Api(msg) => (
-            //
-            //         )
-            // },
         }
     }
 }
 
+#[derive(ToSchema, Serialize)]
+pub struct ApiErrorResponse {
+    #[schema(example = "INVALID_CREDENTIALS")]
+    pub code: String,
+    #[schema(example = "Email or password is incorrect")]
+    pub message: String,
+    pub details: Option<serde_json::Value>,
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        let (status, body): (StatusCode, String) = self.into();
-        (status, body).into_response()
+        let (status, body) = match self {
+            // ── Authentication related ──
+            ApiError::Auth(AuthError::MissingHeader) => (
+                StatusCode::UNAUTHORIZED,
+                ApiErrorResponse {
+                    code: "MISSING_AUTH_HEADER".to_string(),
+                    message: "Authorization header is required".to_string(),
+                    details: None,
+                },
+            ),
+
+            ApiError::Auth(AuthError::InvalidFormat) => (
+                StatusCode::BAD_REQUEST,
+                ApiErrorResponse {
+                    code: "INVALID_AUTH_FORMAT".to_string(),
+                    message: "Invalid Authorization header format".to_string(),
+                    details: None,
+                },
+            ),
+
+            ApiError::Auth(AuthError::InvalidToken(msg)) => (
+                StatusCode::UNAUTHORIZED,
+                ApiErrorResponse {
+                    code: "INVALID_TOKEN".to_string(),
+                    message: format!("Invalid token: {}", msg),
+                    details: None,
+                },
+            ),
+
+            ApiError::Auth(AuthError::InvalidCredentials) => (
+                StatusCode::UNAUTHORIZED,
+                ApiErrorResponse {
+                    code: "INVALID_CREDENTIALS".to_string(),
+                    message: "Invalid email or password".to_string(),
+                    details: None,
+                },
+            ),
+
+            ApiError::Auth(AuthError::BlacklistedToken) => (
+                StatusCode::UNAUTHORIZED,
+                ApiErrorResponse {
+                    code: "TOKEN_BLACKLISTED".to_string(),
+                    message: "Token has been invalidated".to_string(),
+                    details: None,
+                },
+            ),
+
+            ApiError::Auth(AuthError::InternalError(msg)) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ApiErrorResponse {
+                    code: "AUTH_INTERNAL_ERROR".to_string(),
+                    message: "Authentication process failed".to_string(),
+                    details: Some(json!({ "reason": msg })),
+                },
+            ),
+
+            ApiError::Auth(AuthError::DuplicateEmail) => (
+                StatusCode::CONFLICT,
+                ApiErrorResponse {
+                    code: "EMAIL_ALREADY_EXISTS".to_string(),
+                    message: "Email already exists".to_string(),
+                    details: None,
+                },
+            ),
+
+            // ── Validation & input errors ──
+            ApiError::Validation(errors) => (
+                StatusCode::BAD_REQUEST,
+                ApiErrorResponse {
+                    code: "VALIDATION_ERROR".to_string(),
+                    message: "Invalid input data".to_string(),
+                    details: Some(json!(errors)),
+                },
+            ),
+
+            // ── Database & connection issues ──
+            ApiError::Database(e) => match e {
+                diesel::result::Error::NotFound => (
+                    StatusCode::NOT_FOUND,
+                    ApiErrorResponse {
+                        code: "RESOURCE_NOT_FOUND".to_string(),
+                        message: "Requested resource not found".to_string(),
+                        details: None,
+                    },
+                ),
+
+                diesel::result::Error::DatabaseError(
+                    diesel::result::DatabaseErrorKind::UniqueViolation,
+                    _,
+                ) => (
+                    StatusCode::CONFLICT,
+                    ApiErrorResponse {
+                        code: "CONFLICT".to_string(),
+                        message: "Resource already exists (unique constraint violation)"
+                            .to_string(),
+                        details: None,
+                    },
+                ),
+
+                _ => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    ApiErrorResponse {
+                        code: "DATABASE_ERROR".to_string(),
+                        message: "A database error occurred".to_string(),
+                        details: None, // don't leak raw error
+                    },
+                ),
+            },
+
+            ApiError::DatabaseConnection(_) => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                ApiErrorResponse {
+                    code: "DATABASE_UNAVAILABLE".to_string(),
+                    message: "Database connection failed".to_string(),
+                    details: None,
+                },
+            ),
+
+            // ── Other specific domains ──
+            ApiError::Argon2(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ApiErrorResponse {
+                    code: "PASSWORD_HASH_ERROR".to_string(),
+                    message: "Password processing failed".to_string(),
+                    details: None,
+                },
+            ),
+
+            ApiError::Token(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ApiErrorResponse {
+                    code: "TOKEN_GENERATION_FAILED".to_string(),
+                    message: "Failed to generate authentication token".to_string(),
+                    details: None,
+                },
+            ),
+
+            ApiError::Payment(msg) => (
+                StatusCode::BAD_GATEWAY,
+                ApiErrorResponse {
+                    code: "PAYMENT_PROVIDER_ERROR".to_string(),
+                    message: "Payment processing failed".to_string(),
+                    details: Some(json!({ "reason": msg })),
+                },
+            ),
+
+            ApiError::Webhook(e) => match e {
+                WebhookError::BadSignature | WebhookError::BadTimestamp(_) => (
+                    StatusCode::BAD_REQUEST,
+                    ApiErrorResponse {
+                        code: "INVALID_WEBHOOK_SIGNATURE".to_string(),
+                        message: "Webhook signature verification failed".to_string(),
+                        details: None,
+                    },
+                ),
+
+                WebhookError::BadKey => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    ApiErrorResponse {
+                        code: "WEBHOOK_CONFIG_ERROR".to_string(),
+                        message: "Webhook configuration error".to_string(),
+                        details: None,
+                    },
+                ),
+
+                _ => (
+                    StatusCode::BAD_REQUEST,
+                    ApiErrorResponse {
+                        code: "WEBHOOK_ERROR".to_string(),
+                        message: "Invalid webhook request".to_string(),
+                        details: None,
+                    },
+                ),
+            },
+
+            // ── Generic fallback ──
+            ApiError::Internal(msg) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ApiErrorResponse {
+                    code: "INTERNAL_ERROR".to_string(),
+                    message: "An unexpected error occurred".to_string(),
+                    details: Some(json!({ "context": msg })), // optional – can be removed
+                },
+            ),
+        };
+
+        (status, Json(body)).into_response()
     }
 }
 

@@ -137,7 +137,7 @@ impl PaymentService {
                     ..Default::default()
                 }]),
                 metadata: Some(
-                    [("transaction_ref".into(), reference.to_string())]
+                    [("transaction_reference".into(), reference.to_string())]
                         .into_iter()
                         .collect(),
                 ),

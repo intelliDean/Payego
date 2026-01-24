@@ -1,4 +1,4 @@
-use crate::config::swagger_config::ApiErrorResponse;
+use payego_primitives::error::ApiErrorResponse;
 use axum::{
     extract::{Extension, State},
     http::StatusCode,

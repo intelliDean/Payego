@@ -1,80 +1,36 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import ErrorBoundary from "./ErrorBoundary";
-import { authApi } from "../api/auth";
-import { transactionApi } from "../api/transactions";
+import { useAuth } from "../contexts/AuthContext";
+import { useWallets } from "../hooks/useWallets";
+import { useTransactions, useTransactionDetails } from "../hooks/useTransactions";
 
-function Dashboard() {
-    const [user, setUser] = useState(null);
-    const [transactions, setTransactions] = useState([]);
-    const [selectedTransaction, setSelectedTransaction] = useState(null);
-    const [error, setError] = useState(null);
-    const [loading, setLoading] = useState(true);
+
+const Dashboard: React.FC = () => {
+    const { user, logout } = useAuth();
+    const { data: wallets, isLoading: walletsLoading, error: walletsError } = useWallets();
+    const { data: transactions, isLoading: transactionsLoading, error: transactionsError } = useTransactions();
+
+    const [selectedTxId, setSelectedTxId] = useState<string | null>(null);
+    const { data: selectedTransaction } = useTransactionDetails(selectedTxId || "");
+
     const [sidebarOpen, setSidebarOpen] = useState(localStorage.getItem("sidebarOpen") !== "false");
-    const navigate = useNavigate();
-
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [userResponse, transactionsResponse] = await Promise.all([
-                    authApi.getCurrentUser(),
-                    transactionApi.getTransactions(),
-                ]);
-
-                console.log("Fetched user:", userResponse.data);
-                console.log("Fetched transactions:", transactionsResponse.data.transactions);
-                setUser(userResponse.data || {});
-                setTransactions(transactionsResponse.data.transactions?.slice(0, 3) || []);
-            } catch (err) {
-                // client interceptor handles 401, but we can catch other errors here
-                if (err.response?.status !== 401) {
-                    setError(err.response?.data?.message || "Data ran off to Vegas! Try again!");
-                }
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, [navigate]);
-
-    const fetchTransactionDetails = async (id) => {
-        try {
-            const response = await transactionApi.getTransactionDetails(id);
-            setSelectedTransaction(response.data);
-        } catch (err) {
-            if (err.response?.status !== 401) {
-                setError(err.response?.data?.message || "Transaction details got lost in the void!");
-            }
-        }
-    };
-
-    const handleLogout = async () => {
-        try {
-            await authApi.logout();
-        } catch (err) {
-            console.error("Logout error:", err.response?.data?.message || "Failed to logout on server");
-        } finally {
-            localStorage.removeItem("jwt_token");
-            sessionStorage.removeItem("jwt_token");
-            navigate("/login");
-        }
-    };
 
     const toggleSidebar = () => {
         const newState = !sidebarOpen;
         setSidebarOpen(newState);
-        localStorage.setItem("sidebarOpen", newState);
+        localStorage.setItem("sidebarOpen", String(newState));
     };
 
-    const formatBalance = (balance, currency) => {
+    const formatBalance = (amount: number, currency?: string) => {
         return new Intl.NumberFormat("en-US", {
             style: "currency",
             currency: currency || "USD",
             minimumFractionDigits: 2,
-        }).format((balance || 0) / 100);
+        }).format(amount / 100);
     };
 
-    const formatDate = (dateStr) => {
+    const formatDate = (dateStr: string) => {
         return new Date(dateStr).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
@@ -84,12 +40,13 @@ function Dashboard() {
         });
     };
 
-    const balancesByCurrency = user?.wallets?.reduce((acc, wallet) => {
-        if (wallet.currency) {
-            acc[wallet.currency] = (acc[wallet.currency] || 0) + (wallet.balance || 0);
-        }
+    const isLoading = walletsLoading || transactionsLoading;
+    const error = walletsError || transactionsError;
+
+    const balancesByCurrency = wallets?.reduce((acc, wallet) => {
+        acc[wallet.currency] = (acc[wallet.currency] || 0) + wallet.balance;
         return acc;
-    }, {}) || {};
+    }, {} as Record<string, number>) || {};
 
     return (
         <ErrorBoundary>
@@ -115,16 +72,14 @@ function Dashboard() {
                                     to={item.to}
                                     className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-700 hover:text-blue-700 transition-all duration-200"
                                     onClick={() => setSidebarOpen(false)}
-                                    aria-label={item.label}
                                 >
                                     <span className="text-lg">{item.icon}</span>
                                     <span className="font-medium">{item.label}</span>
                                 </Link>
                             ))}
                             <button
-                                onClick={handleLogout}
+                                onClick={logout}
                                 className="flex items-center space-x-3 p-3 rounded-lg hover:bg-red-50 text-gray-700 hover:text-red-700 transition-all duration-200 w-full text-left"
-                                aria-label="Log out"
                             >
                                 <span className="text-lg">🚪</span>
                                 <span className="font-medium">Log Out</span>
@@ -141,7 +96,6 @@ function Dashboard() {
                                 <button
                                     className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg"
                                     onClick={toggleSidebar}
-                                    aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
                                 >
                                     <span className="text-lg">{sidebarOpen ? "◄" : "☰"}</span>
                                 </button>
@@ -154,19 +108,18 @@ function Dashboard() {
                                 <Link
                                     to="/profile"
                                     className="flex items-center space-x-2 bg-white rounded-lg px-3 py-2 shadow-sm hover:bg-gray-100 transition-all duration-200"
-                                    aria-label="View profile"
                                 >
                                     <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
                                         <span className="text-white font-bold">
-                                            {user.email?.charAt(0)?.toUpperCase() || "?"}
+                                            {user.email?.charAt(0)?.toUpperCase()}
                                         </span>
                                     </div>
-                                    <p className="text-sm font-medium text-gray-900 hidden sm:block">{user.email || "User"}</p>
+                                    <p className="text-sm font-medium text-gray-900 hidden sm:block">{user.email}</p>
                                 </Link>
                             )}
                         </div>
 
-                        {loading && (
+                        {isLoading && (
                             <div className="flex flex-col items-center justify-center h-64">
                                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
                                 <p className="mt-3 text-gray-600">Fetching your dashboard...</p>
@@ -177,22 +130,18 @@ function Dashboard() {
                             <div className="rounded-lg bg-red-50 p-3 mb-4">
                                 <div className="flex">
                                     <div className="flex-shrink-0">
-                                        <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                            <path
-                                                fillRule="evenodd"
-                                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                                clipRule="evenodd"
-                                            />
+                                        <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                                         </svg>
                                     </div>
                                     <div className="ml-3">
-                                        <p className="text-sm font-medium text-red-800">{error}</p>
+                                        <p className="text-sm font-medium text-red-800">Something went wrong. Please try again.</p>
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {user && (
+                        {user && !isLoading && (
                             <div className="space-y-4">
                                 {/* Stats */}
                                 <div className="bg-white rounded-lg shadow-sm border border-gray-100">
@@ -204,8 +153,6 @@ function Dashboard() {
                                                     <div
                                                         key={currency}
                                                         className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100"
-                                                        role="region"
-                                                        aria-label={`Balance: ${currency}`}
                                                     >
                                                         <h4 className="text-sm font-medium text-gray-500">{currency}</h4>
                                                         <p className="text-lg font-bold text-gray-900">
@@ -219,7 +166,7 @@ function Dashboard() {
                                                 <div className="inline-flex items-center justify-center w-10 h-10 bg-gray-100 rounded-full mb-2">
                                                     <span className="text-lg">💳</span>
                                                 </div>
-                                                <p className="text-gray-600 text-sm">No wallets yet! Add funds to join the Payego party!</p>
+                                                <p className="text-gray-600 text-sm">No wallets yet!</p>
                                             </div>
                                         )}
                                     </div>
@@ -229,24 +176,22 @@ function Dashboard() {
                                 <div className="bg-white rounded-lg shadow-sm border border-gray-100">
                                     <div className="p-4 flex justify-between items-center">
                                         <h2 className="text-lg font-semibold text-gray-900">Wallets</h2>
-                                        <Link to="/wallets" className="text-sm text-blue-600 hover:text-blue-700" aria-label="View all wallets">
+                                        <Link to="/wallets" className="text-sm text-blue-600 hover:text-blue-700">
                                             View All
                                         </Link>
                                     </div>
-                                    {user.wallets?.length > 0 ? (
+                                    {wallets && wallets.length > 0 ? (
                                         <div className="grid grid-cols-1 gap-3 p-4 pt-0">
-                                            {user.wallets.slice(0, 3).map((wallet) => (
+                                            {wallets.slice(0, 3).map((wallet) => (
                                                 <div
-                                                    key={wallet.currency}
+                                                    key={wallet.id}
                                                     className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100 hover:from-blue-100 hover:to-indigo-100 transition-all duration-200"
-                                                    role="region"
-                                                    aria-label={`Wallet: ${wallet.currency}`}
                                                 >
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center space-x-2">
                                                             <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                                                                 <span className="text-blue-600 font-medium text-sm">
-                                                                    {wallet.currency || "N/A"}
+                                                                    {wallet.currency}
                                                                 </span>
                                                             </div>
                                                             <span className="text-sm font-medium text-gray-500">Balance</span>
@@ -263,7 +208,7 @@ function Dashboard() {
                                             <div className="inline-flex items-center justify-center w-10 h-10 bg-gray-100 rounded-full mb-2">
                                                 <span className="text-lg">💳</span>
                                             </div>
-                                            <p className="text-gray-600 text-sm">No wallets yet! Add funds to join the Payego party!</p>
+                                            <p className="text-gray-600 text-sm">No wallets yet!</p>
                                         </div>
                                     )}
                                 </div>
@@ -272,27 +217,26 @@ function Dashboard() {
                                 <div className="bg-white rounded-lg shadow-sm border border-gray-100">
                                     <div className="p-4 flex justify-between items-center">
                                         <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
-                                        <Link to="/transactions" className="text-sm text-blue-600 hover:text-blue-700" aria-label="View all transactions">
+                                        <Link to="/transactions" className="text-sm text-blue-600 hover:text-blue-700">
                                             View All
                                         </Link>
                                     </div>
-                                    {transactions.length > 0 ? (
+                                    {transactions && transactions.length > 0 ? (
                                         <div className="divide-y divide-gray-200">
-                                            {transactions.map((tx) => (
+                                            {transactions.slice(0, 5).map((tx) => (
                                                 <button
                                                     key={tx.id}
-                                                    onClick={() => fetchTransactionDetails(tx.id)}
+                                                    onClick={() => setSelectedTxId(tx.id)}
                                                     className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-all duration-200"
-                                                    aria-label={`View details for ${tx.type} transaction`}
                                                 >
                                                     <div className="flex items-center space-x-2">
                                                         <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center">
                                                             <span className="text-sm">
-                                                                {tx.type === "top_up" ? "💰" : tx.type === "transfer" ? "💸" : tx.type === "withdraw" ? "🏦" : "🔄"}
+                                                                {tx.intent === "TopUp" ? "💰" : tx.intent === "ExternalTransfer" ? "💸" : tx.intent === "Withdrawal" ? "🏦" : "🔄"}
                                                             </span>
                                                         </div>
                                                         <div className="text-left">
-                                                            <p className="text-sm font-medium text-gray-900 capitalize">{tx.type.replace("_", " ")}</p>
+                                                            <p className="text-sm font-medium text-gray-900 capitalize">{tx.intent.replace(/([A-Z])/g, ' $1').trim()}</p>
                                                             <p className="text-xs text-gray-500">{formatDate(tx.created_at)}</p>
                                                         </div>
                                                     </div>
@@ -310,7 +254,7 @@ function Dashboard() {
                                             <div className="inline-flex items-center justify-center w-10 h-10 bg-gray-100 rounded-full mb-2">
                                                 <span className="text-lg">📜</span>
                                             </div>
-                                            <p className="text-gray-600 text-sm">No transactions yet! Make a move to see some action!</p>
+                                            <p className="text-gray-600 text-sm">No transactions yet!</p>
                                         </div>
                                     )}
                                 </div>
@@ -330,7 +274,6 @@ function Dashboard() {
                                                     key={action.to}
                                                     to={action.to}
                                                     className={`group relative bg-gradient-to-r ${action.gradient} rounded-lg p-3 border ${action.border} transition-all duration-200 overflow-hidden`}
-                                                    aria-label={action.label}
                                                 >
                                                     <div className="relative z-10 flex items-center space-x-2">
                                                         <div className="w-6 h-6 bg-opacity-50 bg-white rounded-lg flex items-center justify-center">
@@ -349,23 +292,19 @@ function Dashboard() {
 
                         {/* Transaction Details Modal */}
                         {selectedTransaction && (
-                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="transaction-modal-title">
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                                 <div className="bg-white rounded-lg p-6 max-w-sm w-full">
-                                    <h3 id="transaction-modal-title" className="text-lg font-semibold text-gray-900 mb-4">Transaction Details</h3>
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Transaction Details</h3>
                                     <div className="space-y-3">
                                         <p className="text-sm text-gray-600"><span className="font-medium">ID:</span> {selectedTransaction.id}</p>
-                                        <p className="text-sm text-gray-600"><span className="font-medium">Type:</span> {selectedTransaction.type.replace("_", " ").toUpperCase()}</p>
+                                        <p className="text-sm text-gray-600"><span className="font-medium">Type:</span> {selectedTransaction.intent.replace(/([A-Z])/g, ' $1').trim().toUpperCase()}</p>
                                         <p className="text-sm text-gray-600"><span className="font-medium">Amount:</span> {formatBalance(selectedTransaction.amount, selectedTransaction.currency)}</p>
                                         <p className="text-sm text-gray-600"><span className="font-medium">Date:</span> {formatDate(selectedTransaction.created_at)}</p>
                                         <p className="text-sm text-gray-600"><span className="font-medium">Status:</span> {selectedTransaction.status.toUpperCase()}</p>
-                                        {selectedTransaction.notes && (
-                                            <p className="text-sm text-gray-600"><span className="font-medium">Notes:</span> {selectedTransaction.notes}</p>
-                                        )}
                                     </div>
                                     <button
-                                        onClick={() => setSelectedTransaction(null)}
+                                        onClick={() => setSelectedTxId(null)}
                                         className="mt-4 w-full bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-gray-300 transition-all duration-200"
-                                        aria-label="Close transaction details"
                                     >
                                         Close
                                     </button>

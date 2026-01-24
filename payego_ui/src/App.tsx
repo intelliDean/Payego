@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './contexts/AuthContext';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import Dashboard from './components/Dashboard';
@@ -10,22 +11,24 @@ import TransferForm from './components/TransferForm';
 import WithdrawForm from './components/WithdrawForm';
 import ConvertForm from './components/ConvertForm';
 import SuccessPage from './components/SuccessPage';
-import LandingPage from "./components/LandingPage.jsx";
+import LandingPage from "./components/LandingPage";
+
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { isAuthenticated, isLoading } = useAuth();
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+            </div>
+        );
+    }
+
+    return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
+};
 
 function App() {
-    const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('jwt_token'));
-
-    useEffect(() => {
-        const token = localStorage.getItem('jwt_token');
-        if (token) {
-            setIsAuthenticated(true);
-        }
-    }, []);
-
-    const handleLogout = () => {
-        localStorage.removeItem('jwt_token');
-        setIsAuthenticated(false);
-    };
+    const { isAuthenticated, logout } = useAuth();
 
     return (
         <Router>
@@ -50,7 +53,7 @@ function App() {
 
                                 {/* Logout Button */}
                                 <button
-                                    onClick={handleLogout}
+                                    onClick={logout}
                                     className="btn-danger btn-sm flex items-center space-x-2"
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,15 +70,16 @@ function App() {
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
                     <Routes>
                         <Route path="/" element={!isAuthenticated ? <LandingPage /> : <Navigate to="/dashboard" />} />
-                        <Route path="/login" element={!isAuthenticated ? <LoginForm setAuth={setIsAuthenticated} /> : <Navigate to="/" />} />
-                        <Route path="/register" element={!isAuthenticated ? <RegisterForm setAuth={setIsAuthenticated} /> : <Navigate to="/" />} />
-                        <Route path="/dashboard" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} />
-                        <Route path="/top-up" element={isAuthenticated ? <TopUpForm /> : <Navigate to="/login" />} />
-                        <Route path="/banks" element={isAuthenticated ? <BankList /> : <Navigate to="/login" />} />
-                        <Route path="/add-bank" element={isAuthenticated ? <AddBankForm /> : <Navigate to="/login" />} />
-                        <Route path="/transfer" element={isAuthenticated ? <TransferForm /> : <Navigate to="/login" />} />
-                        <Route path="/withdraw" element={isAuthenticated ? <WithdrawForm /> : <Navigate to="/login" />} />
-                        <Route path="/convert" element={isAuthenticated ? <ConvertForm /> : <Navigate to="/login" />} />
+                        <Route path="/login" element={!isAuthenticated ? <LoginForm /> : <Navigate to="/" />} />
+                        <Route path="/register" element={!isAuthenticated ? <RegisterForm /> : <Navigate to="/" />} />
+
+                        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                        <Route path="/top-up" element={<ProtectedRoute><TopUpForm /></ProtectedRoute>} />
+                        <Route path="/banks" element={<ProtectedRoute><BankList /></ProtectedRoute>} />
+                        <Route path="/add-bank" element={<ProtectedRoute><AddBankForm /></ProtectedRoute>} />
+                        <Route path="/transfer" element={<ProtectedRoute><TransferForm /></ProtectedRoute>} />
+                        <Route path="/withdraw" element={<ProtectedRoute><WithdrawForm /></ProtectedRoute>} />
+                        <Route path="/convert" element={<ProtectedRoute><ConvertForm /></ProtectedRoute>} />
                         <Route path="/success" element={<SuccessPage />} />
                     </Routes>
                 </div>

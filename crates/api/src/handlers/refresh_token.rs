@@ -1,7 +1,7 @@
-use crate::config::swagger_config::ApiErrorResponse;
+use payego_primitives::error::ApiErrorResponse;
 use axum::{extract::State, Json};
 use payego_core::services::auth_service::token::{
-    ApiError, AppState, LoginResponse, RefreshRequest, SecurityConfig, TokenService,
+    ApiError, AppState, RefreshResponse, RefreshRequest, SecurityConfig, TokenService,
 };
 use std::sync::Arc;
 use tracing::log::error;
@@ -24,7 +24,7 @@ use validator::Validate;
                        May also include device identifier or client metadata for enhanced security in some implementations.",
     ),
     responses(
-        ( status = 200, description = "Token refreshed successfully — returns new access token (and possibly new refresh token)", body = LoginResponse),
+        ( status = 200, description = "Token refreshed successfully — returns new access token (and possibly new refresh token)", body = RefreshResponse),
         ( status = 400, description = "Bad request — invalid or malformed refresh token format", body = ApiErrorResponse),
         ( status = 401, description = "Unauthorized — refresh token is invalid, expired, revoked, or already used (in rotation mode)", body = ApiErrorResponse),
         ( status = 403, description = "Forbidden — refresh token was revoked (e.g. user logged out from all devices, suspicious activity detected)", body = ApiErrorResponse),
@@ -36,7 +36,7 @@ use validator::Validate;
 pub async fn refresh_token(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<RefreshRequest>,
-) -> Result<Json<LoginResponse>, ApiError> {
+) -> Result<Json<RefreshResponse>, ApiError> {
     payload.validate().map_err(|e| {
         error!("Validation error: {}", e);
         ApiError::Validation(e)
@@ -46,12 +46,10 @@ pub async fn refresh_token(
     let refreshed =
         TokenService::validate_and_rotate_refresh_token(&state, &payload.refresh_token)?;
 
-    // refreshed should contain: user_id, new_refresh_token, user_email
     let access_token = SecurityConfig::create_token(&state, &refreshed.user_id.to_string())?;
 
-    Ok(Json(LoginResponse {
+    Ok(Json(RefreshResponse {
         token: access_token,
         refresh_token: refreshed.new_refresh_token,
-        user_email: None,
     }))
 }

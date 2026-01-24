@@ -1,4 +1,4 @@
-use crate::config::swagger_config::ApiErrorResponse;
+use payego_primitives::error::ApiErrorResponse;
 use axum::extract::{Path, State};
 use axum::{Extension, Json};
 use payego_core::services::withdrawal_service::{

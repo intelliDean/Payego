@@ -13,7 +13,8 @@ use crate::handlers::{
 };
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::openapi::SecurityRequirement;
-use utoipa::{Modify, OpenApi, ToSchema};
+use utoipa::{Modify, OpenApi};
+use payego_primitives::error::ApiErrorResponse;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -97,14 +98,3 @@ impl Modify for SecurityAddon {
     }
 }
 
-#[derive(ToSchema)]
-#[schema(example = json!({
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid input data",
-    "details": { "field": "account_number", "issue": "must be 10 digits" }
-}))]
-pub struct ApiErrorResponse {
-    pub code: String,
-    pub message: String,
-    pub details: Option<serde_json::Value>,
-}

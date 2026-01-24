@@ -21,7 +21,7 @@ function TransferForm() {
         const fetchData = async () => {
             try {
                 // Fetch user wallets
-                const walletResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/wallets`, {
+                const walletResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/user/wallets`, {
                     headers: { Authorization: `Bearer ${localStorage.getItem('jwt_token')}` },
                 });
                 setWallets(walletResponse.data.wallets || []);
@@ -30,7 +30,7 @@ function TransferForm() {
                 }
 
                 // Fetch bank list from backend
-                const bankResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/banks`);
+                const bankResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/banks/all`);
                 console.log("Banks:", bankResponse.data);
                 setBanks(bankResponse.data.banks || []);
                 console.log("Bank Code: ", bankResponse.data.banks[0].code);
@@ -76,7 +76,7 @@ function TransferForm() {
             try {
                 console.log('Resolving account:', { bank_code: bankCode, account_number: accountNumber });
                 const response = await axios.get(
-                    `${import.meta.env.VITE_API_URL}/api/resolve_account`,
+                    `${import.meta.env.VITE_API_URL}/api/bank/resolve`,
                     {
                         params: {
                             bank_code: bankCode.trim(),

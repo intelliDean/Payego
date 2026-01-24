@@ -1,4 +1,4 @@
-use crate::config::swagger_config::ApiErrorResponse;
+use payego_primitives::error::ApiErrorResponse;
 use axum::{extract::Json, extract::State, Extension};
 use payego_core::services::payment_service::{
     ApiError, AppState, Claims, PaymentService, TopUpRequest, TopUpResponse,
@@ -40,8 +40,13 @@ use validator::Validate;
 pub async fn top_up(
     State(state): State<Arc<AppState>>,
     Extension(claims): Extension<Claims>,
-    Json(req): Json<TopUpRequest>,
+    payload: Result<Json<TopUpRequest>, axum::extract::rejection::JsonRejection>,
 ) -> Result<Json<TopUpResponse>, ApiError> {
+    let Json(req) = payload.map_err(|rejection| {
+        error!("JSON rejection: {}", rejection);
+        ApiError::Payment(format!("Invalid JSON payload: {}", rejection))
+    })?;
+
     req.validate().map_err(|e| {
         error!("Validation error: {}", e);
         ApiError::Validation(e)

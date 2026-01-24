@@ -65,7 +65,7 @@ impl StripeService {
 
                 let currency = session
                     .currency
-                    .map(|c| c.to_string())
+                    .map(|c| c.to_string().to_uppercase())
                     .ok_or_else(|| ApiError::Payment("Stripe session missing currency".into()))?;
 
                 let provider_reference = session.id.to_string(); // Stripe IDs are strings

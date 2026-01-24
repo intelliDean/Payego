@@ -1,4 +1,4 @@
-use crate::config::swagger_config::ApiErrorResponse;
+use payego_primitives::error::ApiErrorResponse;
 use axum::extract::{Extension, Json, State};
 use payego_core::services::conversion_service::{
     ApiError, AppState, Claims, ConversionService, ConvertRequest, ConvertResponse,

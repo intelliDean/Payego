@@ -57,8 +57,8 @@ impl LoginService {
     }
 
     fn verify_password(password: &str, user: Option<&User>) -> Result<(), ApiError> {
-        // Always verify *something* to prevent timing attacks
-        let hash = user
+        // verifying *something* to prevent timing attacks
+        let hash = user //either get the user password hash or generate a dummy one
             .map(|u| u.password_hash.as_str())
             .unwrap_or(Self::dummy_hash());
 

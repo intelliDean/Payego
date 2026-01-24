@@ -10,7 +10,7 @@ pub use payego_primitives::{
         transaction::Transaction,
         transaction_dto::{TransactionResponse, TransactionSummaryDto, TransactionsResponse},
     },
-    schema::transactions,
+    schema::{transactions, wallets},
 };
 use tracing::{error, info, warn};
 use uuid::Uuid;
@@ -24,6 +24,7 @@ impl TransactionService {
         state: &AppState,
         ctx: StripeWebhookContext,
     ) -> Result<(), ApiError> {
+
         let mut conn = state.db.get().map_err(|e| {
             tracing::error!("DB connection error: {}", e);
             ApiError::DatabaseConnection(e.to_string())
@@ -39,12 +40,14 @@ impl TransactionService {
 
             // 🔒 Idempotency
             if tx.txn_state == PaymentState::Completed {
-                info!("Stripe webhook already processed: {}", tx.reference);
+                info!("Stripe webhook already processed for transaction reference: {}", tx.reference);
                 return Ok(());
             }
 
+            info!("Processing Stripe webhook for transaction Reference: {}, Currency: {}, ID: {}", tx.reference, tx.currency, tx.id);
             // 🧪 Currency validation
             if ctx.currency != tx.currency.to_string() {
+                error!("Stripe Webhook Currency Mismatch: Event Currency={}, DB Transaction Currency={}", ctx.currency, tx.currency.to_string());
                 return Err(ApiError::Payment("Currency mismatch".into()));
             }
 
@@ -54,6 +57,13 @@ impl TransactionService {
                     transactions::provider_reference.eq(Some(ctx.provider_reference)),
                     transactions::updated_at.eq(chrono::Utc::now()),
                 ))
+                .execute(conn)?;
+
+            // 💰 Update Wallet Balance
+            diesel::update(wallets::table)
+                .filter(wallets::user_id.eq(tx.user_id))
+                .filter(wallets::currency.eq(tx.currency))
+                .set(wallets::balance.eq(wallets::balance + tx.amount as i64))
                 .execute(conn)?;
 
             Ok(())

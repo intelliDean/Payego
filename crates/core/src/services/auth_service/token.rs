@@ -10,6 +10,7 @@ pub use payego_primitives::{
         dtos::login_dto::LoginResponse,
         token_dto::RefreshRequest,
         token_dto::RefreshResult,
+        login_dto::RefreshResponse
     },
     schema::refresh_tokens::dsl::*,
 };

@@ -1,4 +1,4 @@
-use crate::config::swagger_config::ApiErrorResponse;
+use payego_primitives::error::ApiErrorResponse;
 use axum::{extract::State, Json};
 use payego_core::services::bank_service::{ApiError, AppState, BankListResponse, BankService};
 use std::sync::Arc;
