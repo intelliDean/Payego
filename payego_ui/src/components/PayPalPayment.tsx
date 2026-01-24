@@ -41,7 +41,7 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({ paymentId, transactionId,
                             transaction_id: transactionId
                         });
 
-                        if (response.data.status === 'completed') {
+                        if (response.data.status?.toLowerCase() === 'completed') {
                             window.location.href = `/success?transaction_id=${transactionId}`;
                         } else {
                             setError(getErrorMessage(response.data.error_message));
