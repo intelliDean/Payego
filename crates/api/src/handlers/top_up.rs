@@ -4,18 +4,8 @@ use payego_core::services::payment_service::{
     ApiError, AppState, Claims, PaymentService, TopUpRequest, TopUpResponse,
 };
 use std::sync::Arc;
-use diesel::RunQueryDsl;
-use http::header::{CONTENT_TYPE, USER_AGENT};
-use reqwest::Url;
-use secrecy::ExposeSecret;
-use serde_json::json;
 use tracing::log::error;
-use uuid::Uuid;
 use validator::Validate;
-use payego_primitives::models::enum_types::{PaymentProvider, PaymentState, TransactionIntent};
-use payego_primitives::models::providers_dto::PayPalOrderResp;
-use payego_primitives::models::transaction::{NewTransaction, Transaction};
-use payego_primitives::schema::transactions;
 
 #[utoipa::path(
     post,
@@ -50,12 +40,13 @@ use payego_primitives::schema::transactions;
 pub async fn top_up(
     State(state): State<Arc<AppState>>,
     Extension(claims): Extension<Claims>,
-    payload: Result<Json<TopUpRequest>, axum::extract::rejection::JsonRejection>,
+    // payload: Result<Json<TopUpRequest>, axum::extract::rejection::JsonRejection>,
+    Json(req): Json<TopUpRequest>,
 ) -> Result<Json<TopUpResponse>, ApiError> {
-    let Json(req) = payload.map_err(|rejection| {
-        error!("JSON rejection: {}", rejection);
-        ApiError::Payment(format!("Invalid JSON payload: {}", rejection))
-    })?;
+    // let Json(req) = payload.map_err(|rejection| {
+    //     error!("JSON rejection: {}", rejection);
+    //     ApiError::Payment(format!("Invalid JSON payload: {}", rejection))
+    // })?;
 
     req.validate().map_err(|e| {
         error!("Validation error: {}", e);

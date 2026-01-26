@@ -53,3 +53,9 @@ export interface ApiError {
     message: string;
     code?: string;
 }
+
+export interface ResolvedUser {
+    id: string;
+    email: string;
+    username: string | null;
+}

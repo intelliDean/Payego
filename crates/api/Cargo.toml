@@ -37,3 +37,4 @@ strum = "0.26.3"
 governor = "0.10.4"
 nonzero_ext = "0.3.0"
 axum-prometheus.workspace = true
+users = "0.11.0"

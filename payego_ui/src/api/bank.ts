@@ -1,5 +1,5 @@
 import client from './client';
-import { BankAccount } from '../types';
+import { BankAccount } from '@/types';
 
 export interface Bank {
     code: string;

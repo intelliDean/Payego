@@ -21,6 +21,7 @@ use crate::handlers::{
     user_transaction::get_user_transaction,
     user_wallets::get_user_wallets,
     withdraw::withdraw,
+    exchange_rate::get_exchange_rate as get_exchange_rate_handler,
 };
 use axum::{
     middleware,
@@ -44,6 +45,7 @@ use tower_http::{
     request_id::{MakeRequestUuid, SetRequestIdLayer},
     trace::TraceLayer,
 };
+use crate::handlers::resolve_user::resolve_user;
 
 const REQUESTS_PER_SECOND: u64 = 2;
 const BURST_SIZE: u32 = 10;
@@ -157,9 +159,10 @@ fn create_public_routers(metric_handle: PrometheusHandle) -> Router<Arc<AppState
         .route("/api/auth/refresh", post(refresh_token))
         .route("/api/webhooks/stripe", post(stripe_webhook))
         .route("/api/webhooks/paystack", post(paystack_webhook))
-        // .route("/api/bank/init", axum::routing::post(initialize_banks))
         .route("/api/banks/all", axum::routing::get(all_banks))
         .route("/api/bank/resolve", axum::routing::get(resolve_account))
+        .route("/api/users/resolve", get(resolve_user))
+        .route("/api/exchange-rate", get(get_exchange_rate_handler))
         .route("/api/health", axum::routing::get(health_check))
 }
 

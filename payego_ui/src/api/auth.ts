@@ -1,5 +1,5 @@
 import client from './client';
-import { User } from '../types';
+import { User } from '@/types';
 
 export const authApi = {
     login: (email: string, password: string) => client.post('/api/auth/login', { email, password }),

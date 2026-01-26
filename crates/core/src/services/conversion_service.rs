@@ -1,3 +1,4 @@
+use crate::services::transfer_service::get_or_create_wallet;
 use diesel::prelude::*;
 pub use payego_primitives::{
     config::security_config::Claims,
@@ -15,6 +16,7 @@ pub use payego_primitives::{
 };
 use reqwest::{Client, Url};
 use serde_json::json;
+use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -60,13 +62,7 @@ impl ConversionService {
         }
 
         // ---------- RATE ----------
-        let rate = Self::get_exchange_rate(
-            &state.http_client,
-            &state.config.exchange_api_url,
-            req.from_currency,
-            req.to_currency,
-        )
-        .await?;
+        let rate = Self::get_exchange_rate(state, req.from_currency, req.to_currency).await?;
 
         if !(0.0001..10_000.0).contains(&rate) {
             return Err(ApiError::Payment("Suspicious exchange rate".into()));
@@ -89,12 +85,7 @@ impl ConversionService {
                 .first::<Wallet>(conn)
                 .map_err(|_| ApiError::Payment("Source wallet not found".into()))?;
 
-            let to_wallet = wallets::table
-                .filter(wallets::user_id.eq(user_id))
-                .filter(wallets::currency.eq(req.to_currency))
-                .for_update()
-                .first::<Wallet>(conn)
-                .map_err(|_| ApiError::Payment("Destination wallet not found".into()))?;
+            let to_wallet = get_or_create_wallet(conn, user_id, &req.to_currency)?;
 
             // ---------- BALANCE CHECK (CACHED) ----------
             debug_assert!(from_wallet.balance >= 0);
@@ -167,26 +158,24 @@ impl ConversionService {
         })
     }
 
-    async fn get_exchange_rate(
-        client: &Client,
-        base_url: &str,
+    pub async fn get_exchange_rate(
+        state: &AppState,
         from: CurrencyCode,
         to: CurrencyCode,
     ) -> Result<f64, ApiError> {
-        if from == to {
+        if from == to { //this should not be allowed
             return Ok(1.0);
         }
 
-        // let url = format!("{}/{}", base_url.trim_end_matches('/'), from);
-
-        let mut url =
-            Url::parse(base_url).map_err(|_| ApiError::Internal("Invalid FX base URL".into()))?;
+        let mut url = Url::parse(&state.config.exchange_api_url)
+            .map_err(|_| ApiError::Internal("Invalid FX base URL".into()))?;
 
         url.path_segments_mut()
             .map_err(|_| ApiError::Internal("Invalid FX URL path".into()))?
             .push(from.to_string().as_str());
 
-        let resp = client
+        let resp = state
+            .http_client
             .get(url)
             .timeout(Duration::from_secs(5))
             .send()

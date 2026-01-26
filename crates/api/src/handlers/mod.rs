@@ -23,3 +23,5 @@ pub mod user_bank_accounts;
 pub mod user_transaction;
 pub mod user_wallets;
 pub mod withdraw;
+pub mod resolve_user;
+pub mod exchange_rate;

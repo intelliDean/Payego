@@ -2,6 +2,7 @@ use crate::client::PaystackClient;
 use diesel::prelude::*;
 use http::StatusCode;
 use payego_primitives::models::providers_dto::PaystackTransferResponse;
+use payego_primitives::models::wallet::NewWallet;
 pub use payego_primitives::{
     config::security_config::Claims,
     error::ApiError,
@@ -27,8 +28,9 @@ impl TransferService {
     pub async fn transfer_internal(
         state: &Arc<AppState>,
         sender_id: Uuid,
+        // recipient_id: Uuid,
         req: WalletTransferRequest,
-    ) -> Result<StatusCode, ApiError> {
+    ) -> Result<Uuid, ApiError> {
         let mut conn = state
             .db
             .get()
@@ -48,24 +50,19 @@ impl TransferService {
                 .optional()?
             {
                 if existing.txn_state == PaymentState::Completed {
-                    return Ok(StatusCode::OK);
+                    return Ok(existing.id);
                 }
             }
 
             // ── 2. Lock wallets
             let sender_wallet = wallets::table
                 .filter(wallets::user_id.eq(sender_id))
-                .filter(wallets::currency.eq(req.currency))
+                .filter(wallets::currency.eq(&req.currency))
                 .for_update()
                 .first::<Wallet>(conn)
                 .map_err(|_| ApiError::Payment("Sender wallet not found".into()))?;
 
-            let recipient_wallet = wallets::table
-                .filter(wallets::user_id.eq(req.recipient_id))
-                .filter(wallets::currency.eq(req.currency))
-                .for_update()
-                .first::<Wallet>(conn)
-                .map_err(|_| ApiError::Payment("Recipient wallet not found".into()))?;
+            let recipient_wallet = get_or_create_wallet(conn, req.recipient, &req.currency)?;
 
             if sender_wallet.balance < amount_cents {
                 return Err(ApiError::Payment("Insufficient balance".into()));
@@ -75,7 +72,7 @@ impl TransferService {
             let sender_tx_id = diesel::insert_into(transactions::table)
                 .values(NewTransaction {
                     user_id: sender_id,
-                    counterparty_id: Some(req.recipient_id),
+                    counterparty_id: Some(req.recipient),
                     intent: TransactionIntent::Transfer,
                     amount: amount_cents,
                     currency: req.currency,
@@ -87,7 +84,7 @@ impl TransferService {
                     description: req.description.as_deref(),
                     metadata: json!({
                         "direction": "debit",
-                        "counterparty": req.recipient_id
+                        "counterparty": req.recipient,
                     }),
                 })
                 .returning(transactions::id)
@@ -96,7 +93,7 @@ impl TransferService {
             // ── 4. Recipient transaction (credit)
             let recipient_tx_id = diesel::insert_into(transactions::table)
                 .values(NewTransaction {
-                    user_id: req.recipient_id,
+                    user_id: req.recipient,
                     counterparty_id: Some(sender_id),
                     intent: TransactionIntent::Transfer,
                     amount: amount_cents,
@@ -143,7 +140,7 @@ impl TransferService {
                 .set(wallets::balance.eq(wallets::balance + amount_cents))
                 .execute(conn)?;
 
-            Ok(StatusCode::OK)
+            Ok(sender_tx_id)
         })
     }
 
@@ -327,4 +324,43 @@ impl TransferService {
 
         Ok(transfer_code)
     }
+}
+
+pub fn get_or_create_wallet(
+    conn: &mut PgConnection,
+    user_id: Uuid,
+    currency: &CurrencyCode,
+) -> Result<Wallet, ApiError> {
+    // use crate::schema::wallets::dsl::*;
+
+    // Try to fetch existing wallet with row lock
+    if let Ok(wallet) = wallets::table
+        .filter(wallets::user_id.eq(&user_id))
+        .filter(wallets::currency.eq(currency))
+        .for_update()
+        .first::<Wallet>(conn)
+    {
+        return Ok(wallet);
+    }
+
+    // Wallet does not exist → create it
+    let new_wallet = NewWallet {
+        user_id,
+        currency: currency.clone(),
+    };
+
+    diesel::insert_into(wallets::table)
+        .values(&new_wallet)
+        .on_conflict((wallets::user_id, wallets::currency))
+        .do_nothing()
+        .execute(conn)
+        .map_err(ApiError::Database)?;
+
+    // Re-fetch with lock (important)
+    wallets::table
+        .filter(wallets::user_id.eq(user_id))
+        .filter(wallets::currency.eq(currency))
+        .for_update()
+        .first::<Wallet>(conn)
+        .map_err(|_| ApiError::Payment("Failed to create wallet".into()))
 }

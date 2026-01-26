@@ -2,18 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
 import * as z from 'zod';
 import { useWallets } from '../hooks/useWallets';
 import { useBanks } from '../hooks/useBanks';
 import { transactionApi } from '../api/transactions';
+import { usersApi } from '../api/users';
 import client from '../api/client';
+import { ResolvedUser } from '@/types';
 
 const transferSchema = z.discriminatedUnion('transferType', [
     z.object({
         transferType: z.literal('internal'),
         amount: z.number().min(1).max(10000),
         currency: z.string().min(1),
-        recipientEmail: z.string().email('Valid email required'),
+        recipient: z.string().min(3, 'Username or email required'),
     }),
     z.object({
         transferType: z.literal('external'),
@@ -29,11 +32,14 @@ type TransferFormValues = z.infer<typeof transferSchema>;
 
 const TransferForm: React.FC = () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const { data: wallets } = useWallets();
     const { data: banks } = useBanks();
     const [resolving, setResolving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    const [resolvedUser, setResolvedUser] = useState<ResolvedUser | null>(null);
+    const [showConfirmation, setShowConfirmation] = useState(false);
 
     const {
         register,
@@ -69,27 +75,75 @@ const TransferForm: React.FC = () => {
     }, [bankCode, accountNumber, transferType, setValue]);
 
     const onSubmit = async (data: TransferFormValues) => {
-        setSubmitting(true);
+        console.log('Submitting transfer payload:', data);
         setError(null);
-        try {
-            if (data.transferType === 'internal') {
-                await transactionApi.internalTransfer({
-                    amount: data.amount,
-                    currency: data.currency,
-                    recipient_email: data.recipientEmail
-                });
-            } else {
-                await transactionApi.externalTransfer({
-                    amount: data.amount,
-                    currency: data.currency,
-                    bank_code: data.bankCode,
-                    account_number: data.accountNumber,
-                    account_name: data.accountName
-                });
+
+        if (data.transferType === 'internal') {
+            setResolving(true);
+            try {
+                const user = await usersApi.resolveUser(data.recipient);
+                setResolvedUser(user);
+                setShowConfirmation(true);
+            } catch (err) {
+                setError('User not found');
+            } finally {
+                setResolving(false);
             }
-            navigate('/dashboard');
+            return;
+        }
+
+        // External transfer flow
+        setSubmitting(true);
+        try {
+            const result = await transactionApi.externalTransfer({
+                amount: data.amount,
+                currency: data.currency,
+                bank_code: data.bankCode,
+                account_number: data.accountNumber,
+                account_name: data.accountName,
+                reference: crypto.randomUUID(),
+                idempotency_key: crypto.randomUUID(),
+            });
+
+            // Invalidate queries to refresh dashboard data
+            queryClient.invalidateQueries({ queryKey: ['wallets'] });
+            queryClient.invalidateQueries({ queryKey: ['transactions'] });
+
+            // The backend for external transfer likely returns the transaction object or ID. 
+            // Assuming result contains id or similar. Adjust based on API response if needed.
+            // If result is the transaction itself:
+            navigate(`/success?transaction_id=${result.id || result.transaction_id || ''}`);
         } catch (err: any) {
             setError(err.response?.data?.message || 'Transfer failed.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleConfirmTransfer = async () => {
+        if (!resolvedUser) return;
+        const data = watch();
+
+        setSubmitting(true);
+        try {
+            const result = await transactionApi.internalTransfer({
+                recipient: resolvedUser.id, // Use resolved UUID
+                amount: data.amount,
+                currency: data.currency,
+                reference: crypto.randomUUID(),
+                idempotency_key: crypto.randomUUID(),
+                description: 'Internal transfer'
+            });
+
+            // Invalidate queries to refresh dashboard data
+            queryClient.invalidateQueries({ queryKey: ['wallets'] });
+            queryClient.invalidateQueries({ queryKey: ['transactions'] });
+
+            // Redirect to success page with transaction ID
+            navigate(`/success?transaction_id=${result.id || result.transaction_id || ''}`);
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Transfer failed.');
+            setShowConfirmation(false);
         } finally {
             setSubmitting(false);
         }
@@ -130,8 +184,8 @@ const TransferForm: React.FC = () => {
 
                 {transferType === 'internal' && (
                     <div>
-                        <label className="input-label">Recipient Email</label>
-                        <input type="email" {...register('recipientEmail')} className="input-with-icon" />
+                        <label className="input-label">Recipient (Email or Username)</label>
+                        <input type="text" {...register('recipient')} className="input-with-icon" placeholder="Enter username or email" />
                     </div>
                 )}
 
@@ -154,11 +208,47 @@ const TransferForm: React.FC = () => {
                     </>
                 )}
 
-                <button type="submit" disabled={submitting} className="w-full btn-primary p-3 rounded-lg font-bold">
-                    {submitting ? 'Sending...' : 'Send Money'}
+                <button type="submit" disabled={submitting || resolving} className="w-full btn-primary p-3 rounded-lg font-bold">
+                    {submitting || resolving ? 'Processing...' : 'Send Money'}
                 </button>
                 {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             </form>
+
+            {showConfirmation && resolvedUser && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-2xl">
+                        <h3 className="text-xl font-bold mb-4">Confirm Transfer</h3>
+                        <div className="space-y-3 mb-6">
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">To:</span>
+                                <span className="font-semibold">{resolvedUser.username || resolvedUser.email}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">Amount:</span>
+                                <span className="font-semibold">{watch('currency')} {watch('amount')}</span>
+                            </div>
+                            <div className="text-sm text-gray-500 mt-2">
+                                {resolvedUser.email}
+                            </div>
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowConfirmation(false)}
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmTransfer}
+                                disabled={submitting}
+                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                            >
+                                {submitting ? 'Sending...' : 'Confirm'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

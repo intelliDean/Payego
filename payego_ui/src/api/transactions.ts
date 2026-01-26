@@ -1,5 +1,5 @@
 import client from './client';
-import { Transaction } from '../types';
+import { Transaction } from '@/types';
 
 export const transactionApi = {
     getTransactions: () => client.get<{ transactions: Transaction[] }>('/api/user/transactions').then(res => res.data.transactions),
@@ -12,5 +12,5 @@ export const transactionApi = {
     internalTransfer: (data: any) => client.post('/api/transfer/internal', data).then(res => res.data),
     externalTransfer: (data: any) => client.post('/api/transfer/external', data).then(res => res.data),
     withdraw: (bankAccountId: string, data: any) => client.post(`/api/wallet/withdraw/${bankAccountId}`, data).then(res => res.data),
-    convertCurrency: (data: any) => client.post('/api/convert_currency', data).then(res => res.data),
+    convertCurrency: (data: any) => client.post('/api/wallets/convert', data).then(res => res.data),
 };
