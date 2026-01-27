@@ -250,7 +250,7 @@ impl IntoResponse for ApiError {
             ),
 
             ApiError::Auth(AuthError::DuplicateEmail) => (
-                StatusCode::CONFLICT,
+                StatusCode::BAD_REQUEST,
                 ApiErrorResponse {
                     code: "EMAIL_ALREADY_EXISTS".to_string(),
                     message: "Email already exists".to_string(),
