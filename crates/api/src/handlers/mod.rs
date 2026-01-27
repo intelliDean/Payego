@@ -25,3 +25,4 @@ pub mod user_wallets;
 pub mod withdraw;
 pub mod resolve_user;
 pub mod exchange_rate;
+pub mod delete_bank;

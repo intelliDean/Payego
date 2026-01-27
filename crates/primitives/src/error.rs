@@ -20,6 +20,7 @@ pub enum ApiError {
     Payment(String),
     Webhook(WebhookError),
     Internal(String),
+    BadRequest(String),
     // PaystackError(PaystackError)
 }
 
@@ -35,6 +36,7 @@ impl fmt::Display for ApiError {
             ApiError::Payment(e) => write!(f, "Payment error: {}", e),
             ApiError::Webhook(e) => write!(f, "Webhook error: {}", e),
             ApiError::Internal(e) => write!(f, "Internal error: {}", e),
+            ApiError::BadRequest(e) => write!(f, "Bad request: {}", e),
             // ApiError::PaystackError(e) => write!(f, "Paystack error {}", e),
         }
     }
@@ -174,6 +176,10 @@ impl From<ApiError> for (StatusCode, String) {
             ApiError::Internal(msg) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Internal error: {}", msg),
+            ),
+            ApiError::BadRequest(msg) => (
+                StatusCode::BAD_REQUEST,
+                format!("Bad request: {}", msg),
             ),
         }
     }
@@ -372,6 +378,15 @@ impl IntoResponse for ApiError {
                     code: "INTERNAL_ERROR".to_string(),
                     message: "An unexpected error occurred".to_string(),
                     details: Some(json!({ "context": msg })), // optional – can be removed
+                },
+            ),
+
+            ApiError::BadRequest(msg) => (
+                StatusCode::BAD_REQUEST,
+                ApiErrorResponse {
+                    code: "BAD_REQUEST".to_string(),
+                    message: msg,
+                    details: None,
                 },
             ),
         };

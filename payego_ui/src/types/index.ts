@@ -5,7 +5,27 @@ export interface User {
     created_at: string;
 }
 
-export type Currency = 'USD' | 'EUR' | 'GBP' | 'NGN' | 'CAD' | 'AUD' | 'CHF' | 'JPY' | 'CNY' | 'SEK' | 'NZD' | 'MXN' | 'SGD' | 'HKD' | 'NOK' | 'KRW' | 'TRY' | 'INR' | 'BRL' | 'ZAR';
+export type Currency =
+    'USD'
+    | 'EUR'
+    | 'GBP'
+    | 'NGN'
+    | 'CAD'
+    | 'AUD'
+    | 'CHF'
+    | 'JPY'
+    | 'CNY'
+    | 'SEK'
+    | 'NZD'
+    | 'MXN'
+    | 'SGD'
+    | 'HKD'
+    | 'NOK'
+    | 'KRW'
+    | 'TRY'
+    | 'INR'
+    | 'BRL'
+    | 'ZAR';
 
 export interface Wallet {
     id: string;
@@ -26,7 +46,15 @@ export interface BankAccount {
     created_at: string;
 }
 
-export type TransactionType = 'TopUp' | 'Payout' | 'Transfer' | 'Conversion' | 'Withdrawal' | 'InternalTransfer' | 'ExternalTransfer' | 'CurrencyConversion';
+export type TransactionType =
+    'TopUp'
+    | 'Payout'
+    | 'Transfer'
+    | 'Conversion'
+    | 'Withdrawal'
+    | 'InternalTransfer'
+    | 'ExternalTransfer'
+    | 'CurrencyConversion';
 export type TransactionStatus = 'Pending' | 'Completed' | 'Failed' | 'Reversed';
 
 export interface Transaction {

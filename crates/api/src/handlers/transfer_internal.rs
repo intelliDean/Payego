@@ -1,6 +1,5 @@
 use axum::{
     extract::{Extension, Json, State},
-    http::StatusCode,
 };
 use payego_core::services::transfer_service::{
     ApiError, AppState, Claims, TransferService, WalletTransferRequest,
@@ -10,8 +9,6 @@ use std::sync::Arc;
 use tracing::error;
 use validator::Validate;
 
-use diesel::prelude::*;
-use payego_primitives::schema::users;
 
 #[utoipa::path(
     post,

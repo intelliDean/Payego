@@ -7,10 +7,7 @@ use payego_core::services::payment_service::{
 use payego_primitives::error::ApiErrorResponse;
 use payego_primitives::models::transfer_dto::{ResolveUserRequest, ResolvedUser};
 use payego_primitives::schema::users;
-use std::collections::HashMap;
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
-use validator::ValidationErrors;
 
 #[utoipa::path(
     get,

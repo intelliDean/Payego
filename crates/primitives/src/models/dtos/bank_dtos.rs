@@ -132,8 +132,11 @@ impl From<BankAccount> for BankAccountResponse {
     }
 }
 
-
-
+#[derive(Debug, Serialize, ToSchema)]
+pub struct DeleteResponse {
+    pub account_id: Uuid,
+    pub message: String,
+}
 
 
 

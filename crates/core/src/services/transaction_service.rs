@@ -158,7 +158,7 @@ impl TransactionService {
         })?;
 
         let tx = transactions::table
-            .filter(transactions::id.eq(transaction_id))
+            .filter(transactions::id.eq(transaction_id).or(transactions::reference.eq(transaction_id)))
             .filter(transactions::user_id.eq(user_id))
             .first::<Transaction>(&mut conn)
             .optional()

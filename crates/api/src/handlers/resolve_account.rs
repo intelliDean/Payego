@@ -1,17 +1,13 @@
-use payego_primitives::error::ApiErrorResponse;
 use axum::{
     extract::{Query, State},
     Json,
 };
-use once_cell::sync::Lazy;
-use regex::Regex;
+use payego_core::services::bank_account_service::{
+    ApiError, AppState, BankAccountService, ResolveAccountRequest, ResolveAccountResponse,
+};
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 use tracing::info;
-
-use payego_core::services::bank_service::{
-    ApiError, AppState, BankService, ResolveAccountRequest, ResolveAccountResponse,
-};
-
 
 #[utoipa::path(
     get,
@@ -38,8 +34,6 @@ pub async fn resolve_account(
     State(state): State<Arc<AppState>>,
     Query(req): Query<ResolveAccountRequest>,
 ) -> Result<Json<ResolveAccountResponse>, ApiError> {
-    BankService::validate_account_number(&req)?;
-
     info!(
         "Resolving account ****{} @ {}",
         &req.account_number[6..],
@@ -47,10 +41,10 @@ pub async fn resolve_account(
     );
 
     let resolved =
-        BankService::resolve_account_details(&state, &req.bank_code, &req.account_number).await?;
+        BankAccountService::resolve_account_details(&state, &req.bank_code, &req.account_number)
+            .await?;
 
     Ok(Json(ResolveAccountResponse {
         account_name: resolved.account_name,
     }))
 }
-

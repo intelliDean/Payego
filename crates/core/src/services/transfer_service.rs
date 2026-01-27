@@ -1,6 +1,5 @@
 use crate::client::PaystackClient;
 use diesel::prelude::*;
-use http::StatusCode;
 use payego_primitives::models::providers_dto::{PaystackTransferData, PaystackTransferResponse};
 use payego_primitives::models::wallet::NewWallet;
 pub use payego_primitives::{
@@ -349,7 +348,7 @@ pub fn get_or_create_wallet(
     // Wallet does not exist → create it
     let new_wallet = NewWallet {
         user_id,
-        currency: currency.clone(),
+        currency: *currency,
     };
 
     diesel::insert_into(wallets::table)

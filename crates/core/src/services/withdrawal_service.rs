@@ -16,7 +16,7 @@ pub use payego_primitives::{
 
 use payego_primitives::models::providers_dto::{PaystackResponse, PaystackTransData};
 use reqwest::Url;
-use tracing::{error, info, warn};
+use tracing::error;
 use secrecy::ExposeSecret;
 use serde_json::json;
 use uuid::Uuid;

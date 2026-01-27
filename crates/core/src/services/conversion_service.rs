@@ -14,9 +14,8 @@ pub use payego_primitives::{
     },
     schema::{transactions, wallet_ledger, wallets},
 };
-use reqwest::{Client, Url};
+use reqwest::Url;
 use serde_json::json;
-use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
 

@@ -45,6 +45,7 @@ use tower_http::{
     request_id::{MakeRequestUuid, SetRequestIdLayer},
     trace::TraceLayer,
 };
+use crate::handlers::delete_bank::delete_bank_account;
 use crate::handlers::resolve_user::resolve_user;
 
 const REQUESTS_PER_SECOND: u64 = 2;
@@ -122,6 +123,7 @@ fn create_secured_routers(state: &Arc<AppState>) -> Router<Arc<AppState>> {
             axum::routing::get(get_user_transaction),
         )
         .route("/api/wallet/top_up", axum::routing::post(top_up))
+        .route("/api/banks/{bank_account_id}", axum::routing::delete(delete_bank_account))
         .route("/api/auth/logout", axum::routing::post(logout))
         .route(
             "/api/wallets/convert",

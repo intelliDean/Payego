@@ -9,7 +9,7 @@ use crate::handlers::{
     top_up::__path_top_up, transfer_external::__path_transfer_external,
     transfer_internal::__path_transfer_internal, user_bank_accounts::__path_user_bank_accounts,
     user_transaction::__path_get_user_transaction, user_wallets::__path_get_user_wallets,
-    withdraw::__path_withdraw, resolve_user::__path_resolve_user
+    withdraw::__path_withdraw, resolve_user::__path_resolve_user, delete_bank::__path_delete_bank_account
 };
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::openapi::SecurityRequirement;
@@ -55,7 +55,8 @@ use payego_primitives::error::ApiErrorResponse;
         refresh_token,
         stripe_webhook,
         get_user_wallets,
-        resolve_user
+        resolve_user,
+        delete_bank_account
     ),
     tags(
         (name = "Authentication", description = "User registration, login, logout, current user info"),
