@@ -1,23 +1,22 @@
-use diesel::{
-    ExpressionMethods, {Connection, RunQueryDsl}, {OptionalExtension, QueryDsl},
-};
+use diesel::Connection;
 use http::StatusCode;
 use payego_primitives::models::providers_dto::PayPalCaptureResponse;
 pub use payego_primitives::{
     error::ApiError,
     models::{
         app_state::AppState,
+        providers_dto::OrderResponse,
         dtos::providers_dto::{CaptureResponse, PayPalOrderResponse, PayPalTokenResponse},
         enum_types::{CurrencyCode, PaymentProvider, PaymentState},
-        providers_dto::CaptureRequest,
-        providers_dto::OrderResponse,
         providers_dto::PaypalCapture,
         transaction::Transaction,
         wallet::Wallet,
         wallet_ledger::NewWalletLedger,
     },
-    schema::{transactions, wallet_ledger, wallets},
 };
+use crate::repositories::transaction_repository::TransactionRepository;
+use crate::repositories::wallet_repository::WalletRepository;
+
 use reqwest::Url;
 use secrecy::ExposeSecret;
 use std::str::FromStr;
@@ -125,10 +124,7 @@ impl PayPalService {
             ApiError::DatabaseConnection(e.to_string())
         })?;
 
-        let transaction = transactions::table
-            .filter(transactions::reference.eq(transaction_ref))
-            .first::<Transaction>(&mut conn)
-            .optional()?
+        let transaction = TransactionRepository::find_by_id_or_reference(&mut conn, transaction_ref)?
             .ok_or_else(|| ApiError::Payment("Transaction not found".into()))?;
 
         // ── Idempotency
@@ -152,36 +148,29 @@ impl PayPalService {
 
         conn.transaction::<_, ApiError, _>(|conn| {
             // ── Update transaction
-            diesel::update(transactions::table)
-                .filter(transactions::id.eq(transaction.id))
-                .set((
-                    transactions::txn_state.eq(PaymentState::Completed),
-                    transactions::provider.eq(Some(PaymentProvider::Paypal)),
-                    transactions::provider_reference.eq(Some(capture.capture_id.clone())),
-                ))
-                .execute(conn)?;
+            TransactionRepository::update_status_and_provider_ref(
+                conn, 
+                transaction.id, 
+                PaymentState::Completed, 
+                Some(capture.capture_id.clone())
+            )?;
 
             // ── Lock wallet
-            let wallet = wallets::table
-                .filter(wallets::user_id.eq(transaction.user_id))
-                .filter(wallets::currency.eq(transaction.currency))
-                .for_update()
-                .first::<Wallet>(conn)?;
+            let wallet = WalletRepository::find_by_user_and_currency_with_lock(
+                conn, 
+                transaction.user_id, 
+                transaction.currency
+            )?;
 
             // ── Ledger entry
-            diesel::insert_into(wallet_ledger::table)
-                .values(NewWalletLedger {
-                    wallet_id: wallet.id,
-                    transaction_id: transaction.id,
-                    amount: transaction.amount,
-                })
-                .execute(conn)?;
+            WalletRepository::add_ledger_entry(conn, NewWalletLedger {
+                wallet_id: wallet.id,
+                transaction_id: transaction.id,
+                amount: transaction.amount,
+            })?;
 
             // ── Update balance
-            diesel::update(wallets::table)
-                .filter(wallets::id.eq(wallet.id))
-                .set(wallets::balance.eq(wallets::balance + transaction.amount))
-                .execute(conn)?;
+            WalletRepository::credit(conn, wallet.id, transaction.amount)?;
 
             Ok(())
         })?;

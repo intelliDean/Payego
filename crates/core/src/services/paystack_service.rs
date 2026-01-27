@@ -1,5 +1,6 @@
 use axum::body::Bytes;
-use diesel::prelude::*;
+use diesel::Connection;
+
 use hmac::KeyInit;
 use http::HeaderMap;
 pub use payego_primitives::{
@@ -11,8 +12,9 @@ pub use payego_primitives::{
         transaction::Transaction,
         wallet_ledger::NewWalletLedger,
     },
-    schema::{transactions, wallet_ledger, wallets},
 };
+use crate::repositories::transaction_repository::TransactionRepository;
+use crate::repositories::wallet_repository::WalletRepository;
 use secrecy::ExposeSecret;
 use std::sync::Arc;
 use tracing::info;
@@ -59,10 +61,7 @@ impl PaystackService {
             .map_err(|_| ApiError::Payment("Invalid transaction reference".into()))?;
 
         conn.transaction(|conn| {
-            let tx = transactions::table
-                .filter(transactions::reference.eq(reference))
-                .first::<Transaction>(conn)
-                .optional()?
+            let tx = TransactionRepository::find_by_id_or_reference(conn, reference)?
                 .ok_or(ApiError::Payment("Transaction not found".into()))?;
 
             // 🔒 Idempotency guard
@@ -73,33 +72,29 @@ impl PaystackService {
 
             match event {
                 "transfer.success" => {
-                    diesel::update(transactions::table.find(tx.id))
-                        .set(transactions::txn_state.eq(PaymentState::Completed))
-                        .execute(conn)?;
+                    TransactionRepository::update_state(conn, tx.id, PaymentState::Completed)?;
                 }
 
                 "transfer.failed" => {
-                    diesel::update(transactions::table.find(tx.id))
-                        .set(transactions::txn_state.eq(PaymentState::Failed))
-                        .execute(conn)?;
+                    TransactionRepository::update_state(conn, tx.id, PaymentState::Failed)?;
 
                     // 💰 Refund ONLY for payout intents
                     if matches!(tx.intent, TransactionIntent::Payout) {
-                        let wallet_id = diesel::update(wallets::table)
-                            .filter(wallets::user_id.eq(tx.user_id))
-                            .filter(wallets::currency.eq(tx.currency))
-                            .set(wallets::balance.eq(wallets::balance + tx.amount.abs()))
-                            .returning(wallets::id)
-                            .get_result::<Uuid>(conn)?;
+                        let amount_to_refund = tx.amount.abs();
+                        // 💰 Wallet Credit
+                        WalletRepository::credit_by_user_and_currency(conn, tx.user_id, tx.currency, amount_to_refund)?;
+
+                        // To get the wallet_id for ledger entry, we might need to find it or credit returning id
+                        // Let's use find_by_user_and_currency_with_lock for safety or just find_by_user_and_currency
+                        let wallet = WalletRepository::find_by_user_and_currency(conn, tx.user_id, tx.currency)?
+                            .ok_or(ApiError::Internal("Wallet not found for refund".into()))?;
 
                         // 📝 Ledger Entry (Refund)
-                        diesel::insert_into(wallet_ledger::table)
-                            .values(NewWalletLedger {
-                                wallet_id,
-                                transaction_id: tx.id,
-                                amount: tx.amount.abs(),
-                            })
-                            .execute(conn)?;
+                        WalletRepository::add_ledger_entry(conn, NewWalletLedger {
+                            wallet_id: wallet.id,
+                            transaction_id: tx.id,
+                            amount: amount_to_refund,
+                        })?;
                     }
                 }
 

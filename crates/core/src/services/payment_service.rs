@@ -1,4 +1,4 @@
-use diesel::prelude::*;
+
 use http::header::{CONTENT_TYPE, USER_AGENT};
 use payego_primitives::models::providers_dto::PayPalOrderResp;
 pub use payego_primitives::{
@@ -10,8 +10,8 @@ pub use payego_primitives::{
         top_up_dto::{TopUpRequest, TopUpResponse},
         transaction::{NewTransaction, Transaction},
     },
-    schema::transactions,
 };
+use crate::repositories::transaction_repository::TransactionRepository;
 use reqwest::Url;
 use secrecy::ExposeSecret;
 use serde_json::json;
@@ -41,37 +41,20 @@ impl PaymentService {
         let reference = Uuid::new_v4();
 
         // ---------- DB-ENFORCED IDEMPOTENCY ----------
-        let inserted = diesel::insert_into(transactions::table)
-            .values(NewTransaction {
-                user_id,
-                counterparty_id: None,
-                intent: TransactionIntent::TopUp,
-                amount: amount_cents,
-                currency: req.currency,
-                txn_state: PaymentState::Pending,
-                provider: Some(req.provider),
-                provider_reference: None,
-                idempotency_key: &req.idempotency_key,
-                reference,
-                description: Some("Top-up intent"),
-                metadata: serde_json::json!({}),
-            })
-            .on_conflict((transactions::user_id, transactions::idempotency_key))
-            .do_nothing()
-            .returning(transactions::id)
-            .get_result::<Uuid>(&mut conn)
-            .optional()?;
-
-        let tx = match inserted {
-            Some(_) => transactions::table
-                .filter(transactions::reference.eq(reference))
-                .first::<Transaction>(&mut conn)?,
-
-            None => transactions::table
-                .filter(transactions::user_id.eq(user_id))
-                .filter(transactions::idempotency_key.eq(&req.idempotency_key))
-                .first::<Transaction>(&mut conn)?,
-        };
+        let tx = TransactionRepository::create(&mut conn, NewTransaction {
+            user_id,
+            counterparty_id: None,
+            intent: TransactionIntent::TopUp,
+            amount: amount_cents,
+            currency: req.currency,
+            txn_state: PaymentState::Pending,
+            provider: Some(req.provider),
+            provider_reference: None,
+            idempotency_key: &req.idempotency_key,
+            reference,
+            description: Some("Top-up intent"),
+            metadata: serde_json::json!({}),
+        })?;
 
         let (session_url, payment_id) = match req.provider {
             PaymentProvider::Stripe => {

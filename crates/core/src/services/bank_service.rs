@@ -1,4 +1,4 @@
-use diesel::prelude::*;
+
 pub use payego_primitives::{
     error::ApiError,
     models::{
@@ -12,6 +12,7 @@ pub use payego_primitives::{
     },
     schema::banks,
 };
+use crate::repositories::bank_repository::BankRepository;
 use reqwest::Url;
 use secrecy::ExposeSecret;
 use std::sync::Arc;
@@ -28,7 +29,7 @@ impl BankService {
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
         // idempotency check
-        let existing: i64 = banks::table.count().get_result(&mut conn)?;
+        let existing = BankRepository::count(&mut conn)?;
         if existing > 0 {
             info!("Banks already initialized ({} records exist)", existing);
             return Ok(false);
@@ -118,11 +119,7 @@ impl BankService {
 
         let banks_to_insert = Self::insert_banks(body);
 
-        let inserted = diesel::insert_into(banks::table)
-            .values(&banks_to_insert)
-            .on_conflict(banks::code)
-            .do_nothing()
-            .execute(&mut conn)?;
+        let inserted = BankRepository::create_many(&mut conn, banks_to_insert)?;
 
         info!(
             "Successfully initialized {} Nigerian banks from Paystack",
@@ -190,15 +187,7 @@ impl BankService {
             ApiError::DatabaseConnection("Database unavailable".into())
         })?;
 
-        let banks = banks::table
-            .filter(banks::country.eq(&state.config.default_country))
-            .filter(banks::is_active.eq(true))
-            .order(banks::name.asc())
-            .load::<Bank>(&mut conn)
-            .map_err(|_| {
-                error!("banks.list: query failed");
-                ApiError::Internal("Failed to fetch banks".into())
-            })?;
+        let banks = BankRepository::list_active_by_country(&mut conn, &state.config.default_country)?;
 
         Ok(BankListResponse {
             banks: banks.into_iter().map(BankDto::from).collect(),

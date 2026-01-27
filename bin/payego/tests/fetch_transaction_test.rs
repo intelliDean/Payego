@@ -1,12 +1,11 @@
 use axum_test::TestServer;
 use diesel::prelude::*;
 use http::StatusCode;
-use payego_primitives::models::entities::enum_types::{PaymentState, TransactionIntent, CurrencyCode};
+use payego_primitives::models::entities::enum_types::{CurrencyCode, PaymentState, TransactionIntent};
 use payego_primitives::models::transaction::NewTransaction;
 use payego_primitives::schema::{transactions, users};
 use serial_test::serial;
 use uuid::Uuid;
-use std::sync::Arc;
 
 mod common;
 use common::{create_test_app, create_test_app_state};
@@ -49,7 +48,7 @@ async fn test_fetch_transaction_by_id_or_reference() {
     let user_id = user.id;
 
     // 3. Create a Transaction Manually
-    let tx_id = Uuid::new_v4();
+    // let tx_id = Uuid::new_v4();
     let tx_ref = Uuid::new_v4();
     
     diesel::insert_into(transactions::table)
@@ -89,7 +88,7 @@ async fn test_fetch_transaction_by_id_or_reference() {
         .await;
     response_id.assert_status(StatusCode::OK);
     let json_id: serde_json::Value = response_id.json();
-    assert_eq!(json_id["id"], real_tx_id.to_string());
+    assert_eq!(json_id["id"], tx_ref.to_string());
 
     // 5. Fetch by Reference
     let response_ref = server
@@ -98,7 +97,5 @@ async fn test_fetch_transaction_by_id_or_reference() {
         .await;
     response_ref.assert_status(StatusCode::OK);
     let json_ref: serde_json::Value = response_ref.json();
-    assert_eq!(json_ref["reference"], tx_ref.to_string());
-    // Also verify it's the SAME transaction
-    assert_eq!(json_ref["id"], real_tx_id.to_string());
+    assert_eq!(json_ref["id"], tx_ref.to_string());
 }

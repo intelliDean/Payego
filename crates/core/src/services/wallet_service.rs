@@ -1,6 +1,6 @@
-use diesel::prelude::*;
 use tracing::{error, warn};
 use uuid::Uuid;
+use crate::repositories::wallet_repository::WalletRepository;
 
 pub use payego_primitives::{
     config::security_config::Claims,
@@ -30,10 +30,7 @@ impl WalletService {
             ApiError::DatabaseConnection("Database unavailable".into())
         })?;
 
-        let wallets = wallets::table
-            .filter(wallets::user_id.eq(user_id))
-            .order(wallets::created_at.asc())
-            .load::<Wallet>(&mut conn)
+        let wallets = WalletRepository::find_all_by_user(&mut conn, user_id)
             .map_err(|_| {
                 error!("wallets.list: query failed");
                 ApiError::Internal("Failed to fetch wallets".into())

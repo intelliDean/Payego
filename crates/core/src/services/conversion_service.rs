@@ -1,4 +1,5 @@
-use crate::services::transfer_service::get_or_create_wallet;
+use crate::repositories::transaction_repository::TransactionRepository;
+use crate::repositories::wallet_repository::WalletRepository;
 use diesel::prelude::*;
 pub use payego_primitives::{
     config::security_config::Claims,
@@ -37,14 +38,7 @@ impl ConversionService {
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
         // ---------- IDEMPOTENCY ----------
-        if let Some(tx) = transactions::table
-            .filter(transactions::user_id.eq(user_id))
-            .filter(transactions::idempotency_key.eq(&req.idempotency_key))
-            .first::<Transaction>(&mut conn)
-            .optional()?
-        {
-            // let meta = tx.metadata;
-
+        if let Some(tx) = TransactionRepository::find_by_idempotency_key(&mut conn, user_id, &req.idempotency_key)? {
             //closure to help me convert this
             let get_i64 = |key: &str| {
                 tx.metadata.get(key)
@@ -77,14 +71,8 @@ impl ConversionService {
 
         conn.transaction::<_, ApiError, _>(|conn| {
             // ---------- LOCK WALLETS ----------
-            let from_wallet = wallets::table
-                .filter(wallets::user_id.eq(user_id))
-                .filter(wallets::currency.eq(req.from_currency))
-                .for_update()
-                .first::<Wallet>(conn)
-                .map_err(|_| ApiError::Payment("Source wallet not found".into()))?;
-
-            let to_wallet = get_or_create_wallet(conn, user_id, &req.to_currency)?;
+            let from_wallet = WalletRepository::find_by_user_and_currency_with_lock(conn, user_id, req.from_currency)?;
+            let to_wallet = WalletRepository::create_if_not_exists(conn, user_id, req.to_currency)?;
 
             // ---------- BALANCE CHECK (CACHED) ----------
             debug_assert!(from_wallet.balance >= 0);
@@ -93,58 +81,42 @@ impl ConversionService {
             }
 
             // ---------- TRANSACTION ----------
-            let tx_id: Uuid = diesel::insert_into(transactions::table)
-                .values(NewTransaction {
-                    user_id,
-                    counterparty_id: None,
-                    intent: TransactionIntent::Conversion,
-                    amount: req.amount_cents,
-                    currency: req.from_currency,
-                    txn_state: PaymentState::Completed,
-                    provider: Some(PaymentProvider::Internal),
-                    provider_reference: None,
-                    idempotency_key: &req.idempotency_key,
-                    reference: tx_ref,
-                    description: Some("Currency conversion"),
-                    metadata: json!({
-                        "exchange_rate_scaled": rate_scaled,
-                        "converted_amount_cents": net_cents,
-                        "fee_cents": fee_cents,
-                        "quoted_at": chrono::Utc::now()
-                    }),
-                })
-                .on_conflict((transactions::user_id, transactions::idempotency_key))
-                .do_nothing()
-                .returning(transactions::id)
-                .get_result(conn)?;
+            let tx = TransactionRepository::create(conn, NewTransaction {
+                user_id,
+                counterparty_id: None,
+                intent: TransactionIntent::Conversion,
+                amount: req.amount_cents,
+                currency: req.from_currency,
+                txn_state: PaymentState::Completed,
+                provider: Some(PaymentProvider::Internal),
+                provider_reference: None,
+                idempotency_key: &req.idempotency_key,
+                reference: tx_ref,
+                description: Some("Currency conversion"),
+                metadata: json!({
+                    "exchange_rate_scaled": rate_scaled,
+                    "converted_amount_cents": net_cents,
+                    "fee_cents": fee_cents,
+                    "quoted_at": chrono::Utc::now()
+                }),
+            })?;
 
             // ---------- LEDGER ----------
-            diesel::insert_into(wallet_ledger::table)
-                .values(NewWalletLedger {
-                    wallet_id: from_wallet.id,
-                    transaction_id: tx_id,
-                    amount: -req.amount_cents,
-                    // entry_type: "debit",
-                })
-                .execute(conn)?;
+            WalletRepository::add_ledger_entry(conn, NewWalletLedger {
+                wallet_id: from_wallet.id,
+                transaction_id: tx.id,
+                amount: -req.amount_cents,
+            })?;
 
-            diesel::insert_into(wallet_ledger::table)
-                .values(NewWalletLedger {
-                    wallet_id: to_wallet.id,
-                    transaction_id: tx_id,
-                    amount: net_cents,
-                    // entry_type: "credit",
-                })
-                .execute(conn)?;
+            WalletRepository::add_ledger_entry(conn, NewWalletLedger {
+                wallet_id: to_wallet.id,
+                transaction_id: tx.id,
+                amount: net_cents,
+            })?;
 
             // ---------- UPDATE CACHED BALANCE ----------
-            diesel::update(wallets::table.filter(wallets::id.eq(from_wallet.id)))
-                .set(wallets::balance.eq(wallets::balance - req.amount_cents))
-                .execute(conn)?;
-
-            diesel::update(wallets::table.filter(wallets::id.eq(to_wallet.id)))
-                .set(wallets::balance.eq(wallets::balance + net_cents))
-                .execute(conn)?;
+            WalletRepository::debit(conn, from_wallet.id, req.amount_cents)?;
+            WalletRepository::credit(conn, to_wallet.id, net_cents)?;
 
             Ok(())
         })?;

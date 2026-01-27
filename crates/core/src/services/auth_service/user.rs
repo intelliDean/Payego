@@ -1,4 +1,4 @@
-use diesel::prelude::*;
+
 pub use payego_primitives::{
     config::security_config::Claims,
     error::{ApiError, AuthError},
@@ -10,6 +10,8 @@ pub use payego_primitives::{
 };
 use tracing::log::error;
 use uuid::Uuid;
+use crate::repositories::user_repository::UserRepository;
+use crate::repositories::wallet_repository::WalletRepository;
 
 pub struct UserService;
 
@@ -23,35 +25,20 @@ impl UserService {
             ApiError::DatabaseConnection("Database unavailable".into())
         })?;
 
-        let user_data = users::table
-            .find(usr_id)
-            .select((users::id, users::email, users::username, users::created_at))
-            .first::<(Uuid, String, Option<String>, chrono::DateTime<chrono::Utc>)>(&mut conn)
-            .optional()
-            .map_err(|_| {
-                error!("user.summary: failed to fetch user data");
-                ApiError::Internal("Failed to load user".into())
-            })?
+        let user_data = UserRepository::find_by_id(&mut conn, usr_id)?
             .ok_or_else(|| ApiError::Auth(AuthError::InvalidToken("User does not exist".into())))?;
 
-        let walletz = wallets::table
-            .filter(wallets::user_id.eq(usr_id))
-            .select((wallets::currency, wallets::balance))
-            .load::<(CurrencyCode, i64)>(&mut conn)
-            .map_err(|_| {
-                error!("user.summary: failed to load wallets");
-                ApiError::Internal("Failed to load wallets".into())
-            })?
+        let walletz = WalletRepository::find_all_by_user(&mut conn, usr_id)?
             .into_iter()
-            .map(|(currency, balance)| WalletSummaryDto { currency, balance })
+            .map(|w| WalletSummaryDto { currency: w.currency, balance: w.balance })
             .collect();
 
         Ok(CurrentUserResponse {
-            id: user_data.0,
-            email: user_data.1,
-            username: user_data.2,
+            id: user_data.id,
+            email: user_data.email,
+            username: user_data.username,
             wallets: walletz,
-            created_at: user_data.3,
+            created_at: user_data.created_at,
         })
     }
 }

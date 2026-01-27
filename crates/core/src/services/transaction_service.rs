@@ -1,6 +1,5 @@
-use chrono::Utc;
+use crate::repositories::transaction_repository::TransactionRepository;
 use diesel::prelude::*;
-use stripe::PaymentIntent;
 pub use payego_primitives::{
     config::security_config::Claims,
     error::{ApiError, AuthError},
@@ -10,10 +9,13 @@ pub use payego_primitives::{
         enum_types::{CurrencyCode, TransactionIntent},
         transaction::Transaction,
         transaction_dto::{TransactionResponse, TransactionSummaryDto, TransactionsResponse},
-        wallet_ledger::NewWalletLedger,
+        wallet_ledger::{NewWalletLedger, WalletLedger},
+        wallet::Wallet,
     },
     schema::{transactions, wallet_ledger, wallets},
 };
+use crate::repositories::wallet_repository::WalletRepository;
+use stripe::PaymentIntent;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -22,7 +24,6 @@ const RECENT_TX_LIMIT: i64 = 5;
 pub struct TransactionService;
 
 impl TransactionService {
-
     pub fn handle_payment_intent_succeeded(
         state: &AppState,
         pay_int: PaymentIntent,
@@ -39,16 +40,13 @@ impl TransactionService {
         let currency = pay_int.currency.to_string().to_uppercase();
         let provider_reference = pay_int.id.clone();
 
-        let mut conn = state.db.get().map_err(|e| {
-            ApiError::DatabaseConnection(e.to_string())
-        })?;
+        let mut conn = state
+            .db
+            .get()
+            .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
         conn.transaction(|conn| {
-            let tx = transactions::table
-                .filter(transactions::reference.eq(transaction_ref))
-                .for_update()
-                .first::<Transaction>(conn)
-                .optional()?
+            let tx = TransactionRepository::find_by_reference_for_update(conn, transaction_ref)?
                 .ok_or(ApiError::Payment("Transaction not found".into()))?;
 
             // 🔒 Idempotency
@@ -63,35 +61,22 @@ impl TransactionService {
             }
 
             // Update transaction
-            diesel::update(transactions::table.find(tx.id))
-                .set((
-                    transactions::txn_state.eq(PaymentState::Completed),
-                    transactions::provider_reference.eq(Some(provider_reference.to_string())),
-                    transactions::updated_at.eq(Utc::now()),
-                ))
-                .execute(&mut *conn)?;
+            TransactionRepository::update_status_and_provider_ref(
+                conn,
+                tx.id,
+                PaymentState::Completed,
+                Some(provider_reference.to_string()),
+            )?;
 
             // 💰 Wallet UPSERT (critical)
-            let wallet_id = diesel::insert_into(wallets::table)
-                .values((
-                    wallets::user_id.eq(tx.user_id),
-                    wallets::currency.eq(tx.currency),
-                    wallets::balance.eq(amount),
-                ))
-                .on_conflict(diesel::dsl::sql::<diesel::sql_types::Record<(diesel::sql_types::Uuid, payego_primitives::schema::sql_types::CurrencyCode)>>("(user_id, currency)"))
-                .do_update()
-                .set(wallets::balance.eq(wallets::balance + amount))
-                .returning(wallets::id)
-                .get_result::<Uuid>(&mut *conn)?;
+            let wallet_id = WalletRepository::upsert_balance(conn, tx.user_id, tx.currency, amount)?;
 
             // 📝 Ledger Entry
-            diesel::insert_into(wallet_ledger::table)
-                .values(NewWalletLedger {
-                    wallet_id,
-                    transaction_id: tx.id,
-                    amount,
-                })
-                .execute(&mut *conn)?;
+            WalletRepository::add_ledger_entry(conn, NewWalletLedger {
+                wallet_id,
+                transaction_id: tx.id,
+                amount,
+            })?;
 
             Ok(())
         })
@@ -108,11 +93,15 @@ impl TransactionService {
         let transaction_ref = Uuid::parse_str(tx_ref).ok();
 
         if let Some(tx_ref) = transaction_ref {
-            let mut conn = state.db.get().map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
-            diesel::update(transactions::table)
-                .filter(transactions::reference.eq(tx_ref))
-                .set(transactions::txn_state.eq(PaymentState::Failed))
-                .execute(&mut *conn)?;
+            let mut conn = state
+                .db
+                .get()
+                .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
+            TransactionRepository::update_status_by_reference(
+                &mut conn,
+                tx_ref,
+                PaymentState::Failed,
+            )?;
         }
 
         Ok(())
@@ -130,17 +119,19 @@ impl TransactionService {
         let transaction_ref = Uuid::parse_str(tx_ref).ok();
 
         if let Some(tx_ref) = transaction_ref {
-            let mut conn = state.db.get().map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
-            diesel::update(transactions::table)
-                .filter(transactions::reference.eq(tx_ref))
-                .set(transactions::txn_state.eq(PaymentState::Cancelled))
-                .execute(&mut *conn)?;
+            let mut conn = state
+                .db
+                .get()
+                .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
+            TransactionRepository::update_status_by_reference(
+                &mut conn,
+                tx_ref,
+                PaymentState::Cancelled,
+            )?;
         }
 
         Ok(())
     }
-
-
 
     pub async fn get_user_transaction(
         state: &AppState,
@@ -157,16 +148,9 @@ impl TransactionService {
             ApiError::DatabaseConnection("Database unavailable".into())
         })?;
 
-        let tx = transactions::table
-            .filter(transactions::id.eq(transaction_id).or(transactions::reference.eq(transaction_id)))
-            .filter(transactions::user_id.eq(user_id))
-            .first::<Transaction>(&mut conn)
-            .optional()
-            .map_err(|_| {
-                error!("txn.fetch: database query failed");
-                ApiError::Internal("Failed to fetch transaction".into())
-            })?
-            .ok_or_else(|| ApiError::Internal("Transaction not found".into()))?;
+        let tx =
+            TransactionRepository::find_by_id_or_ref_and_user(&mut conn, transaction_id, user_id)?
+                .ok_or_else(|| ApiError::Internal("Transaction not found".into()))?;
 
         Ok(tx.into())
     }
@@ -175,49 +159,17 @@ impl TransactionService {
         state: &AppState,
         uid: Uuid,
     ) -> Result<TransactionsResponse, ApiError> {
-        use payego_primitives::schema::transactions::dsl::*;
-
         let mut conn = state.db.get().map_err(|_| {
             error!("transactions.recent: failed to acquire db connection");
             ApiError::DatabaseConnection("Database unavailable".into())
         })?;
 
-        let rows = transactions
-            .filter(user_id.eq(uid))
-            .order(created_at.desc())
-            .limit(RECENT_TX_LIMIT)
-            .select((id, intent, amount, currency, created_at, txn_state, reference))
-            .load::<(
-                Uuid,
-                TransactionIntent,
-                i64,
-                CurrencyCode,
-                chrono::DateTime<chrono::Utc>,
-                PaymentState,
-                Uuid,
-            )>(&mut conn)
+        let rows = TransactionRepository::find_recent_by_user(&mut conn, uid, RECENT_TX_LIMIT)
             .map_err(|_| {
                 error!("transactions.recent: failed to load transactions");
                 ApiError::Internal("Failed to load transactions".into())
             })?;
 
-        let tnx = rows
-            .into_iter()
-            .map(
-                |(tnx_id, tnx_intent, tnx_amount, tnx_currency, tnx_created_at, status, tnx_ref)| {
-                    TransactionSummaryDto {
-                        id: tnx_id,
-                        intent: tnx_intent,
-                        amount: tnx_amount,
-                        currency: tnx_currency,
-                        created_at: tnx_created_at,
-                        status,
-                        reference: tnx_ref,
-                    }
-                },
-            )
-            .collect();
-
-        Ok(TransactionsResponse { transactions: tnx })
+        Ok(TransactionsResponse { transactions: rows })
     }
 }

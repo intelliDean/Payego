@@ -10,3 +10,4 @@ pub mod transaction_dto;
 pub mod transfer_dto;
 pub mod wallet_dto;
 pub mod withdrawal_dto;
+pub mod repository_dto;

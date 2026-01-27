@@ -14,6 +14,7 @@ pub use payego_primitives::{
     },
     schema::refresh_tokens::dsl::*,
 };
+use crate::repositories::token_repository::TokenRepository;
 use rand::{distributions::Alphanumeric, Rng};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
@@ -32,14 +33,11 @@ impl TokenService {
         let hashed_token = Self::hash_token(&raw_token);
         let expiry = Utc::now() + Duration::days(7);
 
-        diesel::insert_into(refresh_tokens)
-            .values(NewRefreshToken {
-                user_id: user_uuid,
-                token_hash: &hashed_token,
-                expires_at: expiry,
-            })
-            .execute(conn)
-            .map_err(|e: diesel::result::Error| ApiError::from(e))?;
+        TokenRepository::create_refresh_token(conn, NewRefreshToken {
+            user_id: user_uuid,
+            token_hash: &hashed_token,
+            expires_at: expiry,
+        })?;
 
         Ok(raw_token)
     }
@@ -55,15 +53,7 @@ impl TokenService {
 
         let hashed_token = Self::hash_token(raw_token);
 
-        let token_record = diesel::update(
-            refresh_tokens
-                .filter(token_hash.eq(&hashed_token))
-                .filter(revoked.eq(false))
-                .filter(expires_at.gt(Utc::now())),
-        )
-        .set(revoked.eq(true))
-        .get_result::<RefreshToken>(&mut conn)
-        .optional()?;
+        let token_record = TokenRepository::rotate_refresh_token(&mut conn, &hashed_token)?;
 
         if let Some(token_record) = token_record {
             let new_token = Self::generate_refresh_token(&mut conn, token_record.user_id)?;
@@ -83,10 +73,8 @@ impl TokenService {
         conn: &mut PgConnection,
         user_uuid: Uuid,
     ) -> Result<(), ApiError> {
-        diesel::update(refresh_tokens.filter(user_id.eq(user_uuid)))
-            .set(revoked.eq(true))
-            .execute(conn)
-            .map_err(|e: diesel::result::Error| ApiError::from(e))?;
+        TokenRepository::revoke_all_user_tokens(conn, user_uuid)
+            .map_err(|e| ApiError::Internal(e.to_string()))?;
         Ok(())
     }
 

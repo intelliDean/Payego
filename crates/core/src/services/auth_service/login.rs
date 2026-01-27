@@ -10,6 +10,7 @@ pub use payego_primitives::{
         user::User,
     },
 };
+use crate::repositories::user_repository::UserRepository;
 use tracing::{error, warn};
 
 pub struct LoginService;
@@ -21,7 +22,7 @@ impl LoginService {
             ApiError::DatabaseConnection("Database unavailable".into())
         })?;
 
-        let user = Self::find_user_by_email(&mut conn, &payload.email)?;
+        let user = UserRepository::find_by_email(&mut conn, &payload.email)?;
         Self::verify_password(&payload.password, user.as_ref())?;
 
         let user = user.ok_or(ApiError::Auth(AuthError::InvalidCredentials))?;
@@ -40,21 +41,7 @@ impl LoginService {
         })
     }
 
-    fn find_user_by_email(
-        conn: &mut PgConnection,
-        email_addr: &str,
-    ) -> Result<Option<User>, ApiError> {
-        use payego_primitives::schema::users::dsl::*;
 
-        users
-            .filter(email.eq(email_addr))
-            .first::<User>(conn)
-            .optional()
-            .map_err(|_| {
-                error!("auth.login: db query failed");
-                ApiError::Internal("Authentication failure".into())
-            })
-    }
 
     fn verify_password(password: &str, user: Option<&User>) -> Result<(), ApiError> {
         // verifying *something* to prevent timing attacks

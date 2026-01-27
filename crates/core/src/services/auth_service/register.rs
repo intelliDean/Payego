@@ -1,6 +1,6 @@
 use crate::services::auth_service::token::TokenService;
 use argon2::{Argon2, Params};
-use diesel::prelude::*;
+
 use password_hash::PasswordHasher;
 pub use payego_primitives::{
     config::security_config::SecurityConfig,
@@ -13,9 +13,10 @@ pub use payego_primitives::{
     },
     schema::users,
 };
+use crate::repositories::user_repository::UserRepository;
 use secrecy::{ExposeSecret, SecretString};
 use tracing::error;
-use tracing::log::info;
+
 
 pub struct RegisterService;
 
@@ -39,18 +40,7 @@ impl RegisterService {
             username: payload.username.as_deref(),
         };
 
-        let user = diesel::insert_into(users::table)
-            .values(&new_user)
-            .get_result::<User>(&mut conn)
-            .map_err(|e| {
-                if Self::is_unique_violation(&e) {
-                    info!("auth.register: duplicate email");
-                    ApiError::Auth(AuthError::DuplicateEmail)
-                } else {
-                    error!("auth.register: failed to insert user");
-                    ApiError::Internal("Registration failed".into())
-                }
-            })?;
+        let user = UserRepository::create(&mut conn, new_user)?;
 
         let token = SecurityConfig::create_token(state, &user.id.to_string()).map_err(|_| {
             error!("auth.register: jwt generation failed");
@@ -98,13 +88,4 @@ impl RegisterService {
         Ok(argon2)
     }
 
-    fn is_unique_violation(err: &diesel::result::Error) -> bool {
-        matches!(
-            err,
-            diesel::result::Error::DatabaseError(
-                diesel::result::DatabaseErrorKind::UniqueViolation,
-                _
-            )
-        )
-    }
 }
