@@ -67,13 +67,13 @@ const Dashboard: React.FC = () => {
                     <div className="max-w-5xl mx-auto">
                         <div className="flex justify-between items-center mb-10">
                             <div>
-                                <h1 className="text-3xl font-black text-gray-900 tracking-tight">Dashboard</h1>
-                                <p className="text-base text-gray-500 mt-1">Welcome back, your financial snapshot is ready.</p>
+                                <h1 className="text-3xl font-black text-main tracking-tight">Dashboard</h1>
+                                <p className="text-base text-muted mt-1">Welcome back, your financial snapshot is ready.</p>
                             </div>
                             {user && (
                                 <Link
                                     to="/profile"
-                                    className="flex items-center space-x-3 bg-white rounded-2xl px-4 py-2 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200"
+                                    className="flex items-center space-x-3 bg-card rounded-2xl px-4 py-2 shadow-sm border border-main hover:shadow-md transition-all duration-200"
                                 >
                                     <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                                         <span className="text-white font-bold">
@@ -81,8 +81,8 @@ const Dashboard: React.FC = () => {
                                         </span>
                                     </div>
                                     <div className="text-left hidden sm:block">
-                                        <p className="text-sm font-bold text-gray-900 leading-tight">{user.username || 'User'}</p>
-                                        <p className="text-xs text-gray-500">{user.email}</p>
+                                        <p className="text-sm font-bold text-main leading-tight">{user.username || 'User'}</p>
+                                        <p className="text-xs text-muted">{user.email}</p>
                                     </div>
                                 </Link>
                             )}
@@ -113,18 +113,18 @@ const Dashboard: React.FC = () => {
                         {user && !isLoading && (
                             <div className="space-y-4">
                                 {/* Stats */}
-                                <div className="bg-white rounded-lg shadow-sm border border-gray-100">
+                                <div className="bg-card rounded-lg shadow-sm border border-main">
                                     <div className="p-4">
-                                        <h3 className="text-lg font-semibold text-gray-900 mb-3">Balances</h3>
+                                        <h3 className="text-lg font-semibold text-main mb-3">Balances</h3>
                                         {Object.keys(balancesByCurrency).length > 0 ? (
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 {Object.entries(balancesByCurrency).map(([currency, balance]) => (
                                                     <div
                                                         key={currency}
-                                                        className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100"
+                                                        className="bg-main border border-main rounded-lg p-3 hover:shadow-md transition-all duration-200"
                                                     >
-                                                        <h4 className="text-sm font-medium text-gray-500">{currency}</h4>
-                                                        <p className="text-lg font-bold text-gray-900">
+                                                        <h4 className="text-sm font-medium text-muted">{currency}</h4>
+                                                        <p className="text-lg font-bold text-main">
                                                             {formatBalance(balance, currency)}
                                                         </p>
                                                     </div>
@@ -142,10 +142,10 @@ const Dashboard: React.FC = () => {
                                 </div>
 
                                 {/* Wallets */}
-                                <div className="bg-white rounded-lg shadow-sm border border-gray-100">
+                                <div className="bg-card rounded-lg shadow-sm border border-main">
                                     <div className="p-4 flex justify-between items-center">
-                                        <h2 className="text-lg font-semibold text-gray-900">Wallets</h2>
-                                        <Link to="/wallets" className="text-sm text-blue-600 hover:text-blue-700">
+                                        <h2 className="text-lg font-semibold text-main">Wallets</h2>
+                                        <Link to="/wallets" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
                                             View All
                                         </Link>
                                     </div>
@@ -154,7 +154,7 @@ const Dashboard: React.FC = () => {
                                             {wallets.slice(0, 3).map((wallet) => (
                                                 <div
                                                     key={wallet.id}
-                                                    className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-100 hover:from-blue-100 hover:to-indigo-100 transition-all duration-200"
+                                                    className="bg-main border border-main rounded-lg p-3 hover:shadow-md transition-all duration-200"
                                                 >
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center space-x-2">
@@ -165,7 +165,7 @@ const Dashboard: React.FC = () => {
                                                             </div>
                                                             <span className="text-sm font-medium text-gray-500">Balance</span>
                                                         </div>
-                                                        <p className="text-base font-bold text-gray-900">
+                                                        <p className="text-base font-bold text-main">
                                                             {formatBalance(wallet.balance, wallet.currency)}
                                                         </p>
                                                     </div>
@@ -183,37 +183,37 @@ const Dashboard: React.FC = () => {
                                 </div>
 
                                 {/* Transactions */}
-                                <div className="bg-white rounded-lg shadow-sm border border-gray-100">
+                                <div className="bg-card rounded-lg shadow-sm border border-main">
                                     <div className="p-4 flex justify-between items-center">
-                                        <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
-                                        <Link to="/transactions" className="text-sm text-blue-600 hover:text-blue-700">
+                                        <h2 className="text-lg font-semibold text-main">Recent Transactions</h2>
+                                        <Link to="/transactions" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
                                             View All
                                         </Link>
                                     </div>
                                     {transactions && transactions.length > 0 ? (
-                                        <div className="divide-y divide-gray-200">
+                                        <div className="divide-y divide-main">
                                             {transactions.slice(0, 5).map((tx) => (
                                                 <button
                                                     key={tx.id}
                                                     onClick={() => setSelectedTxId(tx.id)}
-                                                    className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-all duration-200"
+                                                    className="w-full flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-all duration-200"
                                                 >
                                                     <div className="flex items-center space-x-2">
-                                                        <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center">
+                                                        <div className="w-6 h-6 bg-main rounded-lg flex items-center justify-center">
                                                             <span className="text-sm">
                                                                 {getIntentIcon(tx.intent)}
                                                             </span>
                                                         </div>
                                                         <div className="text-left">
-                                                            <p className="text-sm font-medium text-gray-900 capitalize">{getIntentLabel(tx.intent)}</p>
-                                                            <p className="text-xs text-gray-500">{formatDate(tx.created_at)}</p>
+                                                            <p className="text-sm font-medium text-main capitalize">{getIntentLabel(tx.intent)}</p>
+                                                            <p className="text-xs text-muted">{formatDate(tx.created_at)}</p>
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className={`text-sm font-medium ${tx.amount >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                                        <p className={`text-sm font-medium ${tx.amount >= 0 ? "text-green-600 dark:text-emerald-400" : "text-red-600 dark:text-rose-400"}`}>
                                                             {formatBalance(tx.amount, tx.currency)}
                                                         </p>
-                                                        <p className="text-xs text-gray-500 capitalize">{tx.status || 'Pending'}</p>
+                                                        <p className="text-xs text-muted capitalize">{tx.status || 'Pending'}</p>
                                                     </div>
                                                 </button>
                                             ))}
@@ -229,9 +229,9 @@ const Dashboard: React.FC = () => {
                                 </div>
 
                                 {/* Quick Actions */}
-                                <div className="bg-white rounded-lg shadow-sm border border-gray-100">
+                                <div className="bg-card rounded-lg shadow-sm border border-main">
                                     <div className="p-4">
-                                        <h2 className="text-lg font-semibold text-gray-900 mb-3">Quick Actions</h2>
+                                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Quick Actions</h2>
                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                             {[
                                                 { to: "/top-up", label: "Top Up", icon: "💰", gradient: "from-green-50 to-emerald-50", border: "border-green-100 hover:border-green-200" },
@@ -248,7 +248,7 @@ const Dashboard: React.FC = () => {
                                                         <div className="w-6 h-6 bg-opacity-50 bg-white rounded-lg flex items-center justify-center">
                                                             <span className="text-base">{action.icon}</span>
                                                         </div>
-                                                        <h3 className="text-sm font-semibold text-gray-900">{action.label}</h3>
+                                                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{action.label}</h3>
                                                     </div>
                                                     <div className="absolute bottom-0 right-0 w-12 h-12 bg-gradient-to-r from-white to-transparent rounded-full -mr-6 -mb-6 transform group-hover:scale-110 transition-transform duration-200 opacity-50"></div>
                                                 </Link>
@@ -262,14 +262,14 @@ const Dashboard: React.FC = () => {
                         {/* Transaction Details Modal */}
                         {selectedTransaction && (
                             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                                <div className="bg-white rounded-lg p-6 max-w-sm w-full">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Transaction Details</h3>
+                                <div className="bg-white dark:bg-slate-900 rounded-lg p-6 max-w-sm w-full border border-gray-200 dark:border-slate-800">
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Transaction Details</h3>
                                     <div className="space-y-3">
-                                        <p className="text-sm text-gray-600"><span className="font-medium">ID:</span> {selectedTransaction.id}</p>
-                                        <p className="text-sm text-gray-600"><span className="font-medium">Type:</span> {getIntentLabel(selectedTransaction.intent).toUpperCase()}</p>
-                                        <p className="text-sm text-gray-600"><span className="font-medium">Amount:</span> {formatBalance(selectedTransaction.amount, selectedTransaction.currency)}</p>
-                                        <p className="text-sm text-gray-600"><span className="font-medium">Date:</span> {formatDate(selectedTransaction.created_at)}</p>
-                                        <p className="text-sm text-gray-600"><span className="font-medium">Status:</span> {(selectedTransaction.status || 'Pending').toUpperCase()}</p>
+                                        <p className="text-sm text-gray-600 dark:text-slate-400"><span className="font-medium">ID:</span> {selectedTransaction.id}</p>
+                                        <p className="text-sm text-gray-600 dark:text-slate-400"><span className="font-medium">Type:</span> {getIntentLabel(selectedTransaction.intent).toUpperCase()}</p>
+                                        <p className="text-sm text-gray-600 dark:text-slate-400"><span className="font-medium">Amount:</span> {formatBalance(selectedTransaction.amount, selectedTransaction.currency)}</p>
+                                        <p className="text-sm text-gray-600 dark:text-slate-400"><span className="font-medium">Date:</span> {formatDate(selectedTransaction.created_at)}</p>
+                                        <p className="text-sm text-gray-600 dark:text-slate-400"><span className="font-medium">Status:</span> {(selectedTransaction.status || 'Pending').toUpperCase()}</p>
                                     </div>
                                     <button
                                         onClick={() => setSelectedTxId(null)}

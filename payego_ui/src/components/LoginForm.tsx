@@ -71,10 +71,10 @@ const LoginForm: React.FC = () => {
                             <span className="text-white font-black text-2xl">P</span>
                         </div>
                     </div>
-                    <h2 className="text-3xl sm:text-4xl font-black text-gray-900 mb-3">
+                    <h2 className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white mb-3">
                         Welcome <span className="gradient-text">Back</span>
                     </h2>
-                    <p className="text-gray-600">Sign in to continue to Payego</p>
+                    <p className="text-gray-600 dark:text-slate-400">Sign in to continue to Payego</p>
                 </div>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -131,7 +131,7 @@ const LoginForm: React.FC = () => {
                                 onChange={(e) => setRememberMe(e.target.checked)}
                                 className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                             />
-                            <span className="ml-2 text-sm text-gray-700 group-hover:text-gray-900">Remember me</span>
+                            <span className="ml-2 text-sm text-gray-700 dark:text-slate-300 group-hover:text-gray-900 dark:group-hover:text-white">Remember me</span>
                         </label>
                         <Link to="/forgot-password" className="text-sm font-semibold gradient-text hover:opacity-80">
                             Forgot password?
@@ -155,10 +155,10 @@ const LoginForm: React.FC = () => {
 
                 <div className="relative my-8">
                     <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-300"></div>
+                        <div className="w-full border-t border-gray-300 dark:border-slate-700"></div>
                     </div>
                     <div className="relative flex justify-center text-sm">
-                        <span className="px-4 bg-white/80 text-gray-600 font-medium">Or continue with</span>
+                        <span className="px-4 bg-white/80 dark:bg-slate-900/80 text-gray-600 dark:text-slate-400 font-medium rounded-full">Or continue with</span>
                     </div>
                 </div>
 
@@ -170,7 +170,7 @@ const LoginForm: React.FC = () => {
                     />
                 </div>
 
-                <p className="mt-8 text-center text-gray-600">
+                <p className="mt-8 text-center text-gray-600 dark:text-slate-400">
                     Don't have an account?{' '}
                     <Link to="/register" className="font-bold gradient-text hover:opacity-80">
                         Create Account

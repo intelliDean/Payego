@@ -77,8 +77,8 @@ const RegisterForm: React.FC = () => {
         return (
             <div className="max-w-md mx-auto mt-8 sm:mt-16 animate-fade-in">
                 <div className="card-glass p-8 sm:p-10 text-center">
-                    <h2 className="text-3xl font-black text-gray-900 mb-6">Verify <span className="gradient-text">Email</span></h2>
-                    <p className="text-gray-600 mb-8">Verification is placeholder for now, you are already logged in.</p>
+                    <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-6">Verify <span className="gradient-text">Email</span></h2>
+                    <p className="text-gray-600 dark:text-slate-400 mb-8">Verification is placeholder for now, you are already logged in.</p>
                     <button onClick={() => navigate('/dashboard')} className="w-full btn-primary-glow btn-lg">
                         Go to Dashboard
                     </button>
@@ -97,10 +97,10 @@ const RegisterForm: React.FC = () => {
                             <span className="text-white font-black text-2xl">P</span>
                         </div>
                     </div>
-                    <h2 className="text-3xl sm:text-4xl font-black text-gray-900 mb-3">
+                    <h2 className="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white mb-3">
                         Create <span className="gradient-text">Account</span>
                     </h2>
-                    <p className="text-gray-600">Join Payego and start managing your finances</p>
+                    <p className="text-gray-600 dark:text-slate-400">Join Payego and start managing your finances</p>
                 </div>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -181,7 +181,7 @@ const RegisterForm: React.FC = () => {
                     {error && <div className="alert-error"><span className="text-sm">{error}</span></div>}
                 </form>
 
-                <p className="mt-8 text-center text-gray-600">
+                <p className="mt-8 text-center text-gray-600 dark:text-slate-400">
                     Already have an account?{' '}
                     <Link to="/login" className="font-bold gradient-text hover:opacity-80">
                         Sign In

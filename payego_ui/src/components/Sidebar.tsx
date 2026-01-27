@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import ThemeToggle from './ThemeToggle';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -33,7 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                 />
             )}
 
-            <aside className={`fixed inset-y-0 left-0 w-64 bg-white shadow-2xl transform ${isOpen ? "translate-x-0" : "-translate-x-full"} transition-transform duration-300 ease-in-out z-50 overflow-y-auto`}>
+            <aside className={`fixed inset-y-0 left-0 w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 shadow-2xl transform ${isOpen ? "translate-x-0" : "-translate-x-full"} transition-transform duration-300 ease-in-out z-50 overflow-y-auto`}>
                 <div className="p-6">
                     <div className="flex items-center justify-between mb-8">
                         <Link to="/dashboard" className="flex items-center space-x-3 group" onClick={() => setIsOpen(false)}>
@@ -42,12 +44,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                             </div>
                             <h2 className="text-2xl font-black gradient-text">Payego</h2>
                         </Link>
-                        <button
-                            onClick={() => setIsOpen(false)}
-                            className="md:hidden p-2 text-gray-400 hover:text-gray-600"
-                        >
-                            ✕
-                        </button>
+                        <div className="flex items-center space-x-2">
+                            <ThemeToggle />
+                            <button
+                                onClick={() => setIsOpen(false)}
+                                className="md:hidden p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                ✕
+                            </button>
+                        </div>
                     </div>
 
                     <nav className="space-y-1.5">
@@ -58,8 +63,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                                     key={item.to}
                                     to={item.to}
                                     className={`flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 group ${isActive
-                                            ? "bg-gradient-to-r from-blue-600/10 to-indigo-600/10 text-blue-700 shadow-sm"
-                                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                        ? "bg-gradient-to-r from-blue-600/10 to-indigo-600/10 text-blue-700 shadow-sm"
+                                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                                         }`}
                                     onClick={() => setIsOpen(false)}
                                 >

@@ -20,8 +20,8 @@ const Wallets: React.FC = () => {
             <div className="max-w-4xl mx-auto">
                 <div className="flex justify-between items-center mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Your Wallets</h1>
-                        <p className="text-gray-500">Manage your multi-currency balances</p>
+                        <h1 className="text-3xl font-bold text-main">Your Wallets</h1>
+                        <p className="text-muted">Manage your multi-currency balances</p>
                     </div>
                     <button
                         onClick={() => navigate('/top-up')}
@@ -45,7 +45,7 @@ const Wallets: React.FC = () => {
                         {wallets?.map((wallet) => (
                             <div
                                 key={wallet.id}
-                                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200"
+                                className="bg-card rounded-2xl shadow-sm border border-main p-6 hover:shadow-md transition-shadow duration-200"
                             >
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center text-white font-bold text-lg">
@@ -56,21 +56,21 @@ const Wallets: React.FC = () => {
                                     </span>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-sm text-gray-500 font-medium">Available Balance</p>
-                                    <h3 className="text-2xl font-black text-gray-900">
+                                    <p className="text-sm text-muted font-medium">Available Balance</p>
+                                    <h3 className="text-2xl font-black text-main">
                                         {formatBalance(wallet.balance, wallet.currency)}
                                     </h3>
                                 </div>
-                                <div className="mt-6 pt-6 border-t border-gray-50 flex space-x-3">
+                                <div className="mt-6 pt-6 border-t border-main flex space-x-3">
                                     <button
                                         onClick={() => navigate('/transfer', { state: { currency: wallet.currency } })}
-                                        className="flex-1 py-2 px-4 bg-gray-50 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-100 transition-colors"
+                                        className="flex-1 py-2 px-4 bg-main text-main rounded-lg text-sm font-semibold hover:opacity-80 transition-colors"
                                     >
                                         Transfer
                                     </button>
                                     <button
                                         onClick={() => navigate('/convert', { state: { fromCurrency: wallet.currency } })}
-                                        className="flex-1 py-2 px-4 bg-gray-50 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-100 transition-colors"
+                                        className="flex-1 py-2 px-4 bg-main text-main rounded-lg text-sm font-semibold hover:opacity-80 transition-colors"
                                     >
                                         Convert
                                     </button>
@@ -79,12 +79,12 @@ const Wallets: React.FC = () => {
                         ))}
 
                         {wallets?.length === 0 && (
-                            <div className="col-span-full bg-gray-50 rounded-2xl p-12 text-center border-2 border-dashed border-gray-200">
-                                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-2xl">
+                            <div className="col-span-full bg-main rounded-2xl p-12 text-center border-2 border-dashed border-main">
+                                <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-2xl">
                                     💳
                                 </div>
-                                <h3 className="text-lg font-bold text-gray-900">No wallets yet</h3>
-                                <p className="text-gray-500 mb-6">Create your first wallet by adding funds.</p>
+                                <h3 className="text-lg font-bold text-main">No wallets yet</h3>
+                                <p className="text-muted mb-6">Create your first wallet by adding funds.</p>
                                 <button
                                     onClick={() => navigate('/top-up')}
                                     className="btn-primary"
