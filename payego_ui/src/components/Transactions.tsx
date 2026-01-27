@@ -25,7 +25,8 @@ const Transactions: React.FC = () => {
         });
     };
 
-    const getStatusColor = (status: string) => {
+    const getStatusColor = (status?: string) => {
+        if (!status) return 'text-gray-600 bg-gray-50';
         switch (status.toLowerCase()) {
             case 'completed': return 'text-green-600 bg-green-50';
             case 'pending': return 'text-amber-600 bg-amber-50';
@@ -38,11 +39,19 @@ const Transactions: React.FC = () => {
         switch (intent) {
             case 'TopUp': return '💰';
             case 'ExternalTransfer': return '💸';
-            case 'InternalTransfer': return '🤝';
-            case 'Withdrawal': return '🏦';
-            case 'CurrencyConversion': return '🔄';
+            case 'InternalTransfer':
+            case 'Transfer': return '🤝';
+            case 'Withdrawal':
+            case 'Payout': return '🏦';
+            case 'CurrencyConversion':
+            case 'Conversion': return '🔄';
             default: return '📜';
         }
+    };
+
+    const getIntentLabel = (intent: string) => {
+        if (intent === 'Payout') return 'Withdrawal';
+        return intent.replace(/([A-Z])/g, ' $1').trim();
     };
 
     return (
@@ -88,7 +97,7 @@ const Transactions: React.FC = () => {
                                                         {getIntentIcon(tx.intent)}
                                                     </div>
                                                     <span className="font-medium text-gray-900">
-                                                        {tx.intent.replace(/([A-Z])/g, ' $1').trim()}
+                                                        {getIntentLabel(tx.intent)}
                                                     </span>
                                                 </div>
                                             </td>
@@ -106,7 +115,7 @@ const Transactions: React.FC = () => {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-400">
-                                                {tx.reference.substring(0, 8)}...
+                                                {tx.reference ? `${tx.reference.substring(0, 8)}...` : 'N/A'}
                                             </td>
                                         </tr>
                                     ))}
@@ -135,7 +144,7 @@ const Transactions: React.FC = () => {
                                 </div>
                                 <div className="flex justify-between items-center py-2 border-b border-gray-50">
                                     <span className="text-gray-500">Type</span>
-                                    <span className="font-semibold text-gray-900">{selectedTransaction.intent.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                    <span className="font-semibold text-gray-900">{getIntentLabel(selectedTransaction.intent)}</span>
                                 </div>
                                 <div className="flex justify-between items-center py-2 border-b border-gray-50">
                                     <span className="text-gray-500">Amount</span>

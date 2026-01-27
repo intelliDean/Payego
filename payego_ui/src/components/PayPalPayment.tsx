@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PayPalButtons } from '@paypal/react-paypal-js';
+import { useQueryClient } from '@tanstack/react-query';
 import client from '../api/client';
 
 interface PayPalPaymentProps {
@@ -10,6 +11,7 @@ interface PayPalPaymentProps {
 }
 
 const PayPalPayment: React.FC<PayPalPaymentProps> = ({ paymentId, transactionId, currency, amount }) => {
+    const queryClient = useQueryClient();
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -42,6 +44,10 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({ paymentId, transactionId,
                         });
 
                         if (response.data.status?.toLowerCase() === 'completed') {
+                            // Invalidate queries to refresh balance and history
+                            queryClient.invalidateQueries({ queryKey: ['wallets'] });
+                            queryClient.invalidateQueries({ queryKey: ['transactions'] });
+
                             window.location.href = `/success?transaction_id=${transactionId}`;
                         } else {
                             setError(getErrorMessage(response.data.error_message));

@@ -13,4 +13,5 @@ export const transactionApi = {
     externalTransfer: (data: any) => client.post('/api/transfer/external', data).then(res => res.data),
     withdraw: (bankAccountId: string, data: any) => client.post(`/api/wallet/withdraw/${bankAccountId}`, data).then(res => res.data),
     convertCurrency: (data: any) => client.post('/api/wallets/convert', data).then(res => res.data),
+    getExchangeRate: (from: string, to: string) => client.get<{ from: string, to: string, rate: number }>(`/api/exchange-rate?from=${from}&to=${to}`).then(res => res.data),
 };

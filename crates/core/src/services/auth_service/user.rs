@@ -23,13 +23,13 @@ impl UserService {
             ApiError::DatabaseConnection("Database unavailable".into())
         })?;
 
-        let email = users::table
+        let user_data = users::table
             .find(usr_id)
-            .select(users::email)
-            .first::<String>(&mut conn)
+            .select((users::id, users::email, users::username, users::created_at))
+            .first::<(Uuid, String, Option<String>, chrono::DateTime<chrono::Utc>)>(&mut conn)
             .optional()
             .map_err(|_| {
-                error!("user.summary: failed to fetch user email");
+                error!("user.summary: failed to fetch user data");
                 ApiError::Internal("Failed to load user".into())
             })?
             .ok_or_else(|| ApiError::Auth(AuthError::InvalidToken("User does not exist".into())))?;
@@ -47,8 +47,11 @@ impl UserService {
             .collect();
 
         Ok(CurrentUserResponse {
-            email,
+            id: user_data.0,
+            email: user_data.1,
+            username: user_data.2,
             wallets: walletz,
+            created_at: user_data.3,
         })
     }
 }

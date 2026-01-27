@@ -186,7 +186,7 @@ impl TransactionService {
             .filter(user_id.eq(uid))
             .order(created_at.desc())
             .limit(RECENT_TX_LIMIT)
-            .select((id, intent, amount, currency, created_at, txn_state))
+            .select((id, intent, amount, currency, created_at, txn_state, reference))
             .load::<(
                 Uuid,
                 TransactionIntent,
@@ -194,6 +194,7 @@ impl TransactionService {
                 CurrencyCode,
                 chrono::DateTime<chrono::Utc>,
                 PaymentState,
+                Uuid,
             )>(&mut conn)
             .map_err(|_| {
                 error!("transactions.recent: failed to load transactions");
@@ -203,14 +204,15 @@ impl TransactionService {
         let tnx = rows
             .into_iter()
             .map(
-                |(tnx_id, tnx_intent, tnx_amount, tnx_currency, tnx_created_at, state)| {
+                |(tnx_id, tnx_intent, tnx_amount, tnx_currency, tnx_created_at, status, tnx_ref)| {
                     TransactionSummaryDto {
                         id: tnx_id,
                         intent: tnx_intent,
                         amount: tnx_amount,
                         currency: tnx_currency,
                         created_at: tnx_created_at,
-                        state,
+                        status,
+                        reference: tnx_ref,
                     }
                 },
             )

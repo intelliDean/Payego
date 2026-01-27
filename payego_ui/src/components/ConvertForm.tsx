@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from "react-router-dom";
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,6 +28,7 @@ const SUPPORTED_CURRENCIES: Currency[] = ([
 
 const ConvertForm: React.FC = () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const { data: wallets, isLoading: fetching } = useWallets();
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -87,6 +89,11 @@ const ConvertForm: React.FC = () => {
             });
             setConversionResult(result);
             setShowConfirmation(false);
+
+            // Invalidate queries to refresh balance and history
+            queryClient.invalidateQueries({ queryKey: ['wallets'] });
+            queryClient.invalidateQueries({ queryKey: ['transactions'] });
+
             setShowSuccess(true);
         } catch (err: any) {
             setError(err.response?.data?.message || "Conversion failed.");

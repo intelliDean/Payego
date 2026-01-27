@@ -23,6 +23,9 @@ pub struct LogoutResponse {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct CurrentUserResponse {
+    pub id: Uuid,
     pub email: String,
+    pub username: Option<String>,
     pub wallets: Vec<WalletSummaryDto>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
 }

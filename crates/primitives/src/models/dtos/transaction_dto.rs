@@ -12,7 +12,8 @@ pub struct TransactionSummaryDto {
     pub amount: i64,
     pub currency: CurrencyCode,
     pub created_at: DateTime<Utc>,
-    pub state: PaymentState,
+    pub status: PaymentState,
+    pub reference: Uuid,
 }
 
 #[derive(Debug, Serialize, ToSchema)]

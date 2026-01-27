@@ -7,20 +7,12 @@ import { useTransactions, useTransactionDetails } from "../hooks/useTransactions
 
 
 const Dashboard: React.FC = () => {
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const { data: wallets, isLoading: walletsLoading, error: walletsError } = useWallets();
     const { data: transactions, isLoading: transactionsLoading, error: transactionsError } = useTransactions();
 
     const [selectedTxId, setSelectedTxId] = useState<string | null>(null);
     const { data: selectedTransaction } = useTransactionDetails(selectedTxId || "");
-
-    const [sidebarOpen, setSidebarOpen] = useState(localStorage.getItem("sidebarOpen") !== "false");
-
-    const toggleSidebar = () => {
-        const newState = !sidebarOpen;
-        setSidebarOpen(newState);
-        localStorage.setItem("sidebarOpen", String(newState));
-    };
 
     const formatBalance = (amount: number, currency?: string) => {
         return new Intl.NumberFormat("en-US", {
@@ -40,6 +32,25 @@ const Dashboard: React.FC = () => {
         });
     };
 
+    const getIntentIcon = (intent: string) => {
+        switch (intent) {
+            case 'TopUp': return '💰';
+            case 'ExternalTransfer': return '💸';
+            case 'InternalTransfer':
+            case 'Transfer': return '🤝';
+            case 'Withdrawal':
+            case 'Payout': return '🏦';
+            case 'CurrencyConversion':
+            case 'Conversion': return '🔄';
+            default: return '📜';
+        }
+    };
+
+    const getIntentLabel = (intent: string) => {
+        if (intent === 'Payout') return 'Withdrawal';
+        return intent.replace(/([A-Z])/g, ' $1').trim();
+    };
+
     const isLoading = walletsLoading || transactionsLoading;
     const error = walletsError || transactionsError;
 
@@ -50,71 +61,29 @@ const Dashboard: React.FC = () => {
 
     return (
         <ErrorBoundary>
-            <div className="min-h-screen bg-gray-50">
-                {/* Sidebar */}
-                <div className={`fixed inset-y-0 left-0 w-64 bg-white shadow-xl transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} transition-transform duration-300 ease-in-out z-30`}>
-                    <div className="p-6">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-8">Payego</h2>
-                        <nav className="space-y-2">
-                            {[
-                                { to: "/", label: "Dashboard", icon: "🏠" },
-                                { to: "/top-up", label: "Top Up", icon: "💰" },
-                                { to: "/transfer", label: "Transfer", icon: "💸" },
-                                { to: "/withdraw", label: "Withdraw", icon: "🏦" },
-                                { to: "/convert", label: "Convert", icon: "🔄" },
-                                { to: "/banks", label: "Banks", icon: "🏛️" },
-                                { to: "/wallets", label: "Wallets", icon: "💳" },
-                                { to: "/transactions", label: "Transactions", icon: "📜" },
-                                { to: "/profile", label: "Profile", icon: "👤" },
-                            ].map((item) => (
-                                <Link
-                                    key={item.to}
-                                    to={item.to}
-                                    className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-700 hover:text-blue-700 transition-all duration-200"
-                                    onClick={() => setSidebarOpen(false)}
-                                >
-                                    <span className="text-lg">{item.icon}</span>
-                                    <span className="font-medium">{item.label}</span>
-                                </Link>
-                            ))}
-                            <button
-                                onClick={logout}
-                                className="flex items-center space-x-3 p-3 rounded-lg hover:bg-red-50 text-gray-700 hover:text-red-700 transition-all duration-200 w-full text-left"
-                            >
-                                <span className="text-lg">🚪</span>
-                                <span className="font-medium">Log Out</span>
-                            </button>
-                        </nav>
-                    </div>
-                </div>
-
+            <div className="min-h-screen">
                 {/* Main Content */}
-                <div className={`p-4 md:p-6 transition-all duration-300 ${sidebarOpen ? "md:ml-64" : "md:ml-0"}`}>
+                <div className="p-4 md:p-6">
                     <div className="max-w-5xl mx-auto">
-                        <div className="flex justify-between items-center mb-6">
-                            <div className="flex items-center space-x-3">
-                                <button
-                                    className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg"
-                                    onClick={toggleSidebar}
-                                >
-                                    <span className="text-lg">{sidebarOpen ? "◄" : "☰"}</span>
-                                </button>
-                                <div>
-                                    <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-                                    <p className="text-sm text-gray-500">Your financial snapshot</p>
-                                </div>
+                        <div className="flex justify-between items-center mb-10">
+                            <div>
+                                <h1 className="text-3xl font-black text-gray-900 tracking-tight">Dashboard</h1>
+                                <p className="text-base text-gray-500 mt-1">Welcome back, your financial snapshot is ready.</p>
                             </div>
                             {user && (
                                 <Link
                                     to="/profile"
-                                    className="flex items-center space-x-2 bg-white rounded-lg px-3 py-2 shadow-sm hover:bg-gray-100 transition-all duration-200"
+                                    className="flex items-center space-x-3 bg-white rounded-2xl px-4 py-2 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200"
                                 >
-                                    <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                                         <span className="text-white font-bold">
                                             {user.email?.charAt(0)?.toUpperCase()}
                                         </span>
                                     </div>
-                                    <p className="text-sm font-medium text-gray-900 hidden sm:block">{user.email}</p>
+                                    <div className="text-left hidden sm:block">
+                                        <p className="text-sm font-bold text-gray-900 leading-tight">{user.username || 'User'}</p>
+                                        <p className="text-xs text-gray-500">{user.email}</p>
+                                    </div>
                                 </Link>
                             )}
                         </div>
@@ -232,11 +201,11 @@ const Dashboard: React.FC = () => {
                                                     <div className="flex items-center space-x-2">
                                                         <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center">
                                                             <span className="text-sm">
-                                                                {tx.intent === "TopUp" ? "💰" : tx.intent === "ExternalTransfer" ? "💸" : tx.intent === "Withdrawal" ? "🏦" : "🔄"}
+                                                                {getIntentIcon(tx.intent)}
                                                             </span>
                                                         </div>
                                                         <div className="text-left">
-                                                            <p className="text-sm font-medium text-gray-900 capitalize">{tx.intent.replace(/([A-Z])/g, ' $1').trim()}</p>
+                                                            <p className="text-sm font-medium text-gray-900 capitalize">{getIntentLabel(tx.intent)}</p>
                                                             <p className="text-xs text-gray-500">{formatDate(tx.created_at)}</p>
                                                         </div>
                                                     </div>
@@ -244,7 +213,7 @@ const Dashboard: React.FC = () => {
                                                         <p className={`text-sm font-medium ${tx.amount >= 0 ? "text-green-600" : "text-red-600"}`}>
                                                             {formatBalance(tx.amount, tx.currency)}
                                                         </p>
-                                                        <p className="text-xs text-gray-500 capitalize">{tx.status}</p>
+                                                        <p className="text-xs text-gray-500 capitalize">{tx.status || 'Pending'}</p>
                                                     </div>
                                                 </button>
                                             ))}
@@ -297,10 +266,10 @@ const Dashboard: React.FC = () => {
                                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Transaction Details</h3>
                                     <div className="space-y-3">
                                         <p className="text-sm text-gray-600"><span className="font-medium">ID:</span> {selectedTransaction.id}</p>
-                                        <p className="text-sm text-gray-600"><span className="font-medium">Type:</span> {selectedTransaction.intent.replace(/([A-Z])/g, ' $1').trim().toUpperCase()}</p>
+                                        <p className="text-sm text-gray-600"><span className="font-medium">Type:</span> {getIntentLabel(selectedTransaction.intent).toUpperCase()}</p>
                                         <p className="text-sm text-gray-600"><span className="font-medium">Amount:</span> {formatBalance(selectedTransaction.amount, selectedTransaction.currency)}</p>
                                         <p className="text-sm text-gray-600"><span className="font-medium">Date:</span> {formatDate(selectedTransaction.created_at)}</p>
-                                        <p className="text-sm text-gray-600"><span className="font-medium">Status:</span> {selectedTransaction.status.toUpperCase()}</p>
+                                        <p className="text-sm text-gray-600"><span className="font-medium">Status:</span> {(selectedTransaction.status || 'Pending').toUpperCase()}</p>
                                     </div>
                                     <button
                                         onClick={() => setSelectedTxId(null)}

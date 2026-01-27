@@ -44,11 +44,11 @@ impl ConversionService {
             .first::<Transaction>(&mut conn)
             .optional()?
         {
-            let meta = tx.metadata.clone();
+            // let meta = tx.metadata;
 
             //closure to help me convert this
             let get_i64 = |key: &str| {
-                meta.get(key)
+                tx.metadata.get(key)
                     .and_then(|v| v.as_i64())
                     .ok_or_else(|| ApiError::Internal(format!("Missing/invalid {}", key)))
             };

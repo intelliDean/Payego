@@ -40,6 +40,8 @@ const TransferForm: React.FC = () => {
     const [submitting, setSubmitting] = useState(false);
     const [resolvedUser, setResolvedUser] = useState<ResolvedUser | null>(null);
     const [showConfirmation, setShowConfirmation] = useState(false);
+    const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+    const [pendingExternalData, setPendingExternalData] = useState<any | null>(null);
 
     const {
         register,
@@ -61,7 +63,7 @@ const TransferForm: React.FC = () => {
             const resolve = async () => {
                 setResolving(true);
                 try {
-                    const res = await client.get('/api/resolve_account', { params: { bank_code: bankCode, account_number: accountNumber } });
+                    const res = await client.get('/api/bank/resolve', { params: { bank_code: bankCode, account_number: accountNumber } });
                     setValue('accountName', res.data.account_name, { shouldValidate: true });
                 } catch (err) {
                     setError('Could not resolve account name.');
@@ -92,29 +94,45 @@ const TransferForm: React.FC = () => {
             return;
         }
 
-        // External transfer flow
+        // External transfer flow - 2 STEP
+        setResolving(true);
+        try {
+            if (data.currency === 'NGN') {
+                setExchangeRate(1);
+            } else {
+                const response = await transactionApi.getExchangeRate(data.currency, 'NGN');
+                setExchangeRate(response.rate);
+            }
+            setPendingExternalData(data);
+            setShowConfirmation(true);
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Failed to fetch exchange rate.');
+        } finally {
+            setResolving(false);
+        }
+    };
+
+    const handleConfirmExternalTransfer = async () => {
+        if (!pendingExternalData) return;
         setSubmitting(true);
         try {
             const result = await transactionApi.externalTransfer({
-                amount: data.amount,
-                currency: data.currency,
-                bank_code: data.bankCode,
-                account_number: data.accountNumber,
-                account_name: data.accountName,
+                amount: pendingExternalData.amount,
+                currency: pendingExternalData.currency,
+                bank_code: pendingExternalData.bankCode,
+                account_number: pendingExternalData.accountNumber,
+                account_name: pendingExternalData.accountName,
                 reference: crypto.randomUUID(),
                 idempotency_key: crypto.randomUUID(),
             });
 
-            // Invalidate queries to refresh dashboard data
             queryClient.invalidateQueries({ queryKey: ['wallets'] });
             queryClient.invalidateQueries({ queryKey: ['transactions'] });
 
-            // The backend for external transfer likely returns the transaction object or ID. 
-            // Assuming result contains id or similar. Adjust based on API response if needed.
-            // If result is the transaction itself:
-            navigate(`/success?transaction_id=${result.id || result.transaction_id || ''}`);
+            navigate(`/success?tx=${result.id || result.transaction_id || ''}`);
         } catch (err: any) {
             setError(err.response?.data?.message || 'Transfer failed.');
+            setShowConfirmation(false);
         } finally {
             setSubmitting(false);
         }
@@ -140,7 +158,7 @@ const TransferForm: React.FC = () => {
             queryClient.invalidateQueries({ queryKey: ['transactions'] });
 
             // Redirect to success page with transaction ID
-            navigate(`/success?transaction_id=${result.id || result.transaction_id || ''}`);
+            navigate(`/success?tx=${result.id || result.transaction_id || ''}`);
         } catch (err: any) {
             setError(err.response?.data?.message || 'Transfer failed.');
             setShowConfirmation(false);
@@ -214,36 +232,69 @@ const TransferForm: React.FC = () => {
                 {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             </form>
 
-            {showConfirmation && resolvedUser && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-2xl">
-                        <h3 className="text-xl font-bold mb-4">Confirm Transfer</h3>
-                        <div className="space-y-3 mb-6">
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">To:</span>
-                                <span className="font-semibold">{resolvedUser.username || resolvedUser.email}</span>
+            {showConfirmation && (resolvedUser || pendingExternalData) && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-sm w-full shadow-2xl transform transition-all scale-100">
+                        <div className="text-center mb-6">
+                            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Amount:</span>
-                                <span className="font-semibold">{watch('currency')} {watch('amount')}</span>
-                            </div>
-                            <div className="text-sm text-gray-500 mt-2">
-                                {resolvedUser.email}
-                            </div>
+                            <h3 className="text-xl font-bold text-gray-900">Confirm Transfer</h3>
+                            <p className="text-gray-500 text-sm mt-1">Please review details</p>
                         </div>
-                        <div className="flex gap-3">
+
+                        <div className="space-y-4 bg-gray-50 rounded-xl p-4 mb-6">
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-500 font-medium">To:</span>
+                                <div className="text-right">
+                                    <p className="text-gray-900 font-bold leading-tight">
+                                        {pendingExternalData ? pendingExternalData.accountName : (resolvedUser?.username || resolvedUser?.email)}
+                                    </p>
+                                    <p className="text-gray-500 text-xs">
+                                        {pendingExternalData ? `${pendingExternalData.accountNumber}` : resolvedUser?.email}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {pendingExternalData && (
+                                <div className="flex justify-between items-center text-sm border-t border-gray-100 pt-3">
+                                    <span className="text-gray-500 font-medium">Bank:</span>
+                                    <span className="text-gray-900 font-bold">{banks?.find(b => b.code === pendingExternalData.bankCode)?.name || 'Unknown Bank'}</span>
+                                </div>
+                            )}
+
+                            <div className="flex justify-between items-center text-sm border-t border-gray-100 pt-3">
+                                <span className="text-gray-500 font-medium">Amount:</span>
+                                <span className="text-gray-900 font-bold">{watch('currency')} {watch('amount')}</span>
+                            </div>
+
+                            {pendingExternalData && pendingExternalData.currency !== 'NGN' && exchangeRate && (
+                                <div className="flex justify-between items-center text-sm border-t border-gray-100 pt-3">
+                                    <span className="text-gray-500 font-medium">Amount in NGN:</span>
+                                    <span className="text-green-600 font-bold">₦{(pendingExternalData.amount * exchangeRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
                             <button
-                                onClick={() => setShowConfirmation(false)}
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                                onClick={() => {
+                                    setShowConfirmation(false);
+                                    setPendingExternalData(null);
+                                    setResolvedUser(null);
+                                }}
+                                className="px-4 py-3 rounded-xl font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
-                                onClick={handleConfirmTransfer}
+                                onClick={pendingExternalData ? handleConfirmExternalTransfer : handleConfirmTransfer}
                                 disabled={submitting}
-                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                                className="px-4 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-lg transition-all disabled:opacity-50"
                             >
-                                {submitting ? 'Sending...' : 'Confirm'}
+                                {submitting ? 'Processing...' : 'Confirm'}
                             </button>
                         </div>
                     </div>

@@ -67,10 +67,13 @@ const SuccessPage: React.FC = () => {
                                     </svg>
                                 </div>
                                 <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                                    Payment Successful!
+                                    {(transaction.intent === 'Payout' || transaction.intent === 'Withdrawal') ? 'Withdrawal Successful!' :
+                                        transaction.intent === 'TopUp' ? 'Top-up Successful!' :
+                                            'Transfer Successful!'}
                                 </h2>
                                 <p className="text-gray-600 text-sm sm:text-base">
-                                    Your wallet's feeling heavier!
+                                    {(transaction.intent === 'Payout' || transaction.intent === 'Withdrawal') ? 'Your funds are on the way to your bank account!' :
+                                        'Your wallet\'s feeling heavier!'}
                                 </p>
                             </div>
                             <div className="mb-6 p-4 bg-gray-50 rounded-lg space-y-2 text-left">

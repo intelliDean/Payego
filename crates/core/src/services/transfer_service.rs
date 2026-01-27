@@ -1,7 +1,7 @@
 use crate::client::PaystackClient;
 use diesel::prelude::*;
 use http::StatusCode;
-use payego_primitives::models::providers_dto::PaystackTransferResponse;
+use payego_primitives::models::providers_dto::{PaystackTransferData, PaystackTransferResponse};
 use payego_primitives::models::wallet::NewWallet;
 pub use payego_primitives::{
     config::security_config::Claims,
@@ -10,7 +10,7 @@ pub use payego_primitives::{
         app_state::AppState,
         enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent},
         transaction::{NewTransaction, Transaction},
-        transfer_dto::{TransferRequest, WalletTransferRequest},
+        transfer_dto::{TransferRequest, TransferResponse, WalletTransferRequest},
         wallet::Wallet,
         wallet_ledger::NewWalletLedger,
     },
@@ -148,7 +148,7 @@ impl TransferService {
         state: &Arc<AppState>,
         user_id: Uuid,
         req: TransferRequest,
-    ) -> Result<StatusCode, ApiError> {
+    ) -> Result<TransferResponse, ApiError> {
         let mut conn = state
             .db
             .get()
@@ -164,15 +164,15 @@ impl TransferService {
             return Err(ApiError::Internal("Amount must be positive".into()));
         }
 
-        conn.transaction::<_, ApiError, _>(|conn| {
+        let tx_id = conn.transaction::<_, ApiError, _>(|conn| {
             // ── 1. Idempotency (hard guarantee)
-            if let Some(_existing) = transactions::table
+            if let Some(existing) = transactions::table
                 .filter(transactions::user_id.eq(user_id))
                 .filter(transactions::idempotency_key.eq(&req.idempotency_key))
                 .first::<Transaction>(conn)
                 .optional()?
             {
-                return Ok(StatusCode::OK);
+                return Ok(existing.id);
             }
 
             // ── 2. Lock wallet
@@ -225,25 +225,32 @@ impl TransferService {
                 .set(wallets::balance.eq(wallets::balance - amount_minor))
                 .execute(conn)?;
 
-            Ok(StatusCode::OK)
+            Ok(tx_id)
         })?;
 
         // ── 6. Call Paystack OUTSIDE DB transaction
-        let transfer_code = Self::initiate_paystack_transfer(state, &req).await?;
+        let provider_data = Self::initiate_paystack_transfer(state, &req).await?;
 
-        // ── 7. Attach provider reference
+        // ── 7. Attach provider reference and update state if success
         diesel::update(transactions::table)
             .filter(transactions::reference.eq(req.reference))
-            .set(transactions::provider_reference.eq(Some(transfer_code.as_str())))
+            .set((
+                transactions::provider_reference.eq(Some(provider_data.transfer_code.as_str())),
+                transactions::txn_state.eq(if provider_data.status.as_deref() == Some("success") {
+                    PaymentState::Completed
+                } else {
+                    PaymentState::Pending
+                }),
+            ))
             .execute(&mut conn)?;
 
-        Ok(StatusCode::OK)
+        Ok(TransferResponse { transaction_id: tx_id })
     }
 
     async fn initiate_paystack_transfer(
         state: &AppState,
         req: &TransferRequest,
-    ) -> Result<String, ApiError> {
+    ) -> Result<PaystackTransferData, ApiError> {
         let client = Client::new();
         let key = state
             .config
@@ -317,12 +324,8 @@ impl TransferService {
             return Err(ApiError::Payment(body.message));
         }
 
-        let transfer_code = body
-            .data
-            .ok_or_else(|| ApiError::Payment("Missing transfer data".into()))?
-            .transfer_code;
-
-        Ok(transfer_code)
+        body.data
+            .ok_or_else(|| ApiError::Payment("Missing transfer data".into()))
     }
 }
 

@@ -1,6 +1,6 @@
 export interface User {
     id: string;
-    username: string;
+    username: string | null;
     email: string;
     created_at: string;
 }
@@ -26,7 +26,7 @@ export interface BankAccount {
     created_at: string;
 }
 
-export type TransactionType = 'TopUp' | 'Withdrawal' | 'InternalTransfer' | 'ExternalTransfer' | 'CurrencyConversion';
+export type TransactionType = 'TopUp' | 'Payout' | 'Transfer' | 'Conversion' | 'Withdrawal' | 'InternalTransfer' | 'ExternalTransfer' | 'CurrencyConversion';
 export type TransactionStatus = 'Pending' | 'Completed' | 'Failed' | 'Reversed';
 
 export interface Transaction {

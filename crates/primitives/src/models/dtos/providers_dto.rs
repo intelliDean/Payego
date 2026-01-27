@@ -97,6 +97,7 @@ pub struct PayPalCaptureResponse {
 #[derive(Deserialize)]
 pub struct PaystackTransferData {
     pub transfer_code: String,
+    pub status: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -119,4 +120,5 @@ pub struct PaystackResponse<T> {
 pub struct PaystackTransData {
     pub transfer_code: String,
     pub reference: String,
+    pub status: Option<String>,
 }

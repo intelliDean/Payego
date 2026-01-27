@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
@@ -15,6 +15,8 @@ import LandingPage from "./components/LandingPage";
 import Wallets from './components/Wallets';
 import Transactions from './components/Transactions';
 import Profile from './components/Profile';
+import Sidebar from './components/Sidebar';
+import { useState } from 'react';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { isAuthenticated, isLoading } = useAuth();
@@ -32,26 +34,42 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 function App() {
     const { isAuthenticated, logout } = useAuth();
+    const [sidebarOpen, setSidebarOpen] = useState(localStorage.getItem("sidebarOpen") !== "false");
+
+    const toggleSidebar = () => {
+        const newState = !sidebarOpen;
+        setSidebarOpen(newState);
+        localStorage.setItem("sidebarOpen", String(newState));
+    };
 
     return (
         <Router>
             <div className="min-h-screen gradient-bg">
                 {/* Modern Navigation Bar */}
                 {isAuthenticated && (
-                    <nav className="sticky top-0 z-50 glass-strong bg-white/90 shadow-lg border-b border-gray-200/50">
+                    <nav className="sticky top-0 z-[60] glass-strong bg-white/90 shadow-sm border-b border-gray-200/50">
                         <div className="container mx-auto px-4 sm:px-6 py-4">
                             <div className="flex justify-between items-center">
-                                {/* Brand */}
-                                <div className="flex items-center space-x-3">
-                                    <div className="relative group">
-                                        <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl blur opacity-50 group-hover:opacity-75 transition-opacity"></div>
-                                        <div className="relative w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                                            <span className="text-white font-bold text-lg">P</span>
+                                {/* Brand & Toggle */}
+                                <div className="flex items-center space-x-4">
+                                    <button
+                                        onClick={toggleSidebar}
+                                        className="p-2 bg-gray-50 text-gray-500 rounded-xl hover:bg-gray-100 transition-colors"
+                                    >
+                                        <span className="text-xl">{sidebarOpen ? "◄" : "☰"}</span>
+                                    </button>
+
+                                    <Link to="/dashboard" className="flex items-center space-x-3 group">
+                                        <div className="relative group/logo">
+                                            <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl blur opacity-30 group-hover/logo:opacity-50 transition-opacity"></div>
+                                            <div className="relative w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg transform group-active:scale-95 transition-transform">
+                                                <span className="text-white font-bold text-lg">P</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <h1 className="text-xl sm:text-2xl font-black gradient-text">
-                                        Payego
-                                    </h1>
+                                        <h1 className="text-xl sm:text-2xl font-black gradient-text group-hover:opacity-80 transition-opacity">
+                                            Payego
+                                        </h1>
+                                    </Link>
                                 </div>
 
                                 {/* Logout Button */}
@@ -69,25 +87,31 @@ function App() {
                     </nav>
                 )}
 
-                {/* Main Content */}
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-                    <Routes>
-                        <Route path="/" element={!isAuthenticated ? <LandingPage /> : <Navigate to="/dashboard" />} />
-                        <Route path="/login" element={!isAuthenticated ? <LoginForm /> : <Navigate to="/" />} />
-                        <Route path="/register" element={!isAuthenticated ? <RegisterForm /> : <Navigate to="/" />} />
+                {/* Main Layout */}
+                <div className="flex">
+                    {isAuthenticated && <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />}
 
-                        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                        <Route path="/top-up" element={<ProtectedRoute><TopUpForm /></ProtectedRoute>} />
-                        <Route path="/banks" element={<ProtectedRoute><BankList /></ProtectedRoute>} />
-                        <Route path="/add-bank" element={<ProtectedRoute><AddBankForm /></ProtectedRoute>} />
-                        <Route path="/transfer" element={<ProtectedRoute><TransferForm /></ProtectedRoute>} />
-                        <Route path="/withdraw" element={<ProtectedRoute><WithdrawForm /></ProtectedRoute>} />
-                        <Route path="/convert" element={<ProtectedRoute><ConvertForm /></ProtectedRoute>} />
-                        <Route path="/wallets" element={<ProtectedRoute><Wallets /></ProtectedRoute>} />
-                        <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
-                        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                        <Route path="/success" element={<SuccessPage />} />
-                    </Routes>
+                    <div className={`flex-1 transition-all duration-300 ${isAuthenticated && sidebarOpen ? "md:ml-64" : ""}`}>
+                        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+                            <Routes>
+                                <Route path="/" element={!isAuthenticated ? <LandingPage /> : <Navigate to="/dashboard" />} />
+                                <Route path="/login" element={!isAuthenticated ? <LoginForm /> : <Navigate to="/" />} />
+                                <Route path="/register" element={!isAuthenticated ? <RegisterForm /> : <Navigate to="/" />} />
+
+                                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                                <Route path="/top-up" element={<ProtectedRoute><TopUpForm /></ProtectedRoute>} />
+                                <Route path="/banks" element={<ProtectedRoute><BankList /></ProtectedRoute>} />
+                                <Route path="/add-bank" element={<ProtectedRoute><AddBankForm /></ProtectedRoute>} />
+                                <Route path="/transfer" element={<ProtectedRoute><TransferForm /></ProtectedRoute>} />
+                                <Route path="/withdraw" element={<ProtectedRoute><WithdrawForm /></ProtectedRoute>} />
+                                <Route path="/convert" element={<ProtectedRoute><ConvertForm /></ProtectedRoute>} />
+                                <Route path="/wallets" element={<ProtectedRoute><Wallets /></ProtectedRoute>} />
+                                <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
+                                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                                <Route path="/success" element={<SuccessPage />} />
+                            </Routes>
+                        </div>
+                    </div>
                 </div>
             </div>
         </Router>

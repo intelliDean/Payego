@@ -15,6 +15,7 @@ pub use payego_primitives::{
     },
     schema::banks,
 };
+use regex::Regex;
 use reqwest::Url;
 use secrecy::ExposeSecret;
 use std::sync::Arc;
@@ -24,6 +25,10 @@ use tracing::{error, info};
 
 static ACCOUNT_CACHE: Lazy<DashMap<String, (ResolvedAccount, Instant)>> = Lazy::new(DashMap::new);
 const TTL: Duration = Duration::from_secs(60 * 10); // 10 minutes
+
+static ACCOUNT_NUMBER_RE: Lazy<Result<Regex, regex::Error>> = Lazy::new(|| Regex::new(r"^\d{10}$"));
+
+static BANK_CODE_RE: Lazy<Result<Regex, regex::Error>> = Lazy::new(|| Regex::new(r"^\d{3,5}$"));
 
 pub struct BankService;
 
@@ -225,11 +230,29 @@ impl BankService {
             .send()
             .await
             .map_err(|e| {
-                tracing::error!(error = %e, "Failed to reach Paystack");
-                ApiError::Payment("Paystack service unavailable".into())
+                error!(error = %e, "Failed to reach Paystack during account resolution");
+                ApiError::Payment(format!("Paystack service unavailable: {}", e))
             })?;
 
-        let body: PaystackResolveResponse = resp.json().await?;
+        let status = resp.status();
+        let body_text = resp.text().await.map_err(|e| {
+            error!(error = %e, "Failed to read Paystack response body");
+            ApiError::Payment("Failed to read Paystack response".into())
+        })?;
+
+        if !status.is_success() {
+            error!(
+                status = %status,
+                body = %body_text,
+                "Paystack account resolution failed"
+            );
+            return Err(ApiError::Payment(format!("Paystack error {}: {}", status, body_text)));
+        }
+
+        let body: PaystackResolveResponse = serde_json::from_str(&body_text).map_err(|e| {
+            error!(error = %e, body = %body_text, "Failed to parse Paystack resolution response");
+            ApiError::Payment("Invalid response from Paystack".into())
+        })?;
 
         if !body.status {
             warn!("Paystack resolve failed: {}", body.message);
@@ -249,6 +272,30 @@ impl BankService {
         Self::set(cache_key, resolved.clone());
 
         Ok(resolved)
+    }
+
+    pub fn validate_account_number(req: &ResolveAccountRequest) -> Result<(), ApiError> {
+        if !ACCOUNT_NUMBER_RE
+            .as_ref()
+            .map_err(|_| ApiError::Internal("Account number regex misconfigured".into()))?
+            .is_match(&req.account_number)
+        {
+            return Err(ApiError::Internal(
+                "Account number must be 10 digits".to_string(),
+            ));
+        }
+
+        if !BANK_CODE_RE
+            .as_ref()
+            .map_err(|_| ApiError::Internal("Account number regex misconfigured".into()))?
+            .is_match(&req.bank_code)
+        {
+            return Err(ApiError::Internal(
+                "Bank code must be 3–5 digits".to_string(),
+            ));
+        }
+
+        Ok(())
     }
 
     pub async fn list_banks(state: &AppState) -> Result<BankListResponse, ApiError> {

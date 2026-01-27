@@ -39,3 +39,8 @@ pub struct ResolvedUser {
     pub email: String,
     pub username: Option<String>,
 }
+
+#[derive(Serialize, ToSchema)]
+pub struct TransferResponse {
+    pub transaction_id: Uuid,
+}
