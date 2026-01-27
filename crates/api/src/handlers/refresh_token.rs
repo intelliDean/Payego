@@ -1,8 +1,8 @@
-use payego_primitives::error::ApiErrorResponse;
 use axum::{extract::State, Json};
 use payego_core::services::auth_service::token::{
-    ApiError, AppState, RefreshResponse, RefreshRequest, SecurityConfig, TokenService,
+    ApiError, AppState, RefreshRequest, RefreshResponse, SecurityConfig, TokenService,
 };
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 use tracing::log::error;
 use validator::Validate;

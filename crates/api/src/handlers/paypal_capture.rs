@@ -1,10 +1,8 @@
-use payego_primitives::error::ApiErrorResponse;
 use axum::extract::{Json, State};
-use payego_core::services::paypal_service::{
-    ApiError, AppState, CaptureResponse, PayPalService,
-};
+use payego_core::services::paypal_service::{ApiError, AppState, PayPalService};
+use payego_primitives::error::ApiErrorResponse;
+use payego_primitives::models::dtos::providers::paypal::{CaptureRequest, CaptureResponse};
 use std::sync::Arc;
-use payego_primitives::models::providers_dto::CaptureRequest;
 
 #[utoipa::path(
     post,

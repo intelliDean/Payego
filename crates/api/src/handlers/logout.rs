@@ -1,4 +1,3 @@
-use payego_primitives::error::ApiErrorResponse;
 use axum::{
     extract::{Extension, State},
     http::StatusCode,
@@ -7,6 +6,7 @@ use axum::{
 use payego_core::services::auth_service::logout::{
     ApiError, AppState, Claims, LogoutResponse, LogoutService,
 };
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 
 #[utoipa::path(

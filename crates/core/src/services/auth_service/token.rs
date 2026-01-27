@@ -1,3 +1,4 @@
+use crate::repositories::token_repository::TokenRepository;
 use chrono::{Duration, Utc};
 use diesel::prelude::*;
 use hex;
@@ -7,14 +8,10 @@ pub use payego_primitives::{
     models::{
         app_state::AppState,
         authentication::{NewRefreshToken, RefreshToken},
-        dtos::login_dto::LoginResponse,
-        token_dto::RefreshRequest,
-        token_dto::RefreshResult,
-        login_dto::RefreshResponse
+        dtos::auth_dto::{LoginResponse, RefreshRequest, RefreshResponse, RefreshResult},
     },
     schema::refresh_tokens::dsl::*,
 };
-use crate::repositories::token_repository::TokenRepository;
 use rand::{distributions::Alphanumeric, Rng};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
@@ -33,11 +30,14 @@ impl TokenService {
         let hashed_token = Self::hash_token(&raw_token);
         let expiry = Utc::now() + Duration::days(7);
 
-        TokenRepository::create_refresh_token(conn, NewRefreshToken {
-            user_id: user_uuid,
-            token_hash: &hashed_token,
-            expires_at: expiry,
-        })?;
+        TokenRepository::create_refresh_token(
+            conn,
+            NewRefreshToken {
+                user_id: user_uuid,
+                token_hash: &hashed_token,
+                expires_at: expiry,
+            },
+        )?;
 
         Ok(raw_token)
     }

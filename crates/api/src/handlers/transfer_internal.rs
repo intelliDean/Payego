@@ -1,6 +1,4 @@
-use axum::{
-    extract::{Extension, Json, State},
-};
+use axum::extract::{Extension, Json, State};
 use payego_core::services::transfer_service::{
     ApiError, AppState, Claims, TransferService, WalletTransferRequest,
 };
@@ -8,7 +6,6 @@ use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 use tracing::error;
 use validator::Validate;
-
 
 #[utoipa::path(
     post,
@@ -75,7 +72,9 @@ pub async fn transfer_internal(
                 sender_id,
                 recipient_id
             );
-            Ok(Json(serde_json::json!({ "id": transaction_id.to_string() })))
+            Ok(Json(
+                serde_json::json!({ "id": transaction_id.to_string() }),
+            ))
         }
         Err(e) => {
             tracing::error!("Transfer failed: {}", e);

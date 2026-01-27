@@ -1,4 +1,3 @@
-use payego_primitives::error::ApiErrorResponse;
 use axum::{
     extract::{Json, State},
     http::StatusCode,
@@ -6,6 +5,7 @@ use axum::{
 use payego_core::services::auth_service::register::{
     ApiError, AppState, RegisterService, {RegisterRequest, RegisterResponse},
 };
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 use tracing::log::error;
 use validator::Validate;

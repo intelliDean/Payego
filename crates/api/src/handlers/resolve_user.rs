@@ -1,11 +1,9 @@
 use axum::extract::Query;
 use axum::{extract::Json, extract::State};
 use diesel::prelude::*;
-use payego_core::services::payment_service::{
-    ApiError, AppState,
-};
+use payego_core::services::payment_service::{ApiError, AppState};
 use payego_primitives::error::ApiErrorResponse;
-use payego_primitives::models::transfer_dto::{ResolveUserRequest, ResolvedUser};
+use payego_primitives::models::dtos::wallet_dto::{ResolveUserRequest, ResolvedUser};
 use payego_primitives::schema::users;
 use std::sync::Arc;
 
@@ -26,7 +24,6 @@ pub async fn resolve_user(
     State(state): State<Arc<AppState>>,
     Query(params): Query<ResolveUserRequest>,
 ) -> Result<Json<ResolvedUser>, ApiError> {
-
     let mut conn = state
         .db
         .get()
@@ -42,8 +39,3 @@ pub async fn resolve_user(
 
     Ok(Json(user))
 }
-
-
-
-
-

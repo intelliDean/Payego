@@ -1,15 +1,18 @@
 use diesel::prelude::*;
+use payego_primitives::error::ApiError;
+use payego_primitives::models::entities::enum_types::CurrencyCode;
 use payego_primitives::models::wallet::{NewWallet, Wallet};
 use payego_primitives::models::wallet_ledger::NewWalletLedger;
 use payego_primitives::schema::{wallet_ledger, wallets};
-use payego_primitives::error::ApiError;
-use payego_primitives::models::entities::enum_types::CurrencyCode;
 use uuid::Uuid;
 
 pub struct WalletRepository;
 
 impl WalletRepository {
-    pub fn find_all_by_user(conn: &mut PgConnection, user_id: Uuid) -> Result<Vec<Wallet>, ApiError> {
+    pub fn find_all_by_user(
+        conn: &mut PgConnection,
+        user_id: Uuid,
+    ) -> Result<Vec<Wallet>, ApiError> {
         wallets::table
             .filter(wallets::user_id.eq(user_id))
             .order(wallets::created_at.asc())
@@ -18,9 +21,9 @@ impl WalletRepository {
     }
 
     pub fn find_by_user_and_currency(
-        conn: &mut PgConnection, 
-        user_id: Uuid, 
-        currency: CurrencyCode
+        conn: &mut PgConnection,
+        user_id: Uuid,
+        currency: CurrencyCode,
     ) -> Result<Option<Wallet>, ApiError> {
         wallets::table
             .filter(wallets::user_id.eq(user_id))
@@ -31,9 +34,9 @@ impl WalletRepository {
     }
 
     pub fn find_by_user_and_currency_with_lock(
-        conn: &mut PgConnection, 
-        user_id: Uuid, 
-        currency: CurrencyCode
+        conn: &mut PgConnection,
+        user_id: Uuid,
+        currency: CurrencyCode,
     ) -> Result<Wallet, ApiError> {
         wallets::table
             .filter(wallets::user_id.eq(user_id))
@@ -87,7 +90,7 @@ impl WalletRepository {
         conn: &mut PgConnection,
         user_id_val: Uuid,
         currency_val: CurrencyCode,
-        amount: i64
+        amount: i64,
     ) -> Result<(), ApiError> {
         diesel::update(wallets::table)
             .filter(wallets::user_id.eq(user_id_val))
@@ -98,7 +101,6 @@ impl WalletRepository {
         Ok(())
     }
 
-
     pub fn debit(conn: &mut PgConnection, wallet_id: Uuid, amount: i64) -> Result<(), ApiError> {
         diesel::update(wallets::table)
             .filter(wallets::id.eq(wallet_id))
@@ -108,7 +110,10 @@ impl WalletRepository {
         Ok(())
     }
 
-    pub fn add_ledger_entry(conn: &mut PgConnection, entry: NewWalletLedger) -> Result<(), ApiError> {
+    pub fn add_ledger_entry(
+        conn: &mut PgConnection,
+        entry: NewWalletLedger,
+    ) -> Result<(), ApiError> {
         diesel::insert_into(wallet_ledger::table)
             .values(entry)
             .execute(conn)
@@ -117,19 +122,16 @@ impl WalletRepository {
     }
 
     pub fn create_if_not_exists(
-        conn: &mut PgConnection, 
-        user_id: Uuid, 
-        currency: CurrencyCode
+        conn: &mut PgConnection,
+        user_id: Uuid,
+        currency: CurrencyCode,
     ) -> Result<Wallet, ApiError> {
         // Try fetch with lock first
         if let Ok(wallet) = Self::find_by_user_and_currency_with_lock(conn, user_id, currency) {
             return Ok(wallet);
         }
 
-        let new_wallet = NewWallet {
-            user_id,
-            currency,
-        };
+        let new_wallet = NewWallet { user_id, currency };
 
         diesel::insert_into(wallets::table)
             .values(&new_wallet)

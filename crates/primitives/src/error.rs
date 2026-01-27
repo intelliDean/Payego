@@ -177,10 +177,7 @@ impl From<ApiError> for (StatusCode, String) {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Internal error: {}", msg),
             ),
-            ApiError::BadRequest(msg) => (
-                StatusCode::BAD_REQUEST,
-                format!("Bad request: {}", msg),
-            ),
+            ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, format!("Bad request: {}", msg)),
         }
     }
 }

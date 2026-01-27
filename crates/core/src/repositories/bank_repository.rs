@@ -13,7 +13,10 @@ impl BankRepository {
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))
     }
 
-    pub fn create_many(conn: &mut PgConnection, new_banks: Vec<NewBank>) -> Result<usize, ApiError> {
+    pub fn create_many(
+        conn: &mut PgConnection,
+        new_banks: Vec<NewBank>,
+    ) -> Result<usize, ApiError> {
         diesel::insert_into(banks::table)
             .values(&new_banks)
             .on_conflict(banks::code)

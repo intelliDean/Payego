@@ -19,9 +19,7 @@ use eyre::Result;
 
 impl AppState {
     pub fn new(db: DbPool, config: AppConfig) -> Result<Arc<Self>> {
-        let http = Client::builder()
-            .timeout(Duration::from_secs(30))
-            .build()?;
+        let http = Client::builder().timeout(Duration::from_secs(30)).build()?;
 
         Ok(Arc::new(Self {
             db,

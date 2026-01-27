@@ -1,10 +1,9 @@
-
 use axum::extract::{Json, State};
 use payego_core::services::auth_service::login::{
     ApiError, AppState, LoginRequest, LoginResponse, LoginService,
 };
-use std::sync::Arc;
 use payego_primitives::error::ApiErrorResponse;
+use std::sync::Arc;
 
 #[utoipa::path(
     post,

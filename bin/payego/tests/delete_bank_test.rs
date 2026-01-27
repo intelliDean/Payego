@@ -7,7 +7,6 @@ use payego_primitives::schema::{bank_accounts, banks, users};
 use serial_test::serial;
 use uuid::Uuid;
 
-
 mod common;
 use common::{create_test_app, create_test_app_state};
 
@@ -42,10 +41,13 @@ async fn test_delete_bank_account_success() {
             "username": Some(format!("user_{}", Uuid::new_v4()))
         }))
         .await;
-    
+
     register_response.assert_status(StatusCode::CREATED);
-    let token = register_response.json::<serde_json::Value>()["token"].as_str().unwrap().to_string();
-    
+    let token = register_response.json::<serde_json::Value>()["token"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
     // We need the user ID. We can get it from the DB or the response (if it returns it).
     // The register response has `user_id` or similar? `api_tests.rs` checked `user_email`.
     // Let's just query the DB for the user.
@@ -98,6 +100,6 @@ async fn test_delete_bank_account_success() {
         .count()
         .get_result::<i64>(&mut conn)
         .unwrap();
-    
+
     assert_eq!(count, 0, "Bank account should be deleted");
 }

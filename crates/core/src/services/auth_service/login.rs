@@ -1,3 +1,4 @@
+use crate::repositories::user_repository::UserRepository;
 use crate::services::auth_service::register::RegisterService;
 use argon2::{password_hash::PasswordHash, PasswordVerifier};
 use diesel::prelude::*;
@@ -6,11 +7,10 @@ pub use payego_primitives::{
     error::{ApiError, AuthError},
     models::{
         app_state::AppState,
-        dtos::login_dto::{LoginRequest, LoginResponse},
+        dtos::auth_dto::{LoginRequest, LoginResponse},
         user::User,
     },
 };
-use crate::repositories::user_repository::UserRepository;
 use tracing::{error, warn};
 
 pub struct LoginService;
@@ -40,8 +40,6 @@ impl LoginService {
             user_email: Some(user.email),
         })
     }
-
-
 
     fn verify_password(password: &str, user: Option<&User>) -> Result<(), ApiError> {
         // verifying *something* to prevent timing attacks

@@ -1,7 +1,9 @@
 use chrono::Utc;
 use diesel::prelude::*;
 use payego_primitives::error::ApiError;
-use payego_primitives::models::entities::authentication::{NewBlacklistedToken, NewRefreshToken, RefreshToken};
+use payego_primitives::models::entities::authentication::{
+    NewBlacklistedToken, NewRefreshToken, RefreshToken,
+};
 use payego_primitives::schema::{blacklisted_tokens, refresh_tokens};
 use uuid::Uuid;
 

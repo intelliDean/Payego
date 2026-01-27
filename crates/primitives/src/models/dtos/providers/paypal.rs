@@ -17,24 +17,13 @@ pub struct CaptureResponse {
     pub error_message: Option<String>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct PaystackWebhook {
-    pub event: String,
-    pub data: PaystackData,
-}
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct PaystackData {
-    pub reference: String,
-    pub currency: Option<String>,
-}
-
 #[derive(Debug, Deserialize)]
 pub struct PayPalTokenResponse {
     pub access_token: String,
     pub expires_in: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
 pub struct PayPalOrderResponse {
     pub status: String,
 }
@@ -42,18 +31,6 @@ pub struct PayPalOrderResponse {
 pub struct PaypalCapture {
     pub capture_id: String,
     pub currency: CurrencyCode,
-}
-
-#[derive(Debug)]
-pub struct StripeWebhookContext {
-    pub transaction_ref: Uuid,
-    pub provider_reference: String,
-    pub currency: String,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct OrderResponse {
-    pub status: String,
 }
 
 #[derive(Deserialize)]
@@ -92,33 +69,4 @@ pub struct PurchaseUnit {
 #[derive(Deserialize)]
 pub struct PayPalCaptureResponse {
     pub purchase_units: Vec<PurchaseUnit>,
-}
-
-#[derive(Deserialize)]
-pub struct PaystackTransferData {
-    pub transfer_code: String,
-    pub status: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub struct PaystackTransferResponse {
-    pub status: bool,
-    pub message: String,
-    pub data: Option<PaystackTransferData>,
-}
-
-//===
-
-#[derive(Debug, Deserialize)]
-pub struct PaystackResponse<T> {
-    pub status: bool,
-    pub message: String,
-    pub data: Option<T>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct PaystackTransData {
-    pub transfer_code: String,
-    pub reference: String,
-    pub status: Option<String>,
 }

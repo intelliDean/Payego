@@ -1,16 +1,18 @@
+use crate::client::PaystackClient;
 use crate::repositories::transaction_repository::TransactionRepository;
 use crate::repositories::wallet_repository::WalletRepository;
-use crate::client::PaystackClient;
 use diesel::prelude::*;
-use payego_primitives::models::providers_dto::{PaystackTransferData, PaystackTransferResponse};
+use payego_primitives::models::dtos::providers::paystack::{
+    PaystackTransferData, PaystackTransferResponse,
+};
 pub use payego_primitives::{
     config::security_config::Claims,
     error::ApiError,
     models::{
         app_state::AppState,
+        dtos::wallet_dto::{TransferRequest, TransferResponse, WalletTransferRequest},
         enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent},
         transaction::{NewTransaction, Transaction},
-        transfer_dto::{TransferRequest, TransferResponse, WalletTransferRequest},
         wallet::Wallet,
         wallet_ledger::NewWalletLedger,
     },
@@ -43,70 +45,91 @@ impl TransferService {
 
         conn.transaction::<_, ApiError, _>(|conn| {
             // ── 1. Idempotency
-            if let Some(existing) = TransactionRepository::find_by_idempotency_key(conn, sender_id, &req.idempotency_key)? {
+            if let Some(existing) = TransactionRepository::find_by_idempotency_key(
+                conn,
+                sender_id,
+                &req.idempotency_key,
+            )? {
                 if existing.txn_state == PaymentState::Completed {
                     return Ok(existing.id);
                 }
             }
 
             // ── 2. Lock wallets
-            let sender_wallet = WalletRepository::find_by_user_and_currency_with_lock(conn, sender_id, req.currency)?;
-            let recipient_wallet = WalletRepository::create_if_not_exists(conn, req.recipient, req.currency)?;
+            let sender_wallet = WalletRepository::find_by_user_and_currency_with_lock(
+                conn,
+                sender_id,
+                req.currency,
+            )?;
+            let recipient_wallet =
+                WalletRepository::create_if_not_exists(conn, req.recipient, req.currency)?;
 
             if sender_wallet.balance < amount_cents {
                 return Err(ApiError::Payment("Insufficient balance".into()));
             }
 
             // ── 3. Sender transaction (debit)
-            let sender_tx = TransactionRepository::create(conn, NewTransaction {
-                user_id: sender_id,
-                counterparty_id: Some(req.recipient),
-                intent: TransactionIntent::Transfer,
-                amount: amount_cents,
-                currency: req.currency,
-                txn_state: PaymentState::Completed,
-                provider: Some(PaymentProvider::Internal),
-                provider_reference: None,
-                idempotency_key: &req.idempotency_key,
-                reference: req.reference,
-                description: req.description.as_deref(),
-                metadata: json!({
-                    "direction": "debit",
-                    "counterparty": req.recipient,
-                }),
-            })?;
+            let sender_tx = TransactionRepository::create(
+                conn,
+                NewTransaction {
+                    user_id: sender_id,
+                    counterparty_id: Some(req.recipient),
+                    intent: TransactionIntent::Transfer,
+                    amount: amount_cents,
+                    currency: req.currency,
+                    txn_state: PaymentState::Completed,
+                    provider: Some(PaymentProvider::Internal),
+                    provider_reference: None,
+                    idempotency_key: &req.idempotency_key,
+                    reference: req.reference,
+                    description: req.description.as_deref(),
+                    metadata: json!({
+                        "direction": "debit",
+                        "counterparty": req.recipient,
+                    }),
+                },
+            )?;
 
             // ── 4. Recipient transaction (credit)
-            let recipient_tx = TransactionRepository::create(conn, NewTransaction {
-                user_id: req.recipient,
-                counterparty_id: Some(sender_id),
-                intent: TransactionIntent::Transfer,
-                amount: amount_cents,
-                currency: req.currency,
-                txn_state: PaymentState::Completed,
-                provider: Some(PaymentProvider::Internal),
-                provider_reference: None,
-                idempotency_key: &req.idempotency_key,
-                reference: Uuid::new_v4(),
-                description: Some("Internal transfer received"),
-                metadata: json!({
-                    "direction": "credit",
-                    "counterparty": sender_id,
-                    "original_reference": req.reference
-                }),
-            })?;
+            let recipient_tx = TransactionRepository::create(
+                conn,
+                NewTransaction {
+                    user_id: req.recipient,
+                    counterparty_id: Some(sender_id),
+                    intent: TransactionIntent::Transfer,
+                    amount: amount_cents,
+                    currency: req.currency,
+                    txn_state: PaymentState::Completed,
+                    provider: Some(PaymentProvider::Internal),
+                    provider_reference: None,
+                    idempotency_key: &req.idempotency_key,
+                    reference: Uuid::new_v4(),
+                    description: Some("Internal transfer received"),
+                    metadata: json!({
+                        "direction": "credit",
+                        "counterparty": sender_id,
+                        "original_reference": req.reference
+                    }),
+                },
+            )?;
 
             // ── 5. Ledger entries
-            WalletRepository::add_ledger_entry(conn, NewWalletLedger {
-                wallet_id: sender_wallet.id,
-                transaction_id: sender_tx.id,
-                amount: -amount_cents,
-            })?;
-            WalletRepository::add_ledger_entry(conn, NewWalletLedger {
-                wallet_id: recipient_wallet.id,
-                transaction_id: recipient_tx.id,
-                amount: amount_cents,
-            })?;
+            WalletRepository::add_ledger_entry(
+                conn,
+                NewWalletLedger {
+                    wallet_id: sender_wallet.id,
+                    transaction_id: sender_tx.id,
+                    amount: -amount_cents,
+                },
+            )?;
+            WalletRepository::add_ledger_entry(
+                conn,
+                NewWalletLedger {
+                    wallet_id: recipient_wallet.id,
+                    transaction_id: recipient_tx.id,
+                    amount: amount_cents,
+                },
+            )?;
 
             // ── 6. Update balances
             WalletRepository::debit(conn, sender_wallet.id, amount_cents)?;
@@ -138,43 +161,52 @@ impl TransferService {
 
         let tx_id = conn.transaction::<_, ApiError, _>(|conn| {
             // ── 1. Idempotency
-            if let Some(existing) = TransactionRepository::find_by_idempotency_key(conn, user_id, &req.idempotency_key)? {
+            if let Some(existing) =
+                TransactionRepository::find_by_idempotency_key(conn, user_id, &req.idempotency_key)?
+            {
                 return Ok(existing.id);
             }
 
             // ── 2. Lock wallet
-            let wallet = WalletRepository::find_by_user_and_currency_with_lock(conn, user_id, currency)?;
+            let wallet =
+                WalletRepository::find_by_user_and_currency_with_lock(conn, user_id, currency)?;
 
             if wallet.balance < amount_minor {
                 return Err(ApiError::Payment("Insufficient balance".into()));
             }
 
             // ── 3. Create pending payout transaction
-            let tx = TransactionRepository::create(conn, NewTransaction {
-                user_id,
-                counterparty_id: None,
-                intent: TransactionIntent::Payout,
-                amount: amount_minor,
-                currency,
-                txn_state: PaymentState::Pending,
-                provider: Some(PaymentProvider::Paystack),
-                provider_reference: None,
-                idempotency_key: &req.idempotency_key,
-                reference: req.reference,
-                description: Some("External bank transfer"),
-                metadata: json!({
-                    "bank_code": req.bank_code,
-                    "account_number": req.account_number,
-                    "account_name": req.account_name,
-                }),
-            })?;
+            let tx = TransactionRepository::create(
+                conn,
+                NewTransaction {
+                    user_id,
+                    counterparty_id: None,
+                    intent: TransactionIntent::Payout,
+                    amount: amount_minor,
+                    currency,
+                    txn_state: PaymentState::Pending,
+                    provider: Some(PaymentProvider::Paystack),
+                    provider_reference: None,
+                    idempotency_key: &req.idempotency_key,
+                    reference: req.reference,
+                    description: Some("External bank transfer"),
+                    metadata: json!({
+                        "bank_code": req.bank_code,
+                        "account_number": req.account_number,
+                        "account_name": req.account_name,
+                    }),
+                },
+            )?;
 
             // ── 4. Ledger reservation (funds held)
-            WalletRepository::add_ledger_entry(conn, NewWalletLedger {
-                wallet_id: wallet.id,
-                transaction_id: tx.id,
-                amount: -amount_minor,
-            })?;
+            WalletRepository::add_ledger_entry(
+                conn,
+                NewWalletLedger {
+                    wallet_id: wallet.id,
+                    transaction_id: tx.id,
+                    amount: -amount_minor,
+                },
+            )?;
 
             // ── 5. Reduce available balance
             WalletRepository::debit(conn, wallet.id, amount_minor)?;
@@ -197,7 +229,9 @@ impl TransferService {
             Some(provider_data.transfer_code.to_string()),
         )?;
 
-        Ok(TransferResponse { transaction_id: tx_id })
+        Ok(TransferResponse {
+            transaction_id: tx_id,
+        })
     }
 
     async fn initiate_paystack_transfer(
@@ -281,5 +315,3 @@ impl TransferService {
             .ok_or_else(|| ApiError::Payment("Missing transfer data".into()))
     }
 }
-
-

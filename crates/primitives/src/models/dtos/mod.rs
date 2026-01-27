@@ -1,13 +1,13 @@
-pub mod bank_dtos;
+pub mod auth_dto;
+pub mod bank_dto;
 pub mod clients_dto;
-pub mod conversion_dto;
-pub mod login_dto;
-pub mod providers_dto;
-pub mod register_dto;
-pub mod token_dto;
-pub mod top_up_dto;
+pub mod providers;
 pub mod transaction_dto;
-pub mod transfer_dto;
 pub mod wallet_dto;
-pub mod withdrawal_dto;
-pub mod repository_dto;
+
+pub use auth_dto::*;
+pub use bank_dto::*;
+pub use clients_dto::*;
+pub use providers::*;
+pub use transaction_dto::*;
+pub use wallet_dto::*;

@@ -1,4 +1,3 @@
-use payego_primitives::error::ApiErrorResponse;
 use axum::{
     extract::{Extension, Json, State},
     http::StatusCode,
@@ -6,6 +5,7 @@ use axum::{
 use payego_core::services::bank_account_service::{
     ApiError, AppState, BankAccount, BankAccountResponse, BankAccountService, BankRequest, Claims,
 };
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 use tracing::error;
 use validator::Validate;
@@ -47,6 +47,3 @@ pub async fn add_bank_account(
         Json(BankAccountResponse::from(account)),
     ))
 }
-
-
-

@@ -1,8 +1,8 @@
-use payego_primitives::error::ApiErrorResponse;
 use axum::{extract::State, Extension, Json};
 use payego_core::services::transaction_service::{
     ApiError, AppState, Claims, TransactionService, TransactionsResponse,
 };
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 
 #[utoipa::path(

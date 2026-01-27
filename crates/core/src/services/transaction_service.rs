@@ -1,4 +1,5 @@
 use crate::repositories::transaction_repository::TransactionRepository;
+use crate::repositories::wallet_repository::WalletRepository;
 use diesel::prelude::*;
 pub use payego_primitives::{
     config::security_config::Claims,
@@ -9,12 +10,11 @@ pub use payego_primitives::{
         enum_types::{CurrencyCode, TransactionIntent},
         transaction::Transaction,
         transaction_dto::{TransactionResponse, TransactionSummaryDto, TransactionsResponse},
-        wallet_ledger::{NewWalletLedger, WalletLedger},
         wallet::Wallet,
+        wallet_ledger::{NewWalletLedger, WalletLedger},
     },
     schema::{transactions, wallet_ledger, wallets},
 };
-use crate::repositories::wallet_repository::WalletRepository;
 use stripe::PaymentIntent;
 use tracing::{error, info, warn};
 use uuid::Uuid;
@@ -69,14 +69,18 @@ impl TransactionService {
             )?;
 
             // 💰 Wallet UPSERT (critical)
-            let wallet_id = WalletRepository::upsert_balance(conn, tx.user_id, tx.currency, amount)?;
+            let wallet_id =
+                WalletRepository::upsert_balance(conn, tx.user_id, tx.currency, amount)?;
 
             // 📝 Ledger Entry
-            WalletRepository::add_ledger_entry(conn, NewWalletLedger {
-                wallet_id,
-                transaction_id: tx.id,
-                amount,
-            })?;
+            WalletRepository::add_ledger_entry(
+                conn,
+                NewWalletLedger {
+                    wallet_id,
+                    transaction_id: tx.id,
+                    amount,
+                },
+            )?;
 
             Ok(())
         })

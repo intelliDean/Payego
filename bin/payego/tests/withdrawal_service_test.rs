@@ -1,8 +1,8 @@
 use diesel::prelude::*;
 use payego_core::services::withdrawal_service::WithdrawalService;
-use payego_primitives::models::dtos::withdrawal_dto::WithdrawRequest;
 use payego_primitives::models::entities::enum_types::CurrencyCode;
 use payego_primitives::models::entities::wallet::Wallet;
+use payego_primitives::models::WithdrawRequest;
 use payego_primitives::schema::{bank_accounts, banks, transactions, users, wallets};
 use serde_json::json;
 use serial_test::serial;

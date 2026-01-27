@@ -1,9 +1,9 @@
-use payego_primitives::error::ApiErrorResponse;
 use axum::extract::{Path, State};
 use axum::{Extension, Json};
 use payego_core::services::withdrawal_service::{
     ApiError, AppState, Claims, WithdrawRequest, WithdrawResponse, WithdrawalService,
 };
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 use tracing::log::error;
 use uuid::Uuid;

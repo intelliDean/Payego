@@ -9,10 +9,12 @@ pub use payego_primitives::{
     models::{app_state::AppState, bank::BankAccount},
     models::{
         bank::NewBankAccount,
-        dtos::bank_dtos::{
-            BankAccountResponse, BankAccountsResponse, BankRequest, DeleteResponse,
-            PaystackRecipientResponse, PaystackResolveResponse, ResolveAccountRequest,
-            ResolveAccountResponse, ResolvedAccount,
+        dtos::{
+            bank_dto::{
+                BankAccountResponse, BankAccountsResponse, BankRequest, DeleteResponse,
+                ResolveAccountRequest, ResolveAccountResponse, ResolvedAccount,
+            },
+            providers::paystack::{PaystackRecipientResponse, PaystackResolveResponse},
         },
         enum_types::{CurrencyCode, PaymentState},
     },
@@ -81,7 +83,6 @@ impl BankAccountService {
         user_id_val: Uuid,
         req: BankRequest,
     ) -> Result<BankAccount, ApiError> {
-
         let mut conn = state.db.get().map_err(|e: r2d2::Error| {
             error!("Database error: {}", e);
             ApiError::DatabaseConnection(e.to_string())

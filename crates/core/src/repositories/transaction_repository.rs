@@ -10,15 +10,26 @@ use uuid::Uuid;
 pub struct TransactionRepository;
 
 impl TransactionRepository {
-    pub fn find_by_id_or_reference(conn: &mut PgConnection, id_or_ref: Uuid) -> Result<Option<Transaction>, ApiError> {
+    pub fn find_by_id_or_reference(
+        conn: &mut PgConnection,
+        id_or_ref: Uuid,
+    ) -> Result<Option<Transaction>, ApiError> {
         transactions::table
-            .filter(transactions::id.eq(id_or_ref).or(transactions::reference.eq(id_or_ref)))
+            .filter(
+                transactions::id
+                    .eq(id_or_ref)
+                    .or(transactions::reference.eq(id_or_ref)),
+            )
             .first::<Transaction>(conn)
             .optional()
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))
     }
 
-    pub fn find_by_id_and_user(conn: &mut PgConnection, id: Uuid, user_id: Uuid) -> Result<Option<Transaction>, ApiError> {
+    pub fn find_by_id_and_user(
+        conn: &mut PgConnection,
+        id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<Transaction>, ApiError> {
         transactions::table
             .filter(transactions::id.eq(id))
             .filter(transactions::user_id.eq(user_id))
@@ -27,16 +38,27 @@ impl TransactionRepository {
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))
     }
 
-    pub fn find_by_id_or_ref_and_user(conn: &mut PgConnection, id_or_ref: Uuid, user_id: Uuid) -> Result<Option<Transaction>, ApiError> {
+    pub fn find_by_id_or_ref_and_user(
+        conn: &mut PgConnection,
+        id_or_ref: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<Transaction>, ApiError> {
         transactions::table
-            .filter(transactions::id.eq(id_or_ref).or(transactions::reference.eq(id_or_ref)))
+            .filter(
+                transactions::id
+                    .eq(id_or_ref)
+                    .or(transactions::reference.eq(id_or_ref)),
+            )
             .filter(transactions::user_id.eq(user_id))
             .first::<Transaction>(conn)
             .optional()
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))
     }
 
-    pub fn find_by_reference_for_update(conn: &mut PgConnection, reference: Uuid) -> Result<Option<Transaction>, ApiError> {
+    pub fn find_by_reference_for_update(
+        conn: &mut PgConnection,
+        reference: Uuid,
+    ) -> Result<Option<Transaction>, ApiError> {
         transactions::table
             .filter(transactions::reference.eq(reference))
             .for_update()
@@ -48,7 +70,7 @@ impl TransactionRepository {
     pub fn find_by_idempotency_key(
         conn: &mut PgConnection,
         user_id: Uuid,
-        key: &str
+        key: &str,
     ) -> Result<Option<Transaction>, ApiError> {
         transactions::table
             .filter(transactions::user_id.eq(user_id))
@@ -58,7 +80,10 @@ impl TransactionRepository {
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))
     }
 
-    pub fn create(conn: &mut PgConnection, new_tx: NewTransaction) -> Result<Transaction, ApiError> {
+    pub fn create(
+        conn: &mut PgConnection,
+        new_tx: NewTransaction,
+    ) -> Result<Transaction, ApiError> {
         let inserted_id = diesel::insert_into(transactions::table)
             .values(&new_tx)
             .on_conflict((transactions::user_id, transactions::idempotency_key))
@@ -69,22 +94,23 @@ impl TransactionRepository {
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
         match inserted_id {
-             Some(id) => transactions::table.find(id).first::<Transaction>(conn).map_err(|e| ApiError::DatabaseConnection(e.to_string())),
-             None => {
-                  transactions::table
+            Some(id) => transactions::table
+                .find(id)
+                .first::<Transaction>(conn)
+                .map_err(|e| ApiError::DatabaseConnection(e.to_string())),
+            None => transactions::table
                 .filter(transactions::user_id.eq(new_tx.user_id))
                 .filter(transactions::idempotency_key.eq(new_tx.idempotency_key))
                 .first::<Transaction>(conn)
-                .map_err(|e| ApiError::DatabaseConnection(e.to_string()))
-             }
+                .map_err(|e| ApiError::DatabaseConnection(e.to_string())),
         }
     }
 
     pub fn update_status_and_provider_ref(
-        conn: &mut PgConnection, 
-        id: Uuid, 
-        status: PaymentState, 
-        provider_ref: Option<String>
+        conn: &mut PgConnection,
+        id: Uuid,
+        status: PaymentState,
+        provider_ref: Option<String>,
     ) -> Result<(), ApiError> {
         diesel::update(transactions::table.find(id))
             .set((
@@ -98,9 +124,9 @@ impl TransactionRepository {
     }
 
     pub fn update_status_by_reference(
-        conn: &mut PgConnection, 
-        reference: Uuid, 
-        status: PaymentState
+        conn: &mut PgConnection,
+        reference: Uuid,
+        status: PaymentState,
     ) -> Result<(), ApiError> {
         diesel::update(transactions::table)
             .filter(transactions::reference.eq(reference))
@@ -113,7 +139,7 @@ impl TransactionRepository {
     pub fn update_state(
         conn: &mut PgConnection,
         id: Uuid,
-        status: PaymentState
+        status: PaymentState,
     ) -> Result<(), ApiError> {
         diesel::update(transactions::table.find(id))
             .set(transactions::txn_state.eq(status))
@@ -122,8 +148,10 @@ impl TransactionRepository {
         Ok(())
     }
 
-
-    pub fn find_recent_by_user(conn: &mut PgConnection, user_id: Uuid, limit: i64
+    pub fn find_recent_by_user(
+        conn: &mut PgConnection,
+        user_id: Uuid,
+        limit: i64,
     ) -> Result<Vec<TransactionSummaryDto>, ApiError> {
         transactions::table
             .filter(transactions::user_id.eq(user_id))
@@ -136,7 +164,7 @@ impl TransactionRepository {
                 transactions::currency,
                 transactions::created_at,
                 transactions::txn_state,
-                transactions::reference
+                transactions::reference,
             ))
             .load::<TransactionSummaryDto>(conn)
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))

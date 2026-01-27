@@ -1,10 +1,8 @@
-use payego_primitives::error::ApiErrorResponse;
-use axum::{
-    extract::{Extension, Json, State},
-};
+use axum::extract::{Extension, Json, State};
 use payego_core::services::transfer_service::{
     ApiError, AppState, Claims, TransferRequest, TransferResponse, TransferService,
 };
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 use tracing::log::error;
 use validator::Validate;

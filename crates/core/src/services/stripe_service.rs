@@ -4,11 +4,11 @@ use secrecy::ExposeSecret;
 use std::sync::Arc;
 use stripe::{Event, EventObject, EventType, Webhook};
 
+use crate::services::transaction_service::TransactionService;
 pub use payego_primitives::{
     error::ApiError,
-    models::{app_state::AppState, providers_dto::StripeWebhookContext},
+    models::{app_state::AppState, dtos::providers::stripe::StripeWebhookContext},
 };
-use crate::services::transaction_service::TransactionService;
 
 pub enum WebhookOutcome {
     Processed,
@@ -40,13 +40,10 @@ impl StripeService {
                 .stripe_webhook_secret
                 .expose_secret(),
         )
-            .map_err(|e| ApiError::Payment(format!("Invalid Stripe webhook: {}", e)))
+        .map_err(|e| ApiError::Payment(format!("Invalid Stripe webhook: {}", e)))
     }
 
-    pub fn handle_event(
-        state: &Arc<AppState>,
-        event: Event,
-    ) -> Result<WebhookOutcome, ApiError> {
+    pub fn handle_event(state: &Arc<AppState>, event: Event) -> Result<WebhookOutcome, ApiError> {
         match event.type_ {
             EventType::PaymentIntentSucceeded => {
                 let EventObject::PaymentIntent(pay_int) = event.data.object else {
@@ -82,7 +79,6 @@ impl StripeService {
         }
     }
 }
-
 
 // impl StripeService {
 //     pub fn construct_event(

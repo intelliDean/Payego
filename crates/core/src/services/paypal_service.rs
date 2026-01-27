@@ -1,21 +1,20 @@
+use crate::repositories::transaction_repository::TransactionRepository;
+use crate::repositories::wallet_repository::WalletRepository;
 use diesel::Connection;
 use http::StatusCode;
-use payego_primitives::models::providers_dto::PayPalCaptureResponse;
+use payego_primitives::models::dtos::providers::paypal::{
+    CaptureResponse, PayPalCaptureResponse, PayPalOrderResponse, PayPalTokenResponse, PaypalCapture,
+};
 pub use payego_primitives::{
     error::ApiError,
     models::{
         app_state::AppState,
-        providers_dto::OrderResponse,
-        dtos::providers_dto::{CaptureResponse, PayPalOrderResponse, PayPalTokenResponse},
         enum_types::{CurrencyCode, PaymentProvider, PaymentState},
-        providers_dto::PaypalCapture,
         transaction::Transaction,
         wallet::Wallet,
         wallet_ledger::NewWalletLedger,
     },
 };
-use crate::repositories::transaction_repository::TransactionRepository;
-use crate::repositories::wallet_repository::WalletRepository;
 
 use reqwest::Url;
 use secrecy::ExposeSecret;
@@ -124,8 +123,9 @@ impl PayPalService {
             ApiError::DatabaseConnection(e.to_string())
         })?;
 
-        let transaction = TransactionRepository::find_by_id_or_reference(&mut conn, transaction_ref)?
-            .ok_or_else(|| ApiError::Payment("Transaction not found".into()))?;
+        let transaction =
+            TransactionRepository::find_by_id_or_reference(&mut conn, transaction_ref)?
+                .ok_or_else(|| ApiError::Payment("Transaction not found".into()))?;
 
         // ── Idempotency
         if transaction.txn_state == PaymentState::Completed {
@@ -149,25 +149,28 @@ impl PayPalService {
         conn.transaction::<_, ApiError, _>(|conn| {
             // ── Update transaction
             TransactionRepository::update_status_and_provider_ref(
-                conn, 
-                transaction.id, 
-                PaymentState::Completed, 
-                Some(capture.capture_id.clone())
+                conn,
+                transaction.id,
+                PaymentState::Completed,
+                Some(capture.capture_id.clone()),
             )?;
 
             // ── Lock wallet
             let wallet = WalletRepository::find_by_user_and_currency_with_lock(
-                conn, 
-                transaction.user_id, 
-                transaction.currency
+                conn,
+                transaction.user_id,
+                transaction.currency,
             )?;
 
             // ── Ledger entry
-            WalletRepository::add_ledger_entry(conn, NewWalletLedger {
-                wallet_id: wallet.id,
-                transaction_id: transaction.id,
-                amount: transaction.amount,
-            })?;
+            WalletRepository::add_ledger_entry(
+                conn,
+                NewWalletLedger {
+                    wallet_id: wallet.id,
+                    transaction_id: transaction.id,
+                    amount: transaction.amount,
+                },
+            )?;
 
             // ── Update balance
             WalletRepository::credit(conn, wallet.id, transaction.amount)?;

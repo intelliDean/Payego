@@ -1,8 +1,8 @@
-use payego_primitives::error::ApiErrorResponse;
 use axum::extract::{Extension, Json, State};
 use payego_core::services::conversion_service::{
     ApiError, AppState, Claims, ConversionService, ConvertRequest, ConvertResponse,
 };
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 use tracing::error;
 use validator::Validate;
@@ -45,5 +45,3 @@ pub async fn convert_currency(
 
     Ok(Json(response))
 }
-
-

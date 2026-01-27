@@ -1,17 +1,16 @@
-
+use crate::repositories::user_repository::UserRepository;
+use crate::repositories::wallet_repository::WalletRepository;
 pub use payego_primitives::{
     config::security_config::Claims,
     error::{ApiError, AuthError},
     models::{
-        app_state::AppState, enum_types::CurrencyCode, token_dto::CurrentUserResponse,
-        withdrawal_dto::WalletSummaryDto,
+        app_state::AppState, dtos::auth_dto::CurrentUserResponse,
+        dtos::wallet_dto::WalletSummaryDto, enum_types::CurrencyCode,
     },
     schema::{users, wallets},
 };
 use tracing::log::error;
 use uuid::Uuid;
-use crate::repositories::user_repository::UserRepository;
-use crate::repositories::wallet_repository::WalletRepository;
 
 pub struct UserService;
 
@@ -30,7 +29,10 @@ impl UserService {
 
         let walletz = WalletRepository::find_all_by_user(&mut conn, usr_id)?
             .into_iter()
-            .map(|w| WalletSummaryDto { currency: w.currency, balance: w.balance })
+            .map(|w| WalletSummaryDto {
+                currency: w.currency,
+                balance: w.balance,
+            })
             .collect();
 
         Ok(CurrentUserResponse {

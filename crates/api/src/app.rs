@@ -3,6 +3,7 @@ use crate::handlers::{
     add_bank::add_bank_account,
     all_banks::all_banks,
     current_user::current_user_details,
+    exchange_rate::get_exchange_rate as get_exchange_rate_handler,
     get_transaction::get_transactions,
     health::health_check,
     // initialize_banks::initialize_banks,
@@ -21,7 +22,6 @@ use crate::handlers::{
     user_transaction::get_user_transaction,
     user_wallets::get_user_wallets,
     withdraw::withdraw,
-    exchange_rate::get_exchange_rate as get_exchange_rate_handler,
 };
 use axum::{
     middleware,
@@ -36,8 +36,10 @@ use std::sync::Arc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
+use crate::handlers::delete_bank::delete_bank_account;
 use crate::handlers::paypal_order::get_paypal_order;
 use crate::handlers::refresh_token::refresh_token;
+use crate::handlers::resolve_user::resolve_user;
 use payego_primitives::config::security_config::SecurityConfig;
 use tower::ServiceBuilder;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
@@ -45,8 +47,6 @@ use tower_http::{
     request_id::{MakeRequestUuid, SetRequestIdLayer},
     trace::TraceLayer,
 };
-use crate::handlers::delete_bank::delete_bank_account;
-use crate::handlers::resolve_user::resolve_user;
 
 const REQUESTS_PER_SECOND: u64 = 2;
 const BURST_SIZE: u32 = 10;
@@ -123,7 +123,10 @@ fn create_secured_routers(state: &Arc<AppState>) -> Router<Arc<AppState>> {
             axum::routing::get(get_user_transaction),
         )
         .route("/api/wallet/top_up", axum::routing::post(top_up))
-        .route("/api/banks/{bank_account_id}", axum::routing::delete(delete_bank_account))
+        .route(
+            "/api/banks/{bank_account_id}",
+            axum::routing::delete(delete_bank_account),
+        )
         .route("/api/auth/logout", axum::routing::post(logout))
         .route(
             "/api/wallets/convert",
@@ -197,8 +200,5 @@ async fn https_redirect_middleware(
 
     Ok(next.run(req).await)
 }
-
-
-
 
 // https://36652cc2d485.ngrok-free.app/api/webhooks/stripe

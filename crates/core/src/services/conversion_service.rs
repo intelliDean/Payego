@@ -6,8 +6,7 @@ pub use payego_primitives::{
     error::ApiError,
     models::{
         app_state::AppState,
-        conversion_dto::{ConvertRequest, ExchangeRateResponse},
-        dtos::conversion_dto::ConvertResponse,
+        dtos::wallet_dto::{ConvertRequest, ConvertResponse, ExchangeRateResponse},
         enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent},
         transaction::{NewTransaction, Transaction},
         wallet::Wallet,
@@ -38,10 +37,15 @@ impl ConversionService {
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
         // ---------- IDEMPOTENCY ----------
-        if let Some(tx) = TransactionRepository::find_by_idempotency_key(&mut conn, user_id, &req.idempotency_key)? {
+        if let Some(tx) = TransactionRepository::find_by_idempotency_key(
+            &mut conn,
+            user_id,
+            &req.idempotency_key,
+        )? {
             //closure to help me convert this
             let get_i64 = |key: &str| {
-                tx.metadata.get(key)
+                tx.metadata
+                    .get(key)
                     .and_then(|v| v.as_i64())
                     .ok_or_else(|| ApiError::Internal(format!("Missing/invalid {}", key)))
             };
@@ -71,7 +75,11 @@ impl ConversionService {
 
         conn.transaction::<_, ApiError, _>(|conn| {
             // ---------- LOCK WALLETS ----------
-            let from_wallet = WalletRepository::find_by_user_and_currency_with_lock(conn, user_id, req.from_currency)?;
+            let from_wallet = WalletRepository::find_by_user_and_currency_with_lock(
+                conn,
+                user_id,
+                req.from_currency,
+            )?;
             let to_wallet = WalletRepository::create_if_not_exists(conn, user_id, req.to_currency)?;
 
             // ---------- BALANCE CHECK (CACHED) ----------
@@ -81,38 +89,47 @@ impl ConversionService {
             }
 
             // ---------- TRANSACTION ----------
-            let tx = TransactionRepository::create(conn, NewTransaction {
-                user_id,
-                counterparty_id: None,
-                intent: TransactionIntent::Conversion,
-                amount: req.amount_cents,
-                currency: req.from_currency,
-                txn_state: PaymentState::Completed,
-                provider: Some(PaymentProvider::Internal),
-                provider_reference: None,
-                idempotency_key: &req.idempotency_key,
-                reference: tx_ref,
-                description: Some("Currency conversion"),
-                metadata: json!({
-                    "exchange_rate_scaled": rate_scaled,
-                    "converted_amount_cents": net_cents,
-                    "fee_cents": fee_cents,
-                    "quoted_at": chrono::Utc::now()
-                }),
-            })?;
+            let tx = TransactionRepository::create(
+                conn,
+                NewTransaction {
+                    user_id,
+                    counterparty_id: None,
+                    intent: TransactionIntent::Conversion,
+                    amount: req.amount_cents,
+                    currency: req.from_currency,
+                    txn_state: PaymentState::Completed,
+                    provider: Some(PaymentProvider::Internal),
+                    provider_reference: None,
+                    idempotency_key: &req.idempotency_key,
+                    reference: tx_ref,
+                    description: Some("Currency conversion"),
+                    metadata: json!({
+                        "exchange_rate_scaled": rate_scaled,
+                        "converted_amount_cents": net_cents,
+                        "fee_cents": fee_cents,
+                        "quoted_at": chrono::Utc::now()
+                    }),
+                },
+            )?;
 
             // ---------- LEDGER ----------
-            WalletRepository::add_ledger_entry(conn, NewWalletLedger {
-                wallet_id: from_wallet.id,
-                transaction_id: tx.id,
-                amount: -req.amount_cents,
-            })?;
+            WalletRepository::add_ledger_entry(
+                conn,
+                NewWalletLedger {
+                    wallet_id: from_wallet.id,
+                    transaction_id: tx.id,
+                    amount: -req.amount_cents,
+                },
+            )?;
 
-            WalletRepository::add_ledger_entry(conn, NewWalletLedger {
-                wallet_id: to_wallet.id,
-                transaction_id: tx.id,
-                amount: net_cents,
-            })?;
+            WalletRepository::add_ledger_entry(
+                conn,
+                NewWalletLedger {
+                    wallet_id: to_wallet.id,
+                    transaction_id: tx.id,
+                    amount: net_cents,
+                },
+            )?;
 
             // ---------- UPDATE CACHED BALANCE ----------
             WalletRepository::debit(conn, from_wallet.id, req.amount_cents)?;
@@ -134,7 +151,8 @@ impl ConversionService {
         from: CurrencyCode,
         to: CurrencyCode,
     ) -> Result<f64, ApiError> {
-        if from == to { //this should not be allowed
+        if from == to {
+            //this should not be allowed
             return Ok(1.0);
         }
 

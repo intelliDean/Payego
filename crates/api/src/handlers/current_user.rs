@@ -1,4 +1,3 @@
-use payego_primitives::error::ApiErrorResponse;
 use axum::{
     extract::{Extension, State},
     Json,
@@ -6,6 +5,7 @@ use axum::{
 use payego_core::services::auth_service::user::{
     ApiError, AppState, Claims, CurrentUserResponse, UserService,
 };
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 
 #[utoipa::path(

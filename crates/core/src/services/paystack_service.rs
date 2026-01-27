@@ -1,20 +1,20 @@
 use axum::body::Bytes;
 use diesel::Connection;
 
+use crate::repositories::transaction_repository::TransactionRepository;
+use crate::repositories::wallet_repository::WalletRepository;
 use hmac::KeyInit;
 use http::HeaderMap;
 pub use payego_primitives::{
     error::ApiError,
     models::{
         app_state::AppState,
-        dtos::providers_dto::PaystackWebhook,
+        dtos::providers::paystack::PaystackWebhook,
         entities::enum_types::{PaymentState, TransactionIntent},
         transaction::Transaction,
         wallet_ledger::NewWalletLedger,
     },
 };
-use crate::repositories::transaction_repository::TransactionRepository;
-use crate::repositories::wallet_repository::WalletRepository;
 use secrecy::ExposeSecret;
 use std::sync::Arc;
 use tracing::info;
@@ -82,19 +82,31 @@ impl PaystackService {
                     if matches!(tx.intent, TransactionIntent::Payout) {
                         let amount_to_refund = tx.amount.abs();
                         // 💰 Wallet Credit
-                        WalletRepository::credit_by_user_and_currency(conn, tx.user_id, tx.currency, amount_to_refund)?;
+                        WalletRepository::credit_by_user_and_currency(
+                            conn,
+                            tx.user_id,
+                            tx.currency,
+                            amount_to_refund,
+                        )?;
 
                         // To get the wallet_id for ledger entry, we might need to find it or credit returning id
                         // Let's use find_by_user_and_currency_with_lock for safety or just find_by_user_and_currency
-                        let wallet = WalletRepository::find_by_user_and_currency(conn, tx.user_id, tx.currency)?
-                            .ok_or(ApiError::Internal("Wallet not found for refund".into()))?;
+                        let wallet = WalletRepository::find_by_user_and_currency(
+                            conn,
+                            tx.user_id,
+                            tx.currency,
+                        )?
+                        .ok_or(ApiError::Internal("Wallet not found for refund".into()))?;
 
                         // 📝 Ledger Entry (Refund)
-                        WalletRepository::add_ledger_entry(conn, NewWalletLedger {
-                            wallet_id: wallet.id,
-                            transaction_id: tx.id,
-                            amount: amount_to_refund,
-                        })?;
+                        WalletRepository::add_ledger_entry(
+                            conn,
+                            NewWalletLedger {
+                                wallet_id: wallet.id,
+                                transaction_id: tx.id,
+                                amount: amount_to_refund,
+                            },
+                        )?;
                     }
                 }
 

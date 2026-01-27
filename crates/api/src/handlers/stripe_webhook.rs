@@ -1,11 +1,11 @@
-use payego_primitives::error::ApiErrorResponse;
 use axum::body::Bytes;
 use axum::extract::State;
 use http::{HeaderMap, StatusCode};
+use payego_core::services::stripe_service::WebhookOutcome;
 use payego_core::services::stripe_service::{ApiError, AppState, StripeService};
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 use tracing::info;
-use payego_core::services::stripe_service::WebhookOutcome;
 
 #[utoipa::path(
     post,
@@ -42,8 +42,6 @@ use payego_core::services::stripe_service::WebhookOutcome;
     security(()),
 )]
 
-
-
 pub async fn stripe_webhook(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -64,12 +62,6 @@ pub async fn stripe_webhook(
         }
     }
 }
-
-
-
-
-
-
 
 // use payego_primitives::models::AppState;
 // use payego_primitives::error::ApiError;

@@ -1,17 +1,16 @@
-
+use crate::repositories::transaction_repository::TransactionRepository;
 use http::header::{CONTENT_TYPE, USER_AGENT};
-use payego_primitives::models::providers_dto::PayPalOrderResp;
+use payego_primitives::models::dtos::providers::paypal::PayPalOrderResp;
 pub use payego_primitives::{
     config::security_config::Claims,
     error::ApiError,
     models::{
         app_state::AppState,
+        dtos::wallet_dto::{TopUpRequest, TopUpResponse},
         enum_types::{PaymentProvider, PaymentState, TransactionIntent},
-        top_up_dto::{TopUpRequest, TopUpResponse},
         transaction::{NewTransaction, Transaction},
     },
 };
-use crate::repositories::transaction_repository::TransactionRepository;
 use reqwest::Url;
 use secrecy::ExposeSecret;
 use serde_json::json;
@@ -41,20 +40,23 @@ impl PaymentService {
         let reference = Uuid::new_v4();
 
         // ---------- DB-ENFORCED IDEMPOTENCY ----------
-        let tx = TransactionRepository::create(&mut conn, NewTransaction {
-            user_id,
-            counterparty_id: None,
-            intent: TransactionIntent::TopUp,
-            amount: amount_cents,
-            currency: req.currency,
-            txn_state: PaymentState::Pending,
-            provider: Some(req.provider),
-            provider_reference: None,
-            idempotency_key: &req.idempotency_key,
-            reference,
-            description: Some("Top-up intent"),
-            metadata: serde_json::json!({}),
-        })?;
+        let tx = TransactionRepository::create(
+            &mut conn,
+            NewTransaction {
+                user_id,
+                counterparty_id: None,
+                intent: TransactionIntent::TopUp,
+                amount: amount_cents,
+                currency: req.currency,
+                txn_state: PaymentState::Pending,
+                provider: Some(req.provider),
+                provider_reference: None,
+                idempotency_key: &req.idempotency_key,
+                reference,
+                description: Some("Top-up intent"),
+                metadata: serde_json::json!({}),
+            },
+        )?;
 
         let (session_url, payment_id) = match req.provider {
             PaymentProvider::Stripe => {
@@ -85,7 +87,6 @@ impl PaymentService {
         reference: Uuid,
         amount_cents: i64,
     ) -> Result<(Option<String>, Option<String>), ApiError> {
-
         let stripe_client = StripeClient::from_url(
             state.config.stripe_details.stripe_api_url.as_str(),
             state

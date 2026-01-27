@@ -1,10 +1,10 @@
 use axum::extract::Path;
 use axum::extract::{Extension, State};
+use axum::Json;
 use payego_core::services::bank_account_service::{ApiError, AppState, BankAccountService, Claims};
 use payego_primitives::error::ApiErrorResponse;
-use payego_primitives::models::bank_dtos::DeleteResponse;
+use payego_primitives::models::dtos::bank_dto::DeleteResponse;
 use std::sync::Arc;
-use axum::Json;
 use uuid::Uuid;
 
 #[utoipa::path(

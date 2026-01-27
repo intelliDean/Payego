@@ -8,7 +8,7 @@ pub use payego_primitives::{
     models::{
         app_state::AppState,
         bank::BankAccount,
-        dtos::withdrawal_dto::{WithdrawRequest, WithdrawResponse},
+        dtos::wallet_dto::{WithdrawRequest, WithdrawResponse},
         enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent},
         transaction::NewTransaction,
         wallet::Wallet,
@@ -17,11 +17,13 @@ pub use payego_primitives::{
     schema::{bank_accounts, transactions, wallet_ledger, wallets},
 };
 
-use payego_primitives::models::providers_dto::{PaystackResponse, PaystackTransData};
+use payego_primitives::models::dtos::providers::paystack::{
+    PaystackResponseWrapper as PaystackResponse, PaystackTransData,
+};
 use reqwest::Url;
-use tracing::error;
 use secrecy::ExposeSecret;
 use serde_json::json;
+use tracing::error;
 use uuid::Uuid;
 
 pub struct WithdrawalService;
@@ -41,13 +43,21 @@ impl WithdrawalService {
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
         // ---- Load wallet (FOR UPDATE) ----
-        let wallet = WalletRepository::find_by_user_and_currency_with_lock(&mut conn, user_id, req.currency)?;
+        let wallet = WalletRepository::find_by_user_and_currency_with_lock(
+            &mut conn,
+            user_id,
+            req.currency,
+        )?;
 
         if wallet.balance < amount_minor {
             return Err(ApiError::Payment("Insufficient balance".into()));
         }
 
-        let bank_account = BankAccountRepository::find_verified_by_id_and_user(&mut conn, bank_account_id, user_id)?;
+        let bank_account = BankAccountRepository::find_verified_by_id_and_user(
+            &mut conn,
+            bank_account_id,
+            user_id,
+        )?;
 
         // ---- External transfer FIRST ----
         let provider_data = Self::initiate_paystack_transfer(
@@ -70,29 +80,35 @@ impl WithdrawalService {
             WalletRepository::debit(conn, wallet.id, amount_minor)?;
 
             // Transaction
-            let tx = TransactionRepository::create(conn, NewTransaction {
-                user_id,
-                counterparty_id: None,
-                intent: TransactionIntent::Payout,
-                amount: amount_minor,
-                currency: wallet.currency,
-                txn_state: initial_state,
-                provider: Some(PaymentProvider::Paystack),
-                provider_reference: Some(&provider_data.transfer_code),
-                idempotency_key: &req.idempotency_key,
-                reference: req.reference,
-                description: Some("Wallet withdrawal"),
-                metadata: json!({
-                    "bank_account_id": bank_account_id,
-                }),
-            })?;
+            let tx = TransactionRepository::create(
+                conn,
+                NewTransaction {
+                    user_id,
+                    counterparty_id: None,
+                    intent: TransactionIntent::Payout,
+                    amount: amount_minor,
+                    currency: wallet.currency,
+                    txn_state: initial_state,
+                    provider: Some(PaymentProvider::Paystack),
+                    provider_reference: Some(&provider_data.transfer_code),
+                    idempotency_key: &req.idempotency_key,
+                    reference: req.reference,
+                    description: Some("Wallet withdrawal"),
+                    metadata: json!({
+                        "bank_account_id": bank_account_id,
+                    }),
+                },
+            )?;
 
             // Ledger
-            WalletRepository::add_ledger_entry(conn, NewWalletLedger {
-                wallet_id: wallet.id,
-                transaction_id: tx.id,
-                amount: -amount_minor,
-            })?;
+            WalletRepository::add_ledger_entry(
+                conn,
+                NewWalletLedger {
+                    wallet_id: wallet.id,
+                    transaction_id: tx.id,
+                    amount: -amount_minor,
+                },
+            )?;
 
             Ok(tx.id)
         })
@@ -138,12 +154,12 @@ impl WithdrawalService {
                 "reference": reference.to_string(),
                 "reason": format!("Withdrawal ({})", currency),
             }))
-        .send()
-        .await
-        .map_err(|e| {
-            error!(error = %e, "Failed to reach Paystack during transfer initiation");
-            ApiError::Payment(format!("Failed to reach Paystack: {}", e))
-        })?;
+            .send()
+            .await
+            .map_err(|e| {
+                error!(error = %e, "Failed to reach Paystack during transfer initiation");
+                ApiError::Payment(format!("Failed to reach Paystack: {}", e))
+            })?;
 
         let status = resp.status();
         let body_text = resp.text().await.map_err(|e| {
@@ -157,11 +173,14 @@ impl WithdrawalService {
                 body = %body_text,
                 "Paystack transfer initiation failed"
             );
-            return Err(ApiError::Payment(format!("Paystack transfer failed with status {}: {}", status, body_text)));
+            return Err(ApiError::Payment(format!(
+                "Paystack transfer failed with status {}: {}",
+                status, body_text
+            )));
         }
 
-        let body: PaystackResponse<PaystackTransData> = serde_json::from_str(&body_text)
-            .map_err(|e| {
+        let body: PaystackResponse<PaystackTransData> =
+            serde_json::from_str(&body_text).map_err(|e| {
                 error!(error = %e, body = %body_text, "Failed to parse Paystack transfer response");
                 ApiError::Payment("Invalid Paystack response format".into())
             })?;

@@ -1,22 +1,21 @@
 use crate::services::auth_service::token::TokenService;
 use argon2::{Argon2, Params};
 
+use crate::repositories::user_repository::UserRepository;
 use password_hash::PasswordHasher;
 pub use payego_primitives::{
     config::security_config::SecurityConfig,
     error::{ApiError, AuthError},
     models::{
         app_state::AppState,
-        dtos::register_dto::{RegisterRequest, RegisterResponse},
+        dtos::auth_dto::{RegisterRequest, RegisterResponse},
         user::NewUser,
         user::User,
     },
     schema::users,
 };
-use crate::repositories::user_repository::UserRepository;
 use secrecy::{ExposeSecret, SecretString};
 use tracing::error;
-
 
 pub struct RegisterService;
 
@@ -87,5 +86,4 @@ impl RegisterService {
         let argon2 = Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
         Ok(argon2)
     }
-
 }

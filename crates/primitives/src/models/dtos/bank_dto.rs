@@ -19,45 +19,11 @@ pub struct BankResponse {
     pub account_name: String,
 }
 
-#[derive(Deserialize)]
-pub struct PaystackRecipientResponse {
-    pub status: bool,
-    pub data: PaystackRecipientData,
-}
-
-#[derive(Deserialize)]
-pub struct PaystackRecipientData {
-    pub recipient_code: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct PaystackAccountData {
-    pub account_name: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct PaystackResponse<T> {
-    pub status: bool,
-    pub message: String,
-    pub data: T,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ResolvedAccount {
     pub account_name: String,
     pub bank_code: String,
     pub account_number: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct PaystackBank {
-    pub id: i64,
-    pub name: String,
-    pub code: String,
-    pub currency: Option<String>,
-    pub country: Option<String>,
-    #[serde(rename = "active", default)]
-    pub is_active: bool,
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -69,13 +35,6 @@ pub struct ResolveAccountRequest {
 #[derive(Serialize, ToSchema)]
 pub struct ResolveAccountResponse {
     pub account_name: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct PaystackResolveResponse {
-    pub status: bool,
-    pub message: String,
-    pub data: Option<PaystackAccountData>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -137,10 +96,3 @@ pub struct DeleteResponse {
     pub account_id: Uuid,
     pub message: String,
 }
-
-
-
-
-
-
-

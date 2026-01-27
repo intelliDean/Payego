@@ -15,7 +15,10 @@ impl UserRepository {
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))
     }
 
-    pub fn find_by_email(conn: &mut PgConnection, user_email: &str) -> Result<Option<User>, ApiError> {
+    pub fn find_by_email(
+        conn: &mut PgConnection,
+        user_email: &str,
+    ) -> Result<Option<User>, ApiError> {
         users::table
             .filter(users::email.eq(user_email))
             .first::<User>(conn)
@@ -23,7 +26,10 @@ impl UserRepository {
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))
     }
 
-    pub fn find_by_username(conn: &mut PgConnection, user_name: &str) -> Result<Option<User>, ApiError> {
+    pub fn find_by_username(
+        conn: &mut PgConnection,
+        user_name: &str,
+    ) -> Result<Option<User>, ApiError> {
         users::table
             .filter(users::username.eq(user_name))
             .first::<User>(conn)
@@ -36,7 +42,13 @@ impl UserRepository {
             .values(&new_user)
             .get_result::<User>(conn)
             .map_err(|e| {
-                if matches!(e, diesel::result::Error::DatabaseError(diesel::result::DatabaseErrorKind::UniqueViolation, _)) {
+                if matches!(
+                    e,
+                    diesel::result::Error::DatabaseError(
+                        diesel::result::DatabaseErrorKind::UniqueViolation,
+                        _
+                    )
+                ) {
                     ApiError::Auth(payego_primitives::error::AuthError::DuplicateEmail)
                 } else {
                     ApiError::DatabaseConnection(e.to_string())

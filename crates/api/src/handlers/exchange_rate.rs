@@ -3,11 +3,11 @@ use axum::{
     Json,
 };
 use payego_core::services::conversion_service::{ApiError, AppState, ConversionService};
+use payego_primitives::error::ApiErrorResponse;
 use payego_primitives::models::enum_types::CurrencyCode;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use utoipa::ToSchema;
-use payego_primitives::error::ApiErrorResponse;
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct ExchangeRateQuery {

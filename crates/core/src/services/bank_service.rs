@@ -1,18 +1,17 @@
-
+use crate::repositories::bank_repository::BankRepository;
 pub use payego_primitives::{
     error::ApiError,
     models::{
         app_state::AppState,
         bank::{Bank, NewBank, NewBankAccount},
-        bank_dtos::{
-            BankDto, BankListResponse, PaystackBank, PaystackResolveResponse, PaystackResponse,
+        dtos::{
+            bank_dto::{BankDto, BankListResponse, ResolvedAccount},
+            providers::paystack::{PaystackBank, PaystackResolveResponse, PaystackResponse},
         },
-        dtos::bank_dtos::ResolvedAccount,
         enum_types::CurrencyCode,
     },
     schema::banks,
 };
-use crate::repositories::bank_repository::BankRepository;
 use reqwest::Url;
 use secrecy::ExposeSecret;
 use std::sync::Arc;
@@ -187,7 +186,8 @@ impl BankService {
             ApiError::DatabaseConnection("Database unavailable".into())
         })?;
 
-        let banks = BankRepository::list_active_by_country(&mut conn, &state.config.default_country)?;
+        let banks =
+            BankRepository::list_active_by_country(&mut conn, &state.config.default_country)?;
 
         Ok(BankListResponse {
             banks: banks.into_iter().map(BankDto::from).collect(),
