@@ -188,7 +188,7 @@ async fn test_internal_transfer_idempotency() {
     let reference = Uuid::new_v4();
     let transfer_data = json!({
         "amount": 10.0,
-        "recipient_id": recipient_id,
+        "recipient": recipient_id,
         "currency": "USD",
         "description": "Internal transfer test",
         "reference": reference,
