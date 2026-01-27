@@ -1,4 +1,3 @@
-use crate::config::swagger_config::ApiErrorResponse;
 use axum::{
     extract::{Json, State},
     http::StatusCode,
@@ -6,6 +5,7 @@ use axum::{
 use payego_core::services::auth_service::register::{
     ApiError, AppState, RegisterService, {RegisterRequest, RegisterResponse},
 };
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 use tracing::log::error;
 use validator::Validate;
@@ -40,6 +40,8 @@ pub async fn register(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<RegisterRequest>,
 ) -> Result<(StatusCode, Json<RegisterResponse>), ApiError> {
+    let payload = payload.normalize();
+
     payload.validate().map_err(|e| {
         error!("Validation error: {}", e);
         ApiError::Validation(e)

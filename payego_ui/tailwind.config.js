@@ -23,6 +23,17 @@ export default {
           800: '#1e40af',
           900: '#1e3a8a',
         },
+        // Theme-aware colors from CSS variables
+        main: 'var(--bg-main)',
+        card: 'var(--bg-card)',
+        sidebar: 'var(--bg-sidebar)',
+      },
+      textColor: {
+        main: 'var(--text-main)',
+        muted: 'var(--text-muted)',
+      },
+      borderColor: {
+        main: 'var(--border-main)',
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',

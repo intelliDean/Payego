@@ -1,16 +1,13 @@
-use dashmap::DashMap;
-use diesel::prelude::*;
-use once_cell::sync::Lazy;
+use crate::repositories::bank_repository::BankRepository;
 pub use payego_primitives::{
     error::ApiError,
     models::{
         app_state::AppState,
         bank::{Bank, NewBank, NewBankAccount},
-        bank_dtos::{
-            BankDto, BankListResponse, PaystackBank, PaystackResolveResponse, PaystackResponse,
-            ResolveAccountRequest, ResolveAccountResponse,
+        dtos::{
+            bank_dto::{BankDto, BankListResponse, ResolvedAccount},
+            providers::paystack::{PaystackBank, PaystackResolveResponse, PaystackResponse},
         },
-        dtos::bank_dtos::ResolvedAccount,
         enum_types::CurrencyCode,
     },
     schema::banks,
@@ -18,12 +15,8 @@ pub use payego_primitives::{
 use reqwest::Url;
 use secrecy::ExposeSecret;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 use tracing::log::warn;
 use tracing::{error, info};
-
-static ACCOUNT_CACHE: Lazy<DashMap<String, (ResolvedAccount, Instant)>> = Lazy::new(DashMap::new);
-const TTL: Duration = Duration::from_secs(60 * 10); // 10 minutes
 
 pub struct BankService;
 
@@ -35,7 +28,7 @@ impl BankService {
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
         // idempotency check
-        let existing: i64 = banks::table.count().get_result(&mut conn)?;
+        let existing = BankRepository::count(&mut conn)?;
         if existing > 0 {
             info!("Banks already initialized ({} records exist)", existing);
             return Ok(false);
@@ -125,11 +118,7 @@ impl BankService {
 
         let banks_to_insert = Self::insert_banks(body);
 
-        let inserted = diesel::insert_into(banks::table)
-            .values(&banks_to_insert)
-            .on_conflict(banks::code)
-            .do_nothing()
-            .execute(&mut conn)?;
+        let inserted = BankRepository::create_many(&mut conn, banks_to_insert)?;
 
         info!(
             "Successfully initialized {} Nigerian banks from Paystack",
@@ -191,99 +180,17 @@ impl BankService {
         banks_to_insert
     }
 
-    pub async fn resolve_account_details(
-        state: &AppState,
-        bank_code: &str,
-        account_number: &str,
-    ) -> Result<ResolvedAccount, ApiError> {
-        let cache_key = format!("{bank_code}:{account_number}");
-
-        if let Some(cached) = Self::get(&cache_key) {
-            info!("Bank resolve cache hit: {}", cache_key);
-            return Ok(cached);
-        }
-
-        let mut url = Url::parse(&state.config.paystack_details.paystack_api_url)
-            .map_err(|_| ApiError::Internal("Invalid Paystack base URL".into()))?;
-
-        url.set_path("bank/resolve");
-        url.query_pairs_mut()
-            .append_pair("account_number", account_number)
-            .append_pair("bank_code", bank_code);
-
-        let resp = state
-            .http_client
-            .get(url)
-            .bearer_auth(
-                state
-                    .config
-                    .paystack_details
-                    .paystack_secret_key
-                    .expose_secret(),
-            )
-            .header("User-Agent", "Payego/1.0")
-            .send()
-            .await
-            .map_err(|e| {
-                tracing::error!(error = %e, "Failed to reach Paystack");
-                ApiError::Payment("Paystack service unavailable".into())
-            })?;
-
-        let body: PaystackResolveResponse = resp.json().await?;
-
-        if !body.status {
-            warn!("Paystack resolve failed: {}", body.message);
-            return Err(ApiError::Payment(body.message));
-        }
-
-        let data = body
-            .data
-            .ok_or_else(|| ApiError::Payment("Missing account data from Paystack".into()))?;
-
-        let resolved = ResolvedAccount {
-            account_name: data.account_name,
-            bank_code: bank_code.to_string(),
-            account_number: account_number.to_string(),
-        };
-
-        Self::set(cache_key, resolved.clone());
-
-        Ok(resolved)
-    }
-
     pub async fn list_banks(state: &AppState) -> Result<BankListResponse, ApiError> {
         let mut conn = state.db.get().map_err(|_| {
             error!("banks.list: failed to acquire db connection");
             ApiError::DatabaseConnection("Database unavailable".into())
         })?;
 
-        let banks = banks::table
-            .filter(banks::country.eq(&state.config.default_country))
-            .filter(banks::is_active.eq(true))
-            .order(banks::name.asc())
-            .load::<Bank>(&mut conn)
-            .map_err(|_| {
-                error!("banks.list: query failed");
-                ApiError::Internal("Failed to fetch banks".into())
-            })?;
+        let banks =
+            BankRepository::list_active_by_country(&mut conn, &state.config.default_country)?;
 
         Ok(BankListResponse {
             banks: banks.into_iter().map(BankDto::from).collect(),
         })
-    }
-
-    pub fn get(key: &str) -> Option<ResolvedAccount> {
-        ACCOUNT_CACHE.get(key).and_then(|entry| {
-            if entry.value().1.elapsed() < TTL {
-                Some(entry.value().0.clone())
-            } else {
-                ACCOUNT_CACHE.remove(key);
-                None
-            }
-        })
-    }
-
-    pub fn set(key: String, value: ResolvedAccount) {
-        ACCOUNT_CACHE.insert(key, (value, Instant::now()));
     }
 }

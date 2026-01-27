@@ -1,8 +1,8 @@
 use payego_primitives::error::{ApiError, PaystackError};
-use payego_primitives::models::bank_dtos::PaystackResolveResponse;
 pub use payego_primitives::models::clients_dto::{
     CreateTransferRecipientRequest, CreateTransferRecipientResponse,
 };
+use payego_primitives::models::dtos::providers::paystack::PaystackResolveResponse;
 use payego_primitives::models::enum_types::CurrencyCode;
 use reqwest::{Client, Url};
 use secrecy::{ExposeSecret, SecretString};

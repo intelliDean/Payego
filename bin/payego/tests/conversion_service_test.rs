@@ -1,8 +1,8 @@
 use diesel::prelude::*;
 use payego_core::services::conversion_service::ConversionService;
-use payego_primitives::models::conversion_dto::ConvertRequest;
 use payego_primitives::models::entities::enum_types::CurrencyCode;
 use payego_primitives::models::entities::wallet::Wallet;
+use payego_primitives::models::ConvertRequest;
 use payego_primitives::schema::{users, wallets};
 use serde_json::json;
 use serial_test::serial;

@@ -1,8 +1,8 @@
 use diesel::prelude::*;
 use payego_core::services::bank_account_service::BankAccountService;
 use payego_primitives::models::bank::BankAccount;
-use payego_primitives::models::bank_dtos::BankRequest;
 use payego_primitives::models::entities::enum_types::CurrencyCode;
+use payego_primitives::models::BankRequest;
 use payego_primitives::schema::{bank_accounts, banks, users};
 use serde_json::json;
 use serial_test::serial;

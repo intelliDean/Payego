@@ -1,16 +1,15 @@
-use diesel::prelude::*;
+use crate::repositories::transaction_repository::TransactionRepository;
 use http::header::{CONTENT_TYPE, USER_AGENT};
-use payego_primitives::models::providers_dto::PayPalOrderResp;
+use payego_primitives::models::dtos::providers::paypal::PayPalOrderResp;
 pub use payego_primitives::{
     config::security_config::Claims,
     error::ApiError,
     models::{
         app_state::AppState,
+        dtos::wallet_dto::{TopUpRequest, TopUpResponse},
         enum_types::{PaymentProvider, PaymentState, TransactionIntent},
-        top_up_dto::{TopUpRequest, TopUpResponse},
         transaction::{NewTransaction, Transaction},
     },
-    schema::transactions,
 };
 use reqwest::Url;
 use secrecy::ExposeSecret;
@@ -41,8 +40,9 @@ impl PaymentService {
         let reference = Uuid::new_v4();
 
         // ---------- DB-ENFORCED IDEMPOTENCY ----------
-        let inserted = diesel::insert_into(transactions::table)
-            .values(NewTransaction {
+        let tx = TransactionRepository::create(
+            &mut conn,
+            NewTransaction {
                 user_id,
                 counterparty_id: None,
                 intent: TransactionIntent::TopUp,
@@ -55,23 +55,8 @@ impl PaymentService {
                 reference,
                 description: Some("Top-up intent"),
                 metadata: serde_json::json!({}),
-            })
-            .on_conflict((transactions::user_id, transactions::idempotency_key))
-            .do_nothing()
-            .returning(transactions::id)
-            .get_result::<Uuid>(&mut conn)
-            .optional()?;
-
-        let tx = match inserted {
-            Some(_) => transactions::table
-                .filter(transactions::reference.eq(reference))
-                .first::<Transaction>(&mut conn)?,
-
-            None => transactions::table
-                .filter(transactions::user_id.eq(user_id))
-                .filter(transactions::idempotency_key.eq(&req.idempotency_key))
-                .first::<Transaction>(&mut conn)?,
-        };
+            },
+        )?;
 
         let (session_url, payment_id) = match req.provider {
             PaymentProvider::Stripe => {
@@ -102,7 +87,7 @@ impl PaymentService {
         reference: Uuid,
         amount_cents: i64,
     ) -> Result<(Option<String>, Option<String>), ApiError> {
-        let client = StripeClient::from_url(
+        let stripe_client = StripeClient::from_url(
             state.config.stripe_details.stripe_api_url.as_str(),
             state
                 .config
@@ -115,7 +100,7 @@ impl PaymentService {
             .map_err(|_| ApiError::Payment("Invalid currency".into()))?;
 
         let session = CheckoutSession::create(
-            &client,
+            &stripe_client,
             CreateCheckoutSession {
                 mode: Some(CheckoutSessionMode::Payment),
                 success_url: Some(&format!(
@@ -136,8 +121,16 @@ impl PaymentService {
                     }),
                     ..Default::default()
                 }]),
+                payment_intent_data: Some(stripe::CreateCheckoutSessionPaymentIntentData {
+                    metadata: Some(
+                        [("transaction_reference".into(), reference.to_string())]
+                            .into_iter()
+                            .collect(),
+                    ),
+                    ..Default::default()
+                }),
                 metadata: Some(
-                    [("transaction_ref".into(), reference.to_string())]
+                    [("transaction_reference".into(), reference.to_string())]
                         .into_iter()
                         .collect(),
                 ),
@@ -173,7 +166,7 @@ impl PaymentService {
         let token_resp = state
             .http_client
             .post(url)
-            .timeout(std::time::Duration::from_secs(5)) // i want this to override the default which is 10secs
+            .timeout(std::time::Duration::from_secs(30)) // increased to 30secs for sandbox
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .header(USER_AGENT, "Payego/1.0 (Rust backend)")
             .basic_auth(client_id, Some(secret))
@@ -181,7 +174,7 @@ impl PaymentService {
             .send()
             .await
             .map_err(|e| {
-                tracing::error!("PayPal OAuth request failed: {}", e);
+                tracing::error!("PayPal OAuth request failed: {:?}", e);
                 ApiError::Payment("PayPal authentication failed".into())
             })?;
 

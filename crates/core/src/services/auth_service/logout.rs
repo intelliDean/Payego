@@ -4,8 +4,8 @@ pub use payego_primitives::{
     config::security_config::Claims,
     error::ApiError,
     models::{
-        app_state::AppState, entities::authentication::NewBlacklistedToken,
-        token_dto::LogoutResponse,
+        app_state::AppState, dtos::auth_dto::LogoutResponse,
+        entities::authentication::NewBlacklistedToken,
     },
 };
 use tracing::log::{error, info};

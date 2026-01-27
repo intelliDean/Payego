@@ -1,3 +1,4 @@
+use crate::repositories::user_repository::UserRepository;
 use crate::services::auth_service::register::RegisterService;
 use argon2::{password_hash::PasswordHash, PasswordVerifier};
 use diesel::prelude::*;
@@ -6,7 +7,7 @@ pub use payego_primitives::{
     error::{ApiError, AuthError},
     models::{
         app_state::AppState,
-        dtos::login_dto::{LoginRequest, LoginResponse},
+        dtos::auth_dto::{LoginRequest, LoginResponse},
         user::User,
     },
 };
@@ -21,7 +22,7 @@ impl LoginService {
             ApiError::DatabaseConnection("Database unavailable".into())
         })?;
 
-        let user = Self::find_user_by_email(&mut conn, &payload.email)?;
+        let user = UserRepository::find_by_email(&mut conn, &payload.email)?;
         Self::verify_password(&payload.password, user.as_ref())?;
 
         let user = user.ok_or(ApiError::Auth(AuthError::InvalidCredentials))?;
@@ -40,25 +41,9 @@ impl LoginService {
         })
     }
 
-    fn find_user_by_email(
-        conn: &mut PgConnection,
-        email_addr: &str,
-    ) -> Result<Option<User>, ApiError> {
-        use payego_primitives::schema::users::dsl::*;
-
-        users
-            .filter(email.eq(email_addr))
-            .first::<User>(conn)
-            .optional()
-            .map_err(|_| {
-                error!("auth.login: db query failed");
-                ApiError::Internal("Authentication failure".into())
-            })
-    }
-
     fn verify_password(password: &str, user: Option<&User>) -> Result<(), ApiError> {
-        // Always verify *something* to prevent timing attacks
-        let hash = user
+        // verifying *something* to prevent timing attacks
+        let hash = user //either get the user password hash or generate a dummy one
             .map(|u| u.password_hash.as_str())
             .unwrap_or(Self::dummy_hash());
 

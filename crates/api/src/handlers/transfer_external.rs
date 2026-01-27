@@ -1,11 +1,8 @@
-use crate::config::swagger_config::ApiErrorResponse;
-use axum::{
-    extract::{Extension, Json, State},
-    http::StatusCode,
-};
+use axum::extract::{Extension, Json, State};
 use payego_core::services::transfer_service::{
-    ApiError, AppState, Claims, TransferRequest, TransferService,
+    ApiError, AppState, Claims, TransferRequest, TransferResponse, TransferService,
 };
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 use tracing::log::error;
 use validator::Validate;
@@ -30,7 +27,7 @@ use validator::Validate;
     ),
     responses(
         ( status = 200, description = "Transfer successfully initiated (or idempotent retry). \
-                           Returns transfer reference, status (usually 'pending'), and estimated delivery time."),
+                           Returns transfer reference, status (usually 'pending'), and estimated delivery time.", body = TransferResponse),
         ( status = 400, description = "Bad request — invalid input (insufficient balance, invalid bank code/account, amount out of limits, missing fields)", body = ApiErrorResponse),
         ( status = 401, description = "Unauthorized — missing or invalid authentication token", body = ApiErrorResponse),
         ( status = 402, description = "Payment required — insufficient wallet balance after fees", body = ApiErrorResponse),
@@ -46,7 +43,7 @@ pub async fn transfer_external(
     State(state): State<Arc<AppState>>,
     Extension(claims): Extension<Claims>,
     Json(req): Json<TransferRequest>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<Json<TransferResponse>, ApiError> {
     req.validate().map_err(|e| {
         error!("Validation error: {}", e);
         ApiError::Validation(e)
@@ -54,5 +51,6 @@ pub async fn transfer_external(
 
     let user_id = claims.user_id()?;
 
-    TransferService::transfer_external(&state, user_id, req).await
+    let res = TransferService::transfer_external(&state, user_id, req).await?;
+    Ok(Json(res))
 }

@@ -1,6 +1,6 @@
-use crate::config::swagger_config::ApiErrorResponse;
 use axum::{extract::State, Json};
 use payego_core::services::bank_service::{ApiError, AppState, BankListResponse, BankService};
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 
 #[utoipa::path(

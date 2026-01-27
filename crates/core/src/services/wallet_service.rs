@@ -1,4 +1,4 @@
-use diesel::prelude::*;
+use crate::repositories::wallet_repository::WalletRepository;
 use tracing::{error, warn};
 use uuid::Uuid;
 
@@ -30,14 +30,10 @@ impl WalletService {
             ApiError::DatabaseConnection("Database unavailable".into())
         })?;
 
-        let wallets = wallets::table
-            .filter(wallets::user_id.eq(user_id))
-            .order(wallets::created_at.asc())
-            .load::<Wallet>(&mut conn)
-            .map_err(|_| {
-                error!("wallets.list: query failed");
-                ApiError::Internal("Failed to fetch wallets".into())
-            })?;
+        let wallets = WalletRepository::find_all_by_user(&mut conn, user_id).map_err(|_| {
+            error!("wallets.list: query failed");
+            ApiError::Internal("Failed to fetch wallets".into())
+        })?;
 
         Ok(WalletsResponse {
             wallets: wallets.into_iter().map(WalletDto::from).collect(),

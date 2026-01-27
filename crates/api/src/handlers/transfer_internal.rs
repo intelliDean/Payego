@@ -1,11 +1,8 @@
-use crate::config::swagger_config::ApiErrorResponse;
-use axum::{
-    extract::{Extension, Json, State},
-    http::StatusCode,
-};
+use axum::extract::{Extension, Json, State};
 use payego_core::services::transfer_service::{
     ApiError, AppState, Claims, TransferService, WalletTransferRequest,
 };
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 use tracing::error;
 use validator::Validate;
@@ -45,8 +42,15 @@ use validator::Validate;
 pub async fn transfer_internal(
     State(state): State<Arc<AppState>>,
     Extension(claims): Extension<Claims>,
-    Json(req): Json<WalletTransferRequest>,
-) -> Result<StatusCode, ApiError> {
+    payload: Result<Json<WalletTransferRequest>, axum::extract::rejection::JsonRejection>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let Json(req) = payload
+        .map_err(|rejection| {
+            error!("JSON rejection: {}", rejection);
+            ApiError::Validation(validator::ValidationErrors::new())
+        })
+        .map_err(|_| ApiError::Internal("Invalid JSON payload".into()))?;
+
     req.validate().map_err(|e| {
         error!("Validation error: {}", e);
         ApiError::Validation(e)
@@ -55,11 +59,26 @@ pub async fn transfer_internal(
     let sender_id = claims.user_id()?;
 
     // Prevent self-transfer
-    if sender_id == req.recipient_id {
+    if sender_id == req.recipient {
         return Err(ApiError::Internal("Cannot transfer to yourself".into()));
     }
 
-    let response = TransferService::transfer_internal(&state, sender_id, req).await?;
+    let recipient_id = req.recipient;
 
-    Ok(response)
+    match TransferService::transfer_internal(&state, sender_id, req).await {
+        Ok(transaction_id) => {
+            tracing::info!(
+                "Internal transfer successful from {} to {}",
+                sender_id,
+                recipient_id
+            );
+            Ok(Json(
+                serde_json::json!({ "id": transaction_id.to_string() }),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Transfer failed: {}", e);
+            Err(e)
+        }
+    }
 }

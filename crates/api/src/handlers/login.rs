@@ -1,8 +1,8 @@
-use crate::config::swagger_config::ApiErrorResponse;
 use axum::extract::{Json, State};
 use payego_core::services::auth_service::login::{
     ApiError, AppState, LoginRequest, LoginResponse, LoginService,
 };
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 
 #[utoipa::path(
@@ -34,6 +34,6 @@ pub async fn login(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, ApiError> {
-    let response = LoginService::login(&state, payload).await?;
+    let response = LoginService::login(&state, payload.normalize()).await?;
     Ok(Json(response))
 }

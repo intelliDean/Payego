@@ -1,4 +1,3 @@
-use crate::config::swagger_config::ApiErrorResponse;
 use axum::{
     extract::{Extension, Path, State},
     Json,
@@ -6,6 +5,7 @@ use axum::{
 use payego_core::services::transaction_service::{
     ApiError, AppState, Claims, TransactionResponse, TransactionService,
 };
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 use uuid::Uuid;
 

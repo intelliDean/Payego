@@ -1,10 +1,9 @@
 use axum::{extract::State, http::StatusCode, Json};
 use diesel::prelude::*;
 use payego_primitives::models::app_state::AppState;
-use serde::{Deserialize, Serialize};
+use payego_primitives::models::dtos::auth_dto::HealthStatus;
 use std::sync::Arc;
 use tracing::log::error;
-use utoipa::ToSchema;
 
 #[utoipa::path(
     get,
@@ -52,8 +51,8 @@ pub async fn health_check(State(state): State<Arc<AppState>>) -> Json<HealthStat
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct HealthStatus {
-    pub status: String,
-    pub message: String,
-}
+// #[derive(Debug, Serialize, Deserialize, ToSchema)]
+// pub struct HealthStatus {
+//     pub status: String,
+//     pub message: String,
+// }

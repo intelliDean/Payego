@@ -1,12 +1,11 @@
-use crate::config::swagger_config::ApiErrorResponse;
 use axum::body::Bytes;
 use axum::extract::State;
 use http::{HeaderMap, StatusCode};
-use payego_core::services::{
-    stripe_service::{ApiError, AppState, StripeService},
-    transaction_service::TransactionService,
-};
+use payego_core::services::stripe_service::WebhookOutcome;
+use payego_core::services::stripe_service::{ApiError, AppState, StripeService};
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
+use tracing::info;
 
 #[utoipa::path(
     post,
@@ -42,19 +41,26 @@ use std::sync::Arc;
     ),
     security(()),
 )]
+
 pub async fn stripe_webhook(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<StatusCode, ApiError> {
-    let Some(ctx) = StripeService::extract_context(&state, headers, &body)? else {
-        // Ignore unrelated events but ACK
-        return Ok(StatusCode::OK);
-    };
+    info!("Stripe webhook received");
 
-    TransactionService::apply_stripe_webhook(&state, ctx)?;
+    let event = StripeService::construct_event(&state, headers, &body)?;
 
-    Ok(StatusCode::OK)
+    match StripeService::handle_event(&state, event)? {
+        WebhookOutcome::Processed => {
+            info!("Stripe webhook processed");
+            Ok(StatusCode::OK)
+        }
+        WebhookOutcome::Ignored => {
+            info!("Stripe webhook ignored");
+            Ok(StatusCode::OK)
+        }
+    }
 }
 
 // use payego_primitives::models::AppState;

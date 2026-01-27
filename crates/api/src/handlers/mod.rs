@@ -1,6 +1,8 @@
 pub mod add_bank;
 pub mod all_banks;
 pub mod current_user;
+pub mod delete_bank;
+pub mod exchange_rate;
 pub mod get_transaction;
 pub mod health;
 pub mod initialize_banks;
@@ -13,6 +15,7 @@ pub mod paystack_webhook;
 pub mod refresh_token;
 pub mod register;
 pub mod resolve_account;
+pub mod resolve_user;
 pub mod send_verification;
 pub mod social_login;
 pub mod stripe_webhook;

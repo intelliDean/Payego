@@ -1,3 +1,4 @@
+use crate::repositories::token_repository::TokenRepository;
 use chrono::{Duration, Utc};
 use diesel::prelude::*;
 use hex;
@@ -7,9 +8,7 @@ pub use payego_primitives::{
     models::{
         app_state::AppState,
         authentication::{NewRefreshToken, RefreshToken},
-        dtos::login_dto::LoginResponse,
-        token_dto::RefreshRequest,
-        token_dto::RefreshResult,
+        dtos::auth_dto::{LoginResponse, RefreshRequest, RefreshResponse, RefreshResult},
     },
     schema::refresh_tokens::dsl::*,
 };
@@ -31,14 +30,14 @@ impl TokenService {
         let hashed_token = Self::hash_token(&raw_token);
         let expiry = Utc::now() + Duration::days(7);
 
-        diesel::insert_into(refresh_tokens)
-            .values(NewRefreshToken {
+        TokenRepository::create_refresh_token(
+            conn,
+            NewRefreshToken {
                 user_id: user_uuid,
                 token_hash: &hashed_token,
                 expires_at: expiry,
-            })
-            .execute(conn)
-            .map_err(|e: diesel::result::Error| ApiError::from(e))?;
+            },
+        )?;
 
         Ok(raw_token)
     }
@@ -54,15 +53,7 @@ impl TokenService {
 
         let hashed_token = Self::hash_token(raw_token);
 
-        let token_record = diesel::update(
-            refresh_tokens
-                .filter(token_hash.eq(&hashed_token))
-                .filter(revoked.eq(false))
-                .filter(expires_at.gt(Utc::now())),
-        )
-        .set(revoked.eq(true))
-        .get_result::<RefreshToken>(&mut conn)
-        .optional()?;
+        let token_record = TokenRepository::rotate_refresh_token(&mut conn, &hashed_token)?;
 
         if let Some(token_record) = token_record {
             let new_token = Self::generate_refresh_token(&mut conn, token_record.user_id)?;
@@ -82,10 +73,8 @@ impl TokenService {
         conn: &mut PgConnection,
         user_uuid: Uuid,
     ) -> Result<(), ApiError> {
-        diesel::update(refresh_tokens.filter(user_id.eq(user_uuid)))
-            .set(revoked.eq(true))
-            .execute(conn)
-            .map_err(|e: diesel::result::Error| ApiError::from(e))?;
+        TokenRepository::revoke_all_user_tokens(conn, user_uuid)
+            .map_err(|e| ApiError::Internal(e.to_string()))?;
         Ok(())
     }
 

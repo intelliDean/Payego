@@ -1,23 +1,21 @@
-use diesel::{
-    ExpressionMethods, {Connection, RunQueryDsl}, {OptionalExtension, QueryDsl},
-};
+use crate::repositories::transaction_repository::TransactionRepository;
+use crate::repositories::wallet_repository::WalletRepository;
+use diesel::Connection;
 use http::StatusCode;
-use payego_primitives::models::providers_dto::PayPalCaptureResponse;
+use payego_primitives::models::dtos::providers::paypal::{
+    CaptureResponse, PayPalCaptureResponse, PayPalOrderResponse, PayPalTokenResponse, PaypalCapture,
+};
 pub use payego_primitives::{
     error::ApiError,
     models::{
         app_state::AppState,
-        dtos::providers_dto::{CaptureResponse, PayPalOrderResponse, PayPalTokenResponse},
         enum_types::{CurrencyCode, PaymentProvider, PaymentState},
-        providers_dto::CaptureRequest,
-        providers_dto::OrderResponse,
-        providers_dto::PaypalCapture,
         transaction::Transaction,
         wallet::Wallet,
         wallet_ledger::NewWalletLedger,
     },
-    schema::{transactions, wallet_ledger, wallets},
 };
+
 use reqwest::Url;
 use secrecy::ExposeSecret;
 use std::str::FromStr;
@@ -52,7 +50,7 @@ impl PayPalService {
             .post(url)
             .basic_auth(client_id, Some(secret))
             .form(&[("grant_type", "client_credentials")])
-            .timeout(Duration::from_secs(5)) // to override the default which I set to be 10
+            .timeout(Duration::from_secs(30)) // Increased to 30s for slow Sandbox responses
             .send()
             .await
             .map_err(|e| {
@@ -91,7 +89,7 @@ impl PayPalService {
             .http_client
             .get(url)
             .bearer_auth(token)
-            .timeout(Duration::from_secs(5)) //override the default
+            .timeout(Duration::from_secs(30)) // Increased to 30s
             .send()
             .await
             .map_err(|e| {
@@ -125,11 +123,9 @@ impl PayPalService {
             ApiError::DatabaseConnection(e.to_string())
         })?;
 
-        let transaction = transactions::table
-            .filter(transactions::reference.eq(transaction_ref))
-            .first::<Transaction>(&mut conn)
-            .optional()?
-            .ok_or_else(|| ApiError::Payment("Transaction not found".into()))?;
+        let transaction =
+            TransactionRepository::find_by_id_or_reference(&mut conn, transaction_ref)?
+                .ok_or_else(|| ApiError::Payment("Transaction not found".into()))?;
 
         // ── Idempotency
         if transaction.txn_state == PaymentState::Completed {
@@ -152,36 +148,32 @@ impl PayPalService {
 
         conn.transaction::<_, ApiError, _>(|conn| {
             // ── Update transaction
-            diesel::update(transactions::table)
-                .filter(transactions::id.eq(transaction.id))
-                .set((
-                    transactions::txn_state.eq(PaymentState::Completed),
-                    transactions::provider.eq(Some(PaymentProvider::Paypal)),
-                    transactions::provider_reference.eq(Some(capture.capture_id.clone())),
-                ))
-                .execute(conn)?;
+            TransactionRepository::update_status_and_provider_ref(
+                conn,
+                transaction.id,
+                PaymentState::Completed,
+                Some(capture.capture_id.clone()),
+            )?;
 
             // ── Lock wallet
-            let wallet = wallets::table
-                .filter(wallets::user_id.eq(transaction.user_id))
-                .filter(wallets::currency.eq(transaction.currency))
-                .for_update()
-                .first::<Wallet>(conn)?;
+            let wallet = WalletRepository::find_by_user_and_currency_with_lock(
+                conn,
+                transaction.user_id,
+                transaction.currency,
+            )?;
 
             // ── Ledger entry
-            diesel::insert_into(wallet_ledger::table)
-                .values(NewWalletLedger {
+            WalletRepository::add_ledger_entry(
+                conn,
+                NewWalletLedger {
                     wallet_id: wallet.id,
                     transaction_id: transaction.id,
                     amount: transaction.amount,
-                })
-                .execute(conn)?;
+                },
+            )?;
 
             // ── Update balance
-            diesel::update(wallets::table)
-                .filter(wallets::id.eq(wallet.id))
-                .set(wallets::balance.eq(wallets::balance + transaction.amount))
-                .execute(conn)?;
+            WalletRepository::credit(conn, wallet.id, transaction.amount)?;
 
             Ok(())
         })?;
@@ -204,14 +196,13 @@ impl PayPalService {
             .map_err(|_| ApiError::Internal("Invalid PayPal base URL".into()))?;
 
         let url = base
-            .join("v2/checkout/orders/")
-            .and_then(|u| u.join(order_id))
-            .and_then(|u| u.join("capture"))
+            .join(&format!("v2/checkout/orders/{}/capture", order_id))
             .map_err(|_| ApiError::Internal("Invalid PayPal capture URL".into()))?;
 
         let resp = client
             .post(url)
             .bearer_auth(token)
+            .header("Content-Type", "application/json")
             .send()
             .await
             .map_err(|e| {

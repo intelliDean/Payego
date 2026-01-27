@@ -1,6 +1,6 @@
 mod common;
 
-use payego_primitives::models::transfer_dto::TransferRequest;
+use payego_primitives::models::TransferRequest;
 use serde_json::json;
 use validator::Validate;
 

@@ -14,6 +14,7 @@ use utoipa::ToSchema;
 )]
 #[ExistingTypePath = "crate::schema::sql_types::CurrencyCode"]
 #[strum(serialize_all = "UPPERCASE")]
+#[serde(rename_all = "UPPERCASE")]
 pub enum CurrencyCode {
     USD,
     NGN,
@@ -66,10 +67,15 @@ pub enum PaymentState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, DbEnum, ToSchema)]
+#[serde(rename_all = "PascalCase")]
 #[ExistingTypePath = "crate::schema::sql_types::PaymentProvider"]
 pub enum PaymentProvider {
+    #[serde(alias = "stripe", alias = "STRIPE")]
     Stripe,
+    #[serde(alias = "paypal", alias = "PAYPAL")]
     Paypal,
+    #[serde(alias = "paystack", alias = "PAYSTACK")]
     Paystack,
+    #[serde(alias = "internal", alias = "INTERNAL")]
     Internal,
 }

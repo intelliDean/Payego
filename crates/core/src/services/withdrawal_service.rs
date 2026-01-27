@@ -1,3 +1,6 @@
+use crate::repositories::bank_account_repository::BankAccountRepository;
+use crate::repositories::transaction_repository::TransactionRepository;
+use crate::repositories::wallet_repository::WalletRepository;
 use diesel::prelude::*;
 pub use payego_primitives::{
     config::security_config::Claims,
@@ -5,7 +8,7 @@ pub use payego_primitives::{
     models::{
         app_state::AppState,
         bank::BankAccount,
-        dtos::withdrawal_dto::{WithdrawRequest, WithdrawResponse},
+        dtos::wallet_dto::{WithdrawRequest, WithdrawResponse},
         enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent},
         transaction::NewTransaction,
         wallet::Wallet,
@@ -14,10 +17,13 @@ pub use payego_primitives::{
     schema::{bank_accounts, transactions, wallet_ledger, wallets},
 };
 
-use payego_primitives::models::providers_dto::{PaystackResponse, PaystackTransData};
+use payego_primitives::models::dtos::providers::paystack::{
+    PaystackResponseWrapper as PaystackResponse, PaystackTransData,
+};
 use reqwest::Url;
 use secrecy::ExposeSecret;
 use serde_json::json;
+use tracing::error;
 use uuid::Uuid;
 
 pub struct WithdrawalService;
@@ -37,25 +43,24 @@ impl WithdrawalService {
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
         // ---- Load wallet (FOR UPDATE) ----
-
-        let wallet = wallets::table
-            .filter(wallets::user_id.eq(user_id))
-            .filter(wallets::currency.eq(req.currency))
-            .for_update()
-            .first::<Wallet>(&mut conn)?;
+        let wallet = WalletRepository::find_by_user_and_currency_with_lock(
+            &mut conn,
+            user_id,
+            req.currency,
+        )?;
 
         if wallet.balance < amount_minor {
             return Err(ApiError::Payment("Insufficient balance".into()));
         }
 
-        let bank_account = bank_accounts::table
-            .filter(bank_accounts::id.eq(bank_account_id))
-            .filter(bank_accounts::user_id.eq(user_id))
-            .filter(bank_accounts::is_verified.eq(true))
-            .first::<BankAccount>(&mut conn)?;
+        let bank_account = BankAccountRepository::find_verified_by_id_and_user(
+            &mut conn,
+            bank_account_id,
+            user_id,
+        )?;
 
         // ---- External transfer FIRST ----
-        let provider_ref = Self::initiate_paystack_transfer(
+        let provider_data = Self::initiate_paystack_transfer(
             state,
             &bank_account,
             amount_minor,
@@ -64,45 +69,48 @@ impl WithdrawalService {
         )
         .await?;
 
+        let initial_state = match provider_data.status.as_deref() {
+            Some("success") => PaymentState::Completed,
+            _ => PaymentState::Pending,
+        };
+
         // ---- Atomic DB write ----
         conn.transaction(|conn| {
             // Wallet update
-            diesel::update(wallets::table)
-                .filter(wallets::id.eq(wallet.id))
-                .set(wallets::balance.eq(wallet.balance - amount_minor))
-                .execute(conn)?;
+            WalletRepository::debit(conn, wallet.id, amount_minor)?;
 
             // Transaction
-            let tx_id = diesel::insert_into(transactions::table)
-                .values(NewTransaction {
+            let tx = TransactionRepository::create(
+                conn,
+                NewTransaction {
                     user_id,
                     counterparty_id: None,
                     intent: TransactionIntent::Payout,
                     amount: amount_minor,
                     currency: wallet.currency,
-                    txn_state: PaymentState::Pending,
+                    txn_state: initial_state,
                     provider: Some(PaymentProvider::Paystack),
-                    provider_reference: Some(&provider_ref),
+                    provider_reference: Some(&provider_data.transfer_code),
                     idempotency_key: &req.idempotency_key,
                     reference: req.reference,
                     description: Some("Wallet withdrawal"),
                     metadata: json!({
                         "bank_account_id": bank_account_id,
                     }),
-                })
-                .returning(transactions::id)
-                .get_result::<Uuid>(conn)?;
+                },
+            )?;
 
             // Ledger
-            diesel::insert_into(wallet_ledger::table)
-                .values(NewWalletLedger {
+            WalletRepository::add_ledger_entry(
+                conn,
+                NewWalletLedger {
                     wallet_id: wallet.id,
-                    transaction_id: tx_id,
-                    amount: amount_minor,
-                })
-                .execute(conn)?;
+                    transaction_id: tx.id,
+                    amount: -amount_minor,
+                },
+            )?;
 
-            Ok(tx_id)
+            Ok(tx.id)
         })
         .map(|tx_id| WithdrawResponse {
             transaction_id: tx_id,
@@ -123,7 +131,7 @@ impl WithdrawalService {
         amount_minor: i64,
         currency: &CurrencyCode,
         reference: Uuid,
-    ) -> Result<String, ApiError> {
+    ) -> Result<PaystackTransData, ApiError> {
         let key = state
             .config
             .paystack_details
@@ -148,27 +156,41 @@ impl WithdrawalService {
             }))
             .send()
             .await
-            .map_err(|_| ApiError::Payment("Failed to reach Paystack".into()))?;
+            .map_err(|e| {
+                error!(error = %e, "Failed to reach Paystack during transfer initiation");
+                ApiError::Payment(format!("Failed to reach Paystack: {}", e))
+            })?;
 
-        if !resp.status().is_success() {
-            // warn!(status = %resp.status(), "Paystack HTTP error");
-            return Err(ApiError::Payment("Paystack transfer failed".into()));
+        let status = resp.status();
+        let body_text = resp.text().await.map_err(|e| {
+            error!(error = %e, "Failed to read Paystack transfer response body");
+            ApiError::Payment("Invalid Paystack response body".into())
+        })?;
+
+        if !status.is_success() {
+            error!(
+                status = %status,
+                body = %body_text,
+                "Paystack transfer initiation failed"
+            );
+            return Err(ApiError::Payment(format!(
+                "Paystack transfer failed with status {}: {}",
+                status, body_text
+            )));
         }
 
-        let body: PaystackResponse<PaystackTransData> = resp
-            .json()
-            .await
-            .map_err(|_| ApiError::Payment("Invalid Paystack response".into()))?;
+        let body: PaystackResponse<PaystackTransData> =
+            serde_json::from_str(&body_text).map_err(|e| {
+                error!(error = %e, body = %body_text, "Failed to parse Paystack transfer response");
+                ApiError::Payment("Invalid Paystack response format".into())
+            })?;
 
         if !body.status {
             // warn!(message = %body.message, "Paystack rejected transfer");
             return Err(ApiError::Payment("Transfer rejected by Paystack".into()));
         }
 
-        let data = body
-            .data
-            .ok_or_else(|| ApiError::Payment("Paystack response missing data".into()))?;
-
-        Ok(data.transfer_code)
+        body.data
+            .ok_or_else(|| ApiError::Payment("Paystack response missing data".into()))
     }
 }

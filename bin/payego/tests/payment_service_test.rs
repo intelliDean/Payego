@@ -1,6 +1,6 @@
 use diesel::prelude::*;
 use payego_core::services::payment_service::PaymentService;
-use payego_primitives::models::top_up_dto::TopUpRequest;
+use payego_primitives::models::TopUpRequest;
 use payego_primitives::schema::{transactions, users};
 use serde_json::json;
 use serial_test::serial;

@@ -1,19 +1,21 @@
 use crate::handlers::{
     add_bank::__path_add_bank_account, all_banks::__path_all_banks,
-    current_user::__path_current_user_details, get_transaction::__path_get_transactions,
-    health::__path_health_check, internal_conversion::__path_convert_currency, login::__path_login,
-    logout::__path_logout, paypal_capture::__path_paypal_capture,
-    paypal_order::__path_get_paypal_order, paystack_webhook::__path_paystack_webhook,
-    refresh_token::__path_refresh_token, register::__path_register,
-    resolve_account::__path_resolve_account, stripe_webhook::__path_stripe_webhook,
+    current_user::__path_current_user_details, delete_bank::__path_delete_bank_account,
+    get_transaction::__path_get_transactions, health::__path_health_check,
+    internal_conversion::__path_convert_currency, login::__path_login, logout::__path_logout,
+    paypal_capture::__path_paypal_capture, paypal_order::__path_get_paypal_order,
+    paystack_webhook::__path_paystack_webhook, refresh_token::__path_refresh_token,
+    register::__path_register, resolve_account::__path_resolve_account,
+    resolve_user::__path_resolve_user, stripe_webhook::__path_stripe_webhook,
     top_up::__path_top_up, transfer_external::__path_transfer_external,
     transfer_internal::__path_transfer_internal, user_bank_accounts::__path_user_bank_accounts,
     user_transaction::__path_get_user_transaction, user_wallets::__path_get_user_wallets,
     withdraw::__path_withdraw,
 };
+use payego_primitives::error::ApiErrorResponse;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::openapi::SecurityRequirement;
-use utoipa::{Modify, OpenApi, ToSchema};
+use utoipa::{Modify, OpenApi};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -53,7 +55,9 @@ use utoipa::{Modify, OpenApi, ToSchema};
         paystack_webhook,
         refresh_token,
         stripe_webhook,
-        get_user_wallets
+        get_user_wallets,
+        resolve_user,
+        delete_bank_account
     ),
     tags(
         (name = "Authentication", description = "User registration, login, logout, current user info"),
@@ -95,16 +99,4 @@ impl Modify for SecurityAddon {
             vec![],
         )]);
     }
-}
-
-#[derive(ToSchema)]
-#[schema(example = json!({
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid input data",
-    "details": { "field": "account_number", "issue": "must be 10 digits" }
-}))]
-pub struct ApiErrorResponse {
-    pub code: String,
-    pub message: String,
-    pub details: Option<serde_json::Value>,
 }

@@ -1,9 +1,9 @@
-use crate::config::swagger_config::ApiErrorResponse;
 use axum::body::Bytes;
 use axum::{extract::State, http::StatusCode};
 use payego_core::services::paystack_service::{
     ApiError, AppState, PaystackService, PaystackWebhook,
 };
+use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 // https://e02e3895d11f.ngrok-free.app/webhooks/paystack
 

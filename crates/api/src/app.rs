@@ -3,6 +3,7 @@ use crate::handlers::{
     add_bank::add_bank_account,
     all_banks::all_banks,
     current_user::current_user_details,
+    exchange_rate::get_exchange_rate as get_exchange_rate_handler,
     get_transaction::get_transactions,
     health::health_check,
     // initialize_banks::initialize_banks,
@@ -35,8 +36,10 @@ use std::sync::Arc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
+use crate::handlers::delete_bank::delete_bank_account;
 use crate::handlers::paypal_order::get_paypal_order;
 use crate::handlers::refresh_token::refresh_token;
+use crate::handlers::resolve_user::resolve_user;
 use payego_primitives::config::security_config::SecurityConfig;
 use tower::ServiceBuilder;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
@@ -120,6 +123,10 @@ fn create_secured_routers(state: &Arc<AppState>) -> Router<Arc<AppState>> {
             axum::routing::get(get_user_transaction),
         )
         .route("/api/wallet/top_up", axum::routing::post(top_up))
+        .route(
+            "/api/banks/{bank_account_id}",
+            axum::routing::delete(delete_bank_account),
+        )
         .route("/api/auth/logout", axum::routing::post(logout))
         .route(
             "/api/wallets/convert",
@@ -157,9 +164,10 @@ fn create_public_routers(metric_handle: PrometheusHandle) -> Router<Arc<AppState
         .route("/api/auth/refresh", post(refresh_token))
         .route("/api/webhooks/stripe", post(stripe_webhook))
         .route("/api/webhooks/paystack", post(paystack_webhook))
-        // .route("/api/bank/init", axum::routing::post(initialize_banks))
         .route("/api/banks/all", axum::routing::get(all_banks))
         .route("/api/bank/resolve", axum::routing::get(resolve_account))
+        .route("/api/users/resolve", get(resolve_user))
+        .route("/api/exchange-rate", get(get_exchange_rate_handler))
         .route("/api/health", axum::routing::get(health_check))
 }
 
@@ -192,3 +200,5 @@ async fn https_redirect_middleware(
 
     Ok(next.run(req).await)
 }
+
+// https://36652cc2d485.ngrok-free.app/api/webhooks/stripe

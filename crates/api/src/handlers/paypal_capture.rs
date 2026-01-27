@@ -1,8 +1,7 @@
-use crate::config::swagger_config::ApiErrorResponse;
 use axum::extract::{Json, State};
-use payego_core::services::paypal_service::{
-    ApiError, AppState, CaptureRequest, CaptureResponse, PayPalService,
-};
+use payego_core::services::paypal_service::{ApiError, AppState, PayPalService};
+use payego_primitives::error::ApiErrorResponse;
+use payego_primitives::models::dtos::providers::paypal::{CaptureRequest, CaptureResponse};
 use std::sync::Arc;
 
 #[utoipa::path(
