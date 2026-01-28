@@ -186,7 +186,7 @@ pub fn cleanup_test_db(conn: &mut PgConnection) {
 
     // Truncate all tables
     let _ = sql_query(
-        "TRUNCATE users, wallets, transactions, bank_accounts, blacklisted_tokens CASCADE",
+        "TRUNCATE users, wallets, transactions, bank_accounts, blacklisted_tokens, audit_logs CASCADE",
     )
     .execute(conn);
 }

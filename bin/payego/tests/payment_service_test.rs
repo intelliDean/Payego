@@ -4,7 +4,6 @@ use payego_primitives::models::TopUpRequest;
 use payego_primitives::schema::{transactions, users};
 use serde_json::json;
 use serial_test::serial;
-use std::sync::Arc;
 use uuid::Uuid;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -46,9 +45,11 @@ async fn test_top_up_paypal_init_success() {
         .await;
 
     // 3. Setup AppState
-    let mut base_state = (*common::create_test_app_state()).clone();
-    base_state.config.paypal_details.paypal_api_url = base_url.clone();
-    let state = Arc::new(base_state);
+    let base_state = common::create_test_app_state();
+    let mut config = base_state.config.clone();
+    config.paypal_details.paypal_api_url = base_url.clone();
+    let state = payego_core::AppState::new(base_state.db.clone(), config)
+        .expect("Failed to create AppState");
 
     let pool = &state.db;
     let conn = &mut pool.get().unwrap();
@@ -103,7 +104,7 @@ async fn test_top_up_paypal_init_success() {
         .first::<Transaction>(conn)
         .unwrap();
 
-    assert_eq!(tx.amount, 100000); // 1000 * 100
+    assert_eq!(tx.amount, 1000); // 1000 cents
     assert_eq!(
         tx.provider,
         Some(payego_primitives::models::entities::enum_types::PaymentProvider::Paypal)
@@ -114,6 +115,10 @@ async fn test_top_up_paypal_init_success() {
     );
 
     // 6. Cleanup
+    use payego_primitives::schema::audit_logs;
+    diesel::delete(audit_logs::table.filter(audit_logs::user_id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
     diesel::delete(transactions::table.filter(transactions::user_id.eq(user_id)))
         .execute(conn)
         .unwrap();

@@ -6,7 +6,6 @@ use payego_primitives::models::ConvertRequest;
 use payego_primitives::schema::{users, wallets};
 use serde_json::json;
 use serial_test::serial;
-use std::sync::Arc;
 use uuid::Uuid;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -31,9 +30,11 @@ async fn test_convert_currency_success() {
         .await;
 
     // 2. Setup AppState
-    let mut base_state = (*common::create_test_app_state()).clone();
-    base_state.config.exchange_api_url = exchange_api_url;
-    let state = Arc::new(base_state);
+    let base_state = common::create_test_app_state();
+    let mut config = base_state.config.clone();
+    config.exchange_api_url = exchange_api_url.clone();
+    let state = payego_core::AppState::new(base_state.db.clone(), config)
+        .expect("Failed to create AppState");
 
     let pool = &state.db;
     let conn = &mut pool.get().unwrap();
@@ -110,6 +111,10 @@ async fn test_convert_currency_success() {
     assert_eq!(wallet_ngn.balance, 1485000);
 
     // Cleanup
+    use payego_primitives::schema::audit_logs;
+    diesel::delete(audit_logs::table.filter(audit_logs::user_id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
     diesel::delete(wallets::table.filter(wallets::user_id.eq(user_id)))
         .execute(conn)
         .unwrap();
@@ -136,9 +141,11 @@ async fn test_convert_currency_insufficient_balance() {
         .await;
 
     // 2. Setup AppState
-    let mut base_state = (*common::create_test_app_state()).clone();
-    base_state.config.exchange_api_url = exchange_api_url;
-    let state = Arc::new(base_state);
+    let base_state = common::create_test_app_state();
+    let mut config = base_state.config.clone();
+    config.exchange_api_url = exchange_api_url.clone();
+    let state = payego_core::AppState::new(base_state.db.clone(), config)
+        .expect("Failed to create AppState");
 
     let pool = &state.db;
     let conn = &mut pool.get().unwrap();
