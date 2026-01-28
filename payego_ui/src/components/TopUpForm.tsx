@@ -8,6 +8,7 @@ import PayPalPayment from './PayPalPayment';
 import ErrorBoundary from './ErrorBoundary';
 import { transactionApi } from '../api/transactions';
 import { Currency } from '../types';
+import { getErrorMessage } from '../utils/errorHandler';
 
 const topUpSchema = z.object({
     amount: z.number().min(1, 'Amount must be at least 1').max(10000, 'Amount must be at most 10,000'),
@@ -55,7 +56,7 @@ const TopUpForm: React.FC = () => {
                 window.location.assign(response.session_url);
             }
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Payment initiation failed.');
+            setError(getErrorMessage(err));
         } finally {
             setSubmitting(false);
         }

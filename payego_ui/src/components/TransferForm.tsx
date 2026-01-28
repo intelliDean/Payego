@@ -10,6 +10,7 @@ import { transactionApi } from '../api/transactions';
 import { usersApi } from '../api/users';
 import client from '../api/client';
 import { ResolvedUser } from '@/types';
+import { getErrorMessage } from '../utils/errorHandler';
 
 const transferSchema = z.discriminatedUnion('transferType', [
     z.object({
@@ -66,7 +67,7 @@ const TransferForm: React.FC = () => {
                     const res = await client.get('/api/bank/resolve', { params: { bank_code: bankCode, account_number: accountNumber } });
                     setValue('accountName', res.data.account_name, { shouldValidate: true });
                 } catch (err) {
-                    setError('Could not resolve account name.');
+                    setError(getErrorMessage(err));
                 } finally {
                     setResolving(false);
                 }
@@ -87,7 +88,7 @@ const TransferForm: React.FC = () => {
                 setResolvedUser(user);
                 setShowConfirmation(true);
             } catch (err) {
-                setError('User not found');
+                setError(getErrorMessage(err));
             } finally {
                 setResolving(false);
             }
@@ -106,7 +107,7 @@ const TransferForm: React.FC = () => {
             setPendingExternalData(data);
             setShowConfirmation(true);
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to fetch exchange rate.');
+            setError(getErrorMessage(err));
         } finally {
             setResolving(false);
         }
@@ -131,7 +132,7 @@ const TransferForm: React.FC = () => {
 
             navigate(`/success?tx=${result.id || result.transaction_id || ''}`);
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Transfer failed.');
+            setError(getErrorMessage(err));
             setShowConfirmation(false);
         } finally {
             setSubmitting(false);
@@ -160,7 +161,7 @@ const TransferForm: React.FC = () => {
             // Redirect to success page with transaction ID
             navigate(`/success?tx=${result.id || result.transaction_id || ''}`);
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Transfer failed.');
+            setError(getErrorMessage(err));
             setShowConfirmation(false);
         } finally {
             setSubmitting(false);

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PayPalButtons } from '@paypal/react-paypal-js';
 import { useQueryClient } from '@tanstack/react-query';
 import client from '../api/client';
+import { getErrorMessage } from '../utils/errorHandler';
 
 interface PayPalPaymentProps {
     paymentId: string;
@@ -15,12 +16,7 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({ paymentId, transactionId,
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
-    const getErrorMessage = (message: string) => {
-        if (message.includes('INSTRUMENT_DECLINED')) {
-            return 'Your payment method was declined. Try a different card!';
-        }
-        return message || 'PayPal payment failed.';
-    };
+
 
     return (
         <div className="mt-6">
@@ -53,7 +49,7 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({ paymentId, transactionId,
                             setError(getErrorMessage(response.data.error_message));
                         }
                     } catch (err: any) {
-                        setError(getErrorMessage(err.response?.data?.error_message || 'Capture failed.'));
+                        setError(getErrorMessage(err));
                     } finally {
                         setLoading(false);
                     }

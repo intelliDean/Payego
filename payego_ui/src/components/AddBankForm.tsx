@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useBanks } from '../hooks/useBanks';
 import { bankApi } from '../api/bank';
+import { getErrorMessage } from '../utils/errorHandler';
 
 const bankAccountSchema = z.object({
     bankCode: z.string().min(1, 'Pick a bank, don’t be shy!'),
@@ -53,7 +54,7 @@ const AddBankForm: React.FC = () => {
             });
             navigate('/banks');
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to add bank account.');
+            setError(getErrorMessage(err));
         } finally {
             setLoading(false);
         }
@@ -77,7 +78,7 @@ const AddBankForm: React.FC = () => {
             setPendingData(data);
             setShowConfirmation(true);
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to verify account.');
+            setError(getErrorMessage(err));
         } finally {
             setLoading(false);
         }
@@ -111,7 +112,7 @@ const AddBankForm: React.FC = () => {
 
             setShowSuccess(true);
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to add bank account.');
+            setError(getErrorMessage(err));
             setShowConfirmation(false);
         } finally {
             setLoading(false);

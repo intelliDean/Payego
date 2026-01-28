@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '../contexts/AuthContext';
 import { authApi } from '../api/auth';
+import { getErrorMessage } from '../utils/errorHandler';
 
 const loginSchema = z.object({
     email: z.string().email('Please enter a valid email address'),
@@ -40,7 +41,7 @@ const LoginForm: React.FC = () => {
             login(response.data.token);
             navigate('/dashboard');
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Login failed. Please try again.');
+            setError(getErrorMessage(err));
         } finally {
             setLoading(false);
         }
@@ -55,7 +56,7 @@ const LoginForm: React.FC = () => {
             login(response.data.token);
             navigate('/dashboard');
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Google login failed.');
+            setError(getErrorMessage(err));
         } finally {
             setLoading(false);
         }

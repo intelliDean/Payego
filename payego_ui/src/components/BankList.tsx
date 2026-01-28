@@ -4,6 +4,7 @@ import ErrorBoundary from "./ErrorBoundary";
 import { useUserBankAccounts } from "../hooks/useBanks";
 import { bankApi } from "../api/bank";
 import { useQueryClient } from "@tanstack/react-query";
+import { getErrorMessage } from '../utils/errorHandler';
 
 const BankList: React.FC = () => {
     const { data: banks, isLoading } = useUserBankAccounts();
@@ -36,7 +37,7 @@ const BankList: React.FC = () => {
             queryClient.invalidateQueries({ queryKey: ['user-banks'] });
             setDeleteModal({ open: false, bankId: null, bankName: "" });
         } catch (err) {
-            console.error("Failed to delete bank:", err);
+            console.error("Failed to delete bank:", getErrorMessage(err));
         }
     };
 
