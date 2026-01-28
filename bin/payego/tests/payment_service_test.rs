@@ -71,7 +71,7 @@ async fn test_top_up_paypal_init_success() {
 
     // 4. Call Service
     let req = TopUpRequest {
-        amount: 1000.0, // $10.00
+        amount: 1000, // $10.00
         currency: CurrencyCode::USD,
         provider: PaymentProvider::Paypal,
         idempotency_key: "topup_1".to_string(),

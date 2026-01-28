@@ -35,7 +35,10 @@ impl WithdrawalService {
         bank_account_id: Uuid,
         req: WithdrawRequest,
     ) -> Result<WithdrawResponse, ApiError> {
-        let amount_minor = Self::convert_to_minor_units(req.amount)?;
+        let amount_minor = req.amount;
+        if amount_minor <= 0 {
+            return Err(ApiError::Internal("Invalid amount".into()));
+        }
 
         let mut conn = state
             .db
@@ -117,13 +120,6 @@ impl WithdrawalService {
         })
     }
 
-    fn convert_to_minor_units(amount: f64) -> Result<i64, ApiError> {
-        if amount <= 0.0 {
-            return Err(ApiError::Internal("Invalid amount".into()));
-        }
-
-        Ok((amount * 100.0).round() as i64)
-    }
 
     async fn initiate_paystack_transfer(
         state: &AppState,

@@ -83,7 +83,7 @@ const ConvertForm: React.FC = () => {
         setError(null);
         try {
             const result = await transactionApi.convertCurrency({
-                amount_cents: Math.round(data.amount * 100),
+                amount: data.amount,
                 from_currency: data.fromCurrency,
                 to_currency: data.toCurrency,
                 idempotency_key: crypto.randomUUID()

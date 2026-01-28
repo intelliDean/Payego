@@ -36,7 +36,7 @@ impl PaymentService {
             ApiError::DatabaseConnection(e.to_string())
         })?;
 
-        let amount_cents = Self::convert_to_cents(req.amount)?;
+        let amount_cents = req.amount;
         let reference = Uuid::new_v4();
 
         // ---------- DB-ENFORCED IDEMPOTENCY ----------
@@ -74,12 +74,6 @@ impl PaymentService {
         })
     }
 
-    fn convert_to_cents(amount: f64) -> Result<i64, ApiError> {
-        if amount <= 0.0 {
-            return Err(ApiError::Payment("Amount must be positive".into()));
-        }
-        Ok((amount * 100.0).round() as i64)
-    }
 
     async fn initiate_stripe(
         state: &AppState,
@@ -197,9 +191,10 @@ impl PaymentService {
             return Err(ApiError::Internal("Invalid currency code".into()));
         }
 
-        // Pre-format amount safely
-        let amount_str = format!("{:.2}", req.amount);
-        if req.amount <= 0.0 {
+        // Pre-format amount safely using integer math
+        let amount_cents = req.amount;
+        let amount_str = format!("{}.{:02}", amount_cents / 100, amount_cents % 100);
+        if amount_cents <= 0 {
             return Err(ApiError::Internal(
                 "Amount must be greater than zero".into(),
             ));

@@ -39,7 +39,7 @@ impl TransferService {
             .get()
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
-        let amount_cents = (req.amount * 100.0).round() as i64;
+        let amount_cents = req.amount;
         if amount_cents <= 0 {
             return Err(ApiError::Internal("Amount must be positive".into()));
         }
@@ -176,7 +176,7 @@ impl TransferService {
             .parse()
             .map_err(|_| ApiError::Internal("Unsupported currency".into()))?;
 
-        let amount_minor = (req.amount * 100.0).round() as i64;
+        let amount_minor = req.amount;
         if amount_minor <= 0 {
             return Err(ApiError::Internal("Amount must be positive".into()));
         }
@@ -316,7 +316,7 @@ impl TransferService {
             .join("transfer")
             .map_err(|_| ApiError::Internal("Invalid Paystack transfer URL".into()))?;
 
-        let amount_kobo = (req.amount * 100.0).round() as i64;
+        let amount_kobo = req.amount;
 
         if amount_kobo <= 0 {
             return Err(ApiError::Internal("Invalid transfer amount".into()));

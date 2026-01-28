@@ -52,6 +52,10 @@ impl LoginService {
             .map(|u| u.password_hash.as_str())
             .unwrap_or(Self::dummy_hash());
 
+        info!("password: {}", password);
+        info!("email: {}", user.unwrap().email);
+        info!("user hash: {}, hashed_password: {}", user.unwrap().password_hash, hash);
+
         let parsed = PasswordHash::new(hash).map_err(|_| {
             error!("auth.login: invalid password hash");
             ApiError::Internal("Authentication failure".into())

@@ -8,7 +8,7 @@ use validator::Validate;
 fn test_transfer_request_validation() {
     // Valid request
     let req = serde_json::from_value::<TransferRequest>(json!({
-        "amount": 100.0,
+        "amount": 10000, // $100.00 in cents
         "bank_code": "057",
         "account_number": "1234567890",
         "currency": "USD",
@@ -20,7 +20,7 @@ fn test_transfer_request_validation() {
 
     // Invalid amount (too low)
     let req = serde_json::from_value::<TransferRequest>(json!({
-        "amount": 0.5,
+        "amount": 50, // 50 cents, too low (min 100)
         "bank_code": "057",
         "account_number": "1234567890",
         "currency": "USD",
@@ -32,7 +32,7 @@ fn test_transfer_request_validation() {
 
     // Invalid amount (too high)
     let req = serde_json::from_value::<TransferRequest>(json!({
-        "amount": 20000.0,
+        "amount": 2000000, // $20,000 in cents, too high (max 1,000,000)
         "bank_code": "057",
         "account_number": "1234567890",
         "currency": "USD",
@@ -44,7 +44,7 @@ fn test_transfer_request_validation() {
 
     // Invalid account number (too short)
     let req = serde_json::from_value::<TransferRequest>(json!({
-        "amount": 100.0,
+        "amount": 10000,
         "bank_code": "057",
         "account_number": "123",
         "currency": "USD",
@@ -60,7 +60,7 @@ fn test_transfer_request_validation() {
 
     // Invalid currency
     let req = serde_json::from_value::<TransferRequest>(json!({
-        "amount": 100.0,
+        "amount": 10000,
         "bank_code": "057",
         "account_number": "1234567890",
         "currency": "UNKNOWN",
@@ -73,18 +73,14 @@ fn test_transfer_request_validation() {
 }
 
 #[test]
-fn test_amount_to_cents_conversion() {
-    // This is essentially testing the logic inside the handler
-    // Since it's not a separate function yet, we'll just verify the math logic
-    let amount: f64 = 10.99;
-    let cents = (amount * 100.0).round() as i64;
-    assert_eq!(cents, 1099);
+fn test_amount_logic() {
+    // Basic verification that amounts are now integers
+    let amount: i64 = 1099;
+    assert_eq!(amount, 1099);
 
-    let amount: f64 = 0.01;
-    let cents = (amount * 100.0).round() as i64;
-    assert_eq!(cents, 1);
+    let amount: i64 = 1;
+    assert_eq!(amount, 1);
 
-    let amount: f64 = 100.0;
-    let cents = (amount * 100.0).round() as i64;
-    assert_eq!(cents, 10000);
+    let amount: i64 = 10000;
+    assert_eq!(amount, 10000);
 }

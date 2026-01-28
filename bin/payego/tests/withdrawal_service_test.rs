@@ -131,7 +131,7 @@ async fn test_withdrawal_success() {
     }
 
     let req = WithdrawRequest {
-        amount: 10.0,
+        amount: 10,
         currency: CurrencyCode::USD,
         reference: Uuid::new_v4(),
         idempotency_key: format!("withdraw_key_{}", Uuid::new_v4()),
@@ -202,7 +202,7 @@ async fn test_withdrawal_insufficient_balance() {
         .unwrap();
 
     let req = WithdrawRequest {
-        amount: 10.0,
+        amount: 10,
         currency: CurrencyCode::USD,
         reference: Uuid::new_v4(),
         idempotency_key: "any".to_string(),
@@ -227,7 +227,7 @@ async fn test_withdrawal_unsupported_currency() {
 
     let bank_id = Uuid::new_v4();
     let req = WithdrawRequest {
-        amount: 10.0,
+        amount: 10,
         currency: CurrencyCode::USD, // Changed to valid enum variant, as parsing would fail earlier or logic handles it
         reference: Uuid::new_v4(),
         idempotency_key: "any".to_string(),
