@@ -33,27 +33,6 @@ impl ConversionService {
             .get()
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
-        // ---------- IDEMPOTENCY ----------
-        if let Some(tx) = TransactionRepository::find_by_idempotency_key(
-            &mut conn,
-            user_id,
-            &req.idempotency_key,
-        )? {
-            let get_i64 = |key: &str| {
-                tx.metadata
-                    .get(key)
-                    .and_then(|v| v.as_i64())
-                    .ok_or_else(|| ApiError::Internal(format!("Missing/invalid {}", key)))
-            };
-
-            return Ok(ConvertResponse {
-                transaction_id: tx.reference.to_string(),
-                converted_amount: get_i64("converted_amount_cents")? as f64 / 100.0,
-                exchange_rate: get_i64("exchange_rate_scaled")? as f64 / 1_000_000.0,
-                fee: get_i64("fee_cents")? as f64 / 100.0,
-            });
-        }
-
         // ---------- RATE ----------
         let rate = state
             .fx
@@ -72,87 +51,110 @@ impl ConversionService {
 
         let tx_ref = Uuid::new_v4();
 
-        conn.transaction::<_, ApiError, _>(|conn| {
-            let from_wallet = WalletRepository::find_by_user_and_currency_with_lock(
-                conn,
-                user_id,
-                req.from_currency,
-            )?;
-            let to_wallet = WalletRepository::create_if_not_exists(conn, user_id, req.to_currency)?;
-
-            if from_wallet.balance < req.amount_cents {
-                return Err(ApiError::Payment("Insufficient balance".into()));
-            }
-
-            let tx = TransactionRepository::create(
-                conn,
-                NewTransaction {
+        let (tx_id, actual_net_cents, actual_rate, actual_fee) = conn
+            .transaction::<_, ApiError, _>(|conn| {
+                // 🔒 IDEMPOTENCY
+                if let Some(tx) = TransactionRepository::find_by_idempotency_key(
+                    conn,
                     user_id,
-                    counterparty_id: None,
-                    intent: TransactionIntent::Conversion,
-                    amount: req.amount_cents,
-                    currency: req.from_currency,
-                    txn_state: PaymentState::Completed,
-                    provider: Some(PaymentProvider::Internal),
-                    provider_reference: None,
-                    idempotency_key: &req.idempotency_key,
-                    reference: tx_ref,
-                    description: Some("Currency conversion"),
-                    metadata: json!({
-                        "exchange_rate_scaled": rate_scaled,
-                        "converted_amount_cents": net_cents,
-                        "fee_cents": fee_cents,
-                        "quoted_at": chrono::Utc::now()
-                    }),
-                },
-            )?;
+                    &req.idempotency_key,
+                )? {
+                    let get_i64 = |key: &str| {
+                        tx.metadata
+                            .get(key)
+                            .and_then(|v| v.as_i64())
+                            .ok_or_else(|| ApiError::Internal(format!("Missing/invalid {}", key)))
+                    };
 
-            WalletRepository::add_ledger_entry(
-                conn,
-                payego_primitives::models::wallet_ledger::NewWalletLedger {
-                    wallet_id: from_wallet.id,
-                    transaction_id: tx.id,
-                    amount: -req.amount_cents,
-                },
-            )?;
+                    return Ok((
+                        tx.id,
+                        get_i64("converted_amount_cents")?,
+                        get_i64("exchange_rate_scaled")? as f64 / 1_000_000.0,
+                        get_i64("fee_cents")?,
+                    ));
+                }
 
-            WalletRepository::add_ledger_entry(
-                conn,
-                payego_primitives::models::wallet_ledger::NewWalletLedger {
-                    wallet_id: to_wallet.id,
-                    transaction_id: tx.id,
-                    amount: net_cents,
-                },
-            )?;
+                let from_wallet = WalletRepository::find_by_user_and_currency_with_lock(
+                    conn,
+                    user_id,
+                    req.from_currency,
+                )?;
+                let to_wallet =
+                    WalletRepository::create_if_not_exists(conn, user_id, req.to_currency)?;
 
-            WalletRepository::debit(conn, from_wallet.id, req.amount_cents)?;
-            WalletRepository::credit(conn, to_wallet.id, net_cents)?;
+                if from_wallet.balance < req.amount_cents {
+                    return Err(ApiError::Payment("Insufficient balance".into()));
+                }
 
-            Ok(())
-        })?;
+                let tx = TransactionRepository::create(
+                    conn,
+                    NewTransaction {
+                        user_id,
+                        counterparty_id: None,
+                        intent: TransactionIntent::Conversion,
+                        amount: req.amount_cents,
+                        currency: req.from_currency,
+                        txn_state: PaymentState::Completed,
+                        provider: Some(PaymentProvider::Internal),
+                        provider_reference: None,
+                        idempotency_key: &req.idempotency_key,
+                        reference: tx_ref,
+                        description: Some("Currency conversion"),
+                        metadata: json!({
+                            "exchange_rate_scaled": rate_scaled,
+                            "converted_amount_cents": net_cents,
+                            "fee_cents": fee_cents,
+                            "quoted_at": chrono::Utc::now()
+                        }),
+                    },
+                )?;
+
+                WalletRepository::add_ledger_entry(
+                    conn,
+                    payego_primitives::models::wallet_ledger::NewWalletLedger {
+                        wallet_id: from_wallet.id,
+                        transaction_id: tx.id,
+                        amount: -req.amount_cents,
+                    },
+                )?;
+
+                WalletRepository::add_ledger_entry(
+                    conn,
+                    payego_primitives::models::wallet_ledger::NewWalletLedger {
+                        wallet_id: to_wallet.id,
+                        transaction_id: tx.id,
+                        amount: net_cents,
+                    },
+                )?;
+
+                WalletRepository::debit(conn, from_wallet.id, req.amount_cents)?;
+                WalletRepository::credit(conn, to_wallet.id, net_cents)?;
+
+                Ok::<(Uuid, i64, f64, i64), ApiError>((tx.id, net_cents, rate, fee_cents))
+            })?;
 
         let _ = AuditService::log_event(
             state,
             Some(user_id),
             "conversion.internal",
             Some("transaction"),
-            Some(&tx_ref.to_string()),
+            Some(&tx_id.to_string()),
             json!({
                 "from": req.from_currency,
                 "to": req.to_currency,
                 "amount": req.amount_cents,
-                "converted": net_cents,
-                "rate": rate,
+                "converted": actual_net_cents,
+                "rate": actual_rate,
             }),
             None,
         )
         .await;
 
         Ok(ConvertResponse {
-            transaction_id: tx_ref.to_string(),
-            converted_amount: net_cents as f64 / 100.0,
-            exchange_rate: rate,
-            fee: fee_cents as f64 / 100.0,
+            transaction_id: tx_id.to_string(),
+            converted_amount: actual_net_cents as f64 / 100.0,
+            exchange_rate: actual_rate,
+            fee: actual_fee as f64 / 100.0,
         })
     }
 

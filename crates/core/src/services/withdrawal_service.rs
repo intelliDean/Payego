@@ -36,16 +36,6 @@ impl WithdrawalService {
             .get()
             .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
-        let wallet = WalletRepository::find_by_user_and_currency_with_lock(
-            &mut conn,
-            user_id,
-            req.currency,
-        )?;
-
-        if wallet.balance < amount_minor {
-            return Err(ApiError::Payment("Insufficient balance".into()));
-        }
-
         let bank_account = BankAccountRepository::find_verified_by_id_and_user(
             &mut conn,
             bank_account_id,
@@ -59,16 +49,34 @@ impl WithdrawalService {
                 ApiError::Payment("Bank account is not linked to a provider recipient".into())
             })?;
 
-        // External transfer
-        state
-            .paystack
-            .initiate_transfer(recipient_code, amount_minor, &req.reference.to_string())
-            .await?;
+        // 1. Transactional DB setup
+        let (tx_id, currency) = conn.transaction::<_, ApiError, _>(|conn| {
+            // 2. Idempotency Check
+            if let Some(existing) =
+                TransactionRepository::find_by_idempotency_key(conn, user_id, &req.idempotency_key)?
+            {
+                if existing.txn_state == PaymentState::Completed {
+                    return Ok((existing.id, existing.currency));
+                }
+                // If it's Pending, we'll fall through and retry the external call
+                if existing.txn_state == PaymentState::Pending {
+                    return Ok((existing.id, existing.currency));
+                }
 
-        // Atomic DB write
-        let tx_id = conn.transaction::<_, ApiError, _>(|conn| {
-            WalletRepository::debit(conn, wallet.id, amount_minor)?;
+                return Err(ApiError::Payment(
+                    "Transaction already exists with a different state".into(),
+                ));
+            }
 
+            // 3. Wallet Lock & Balance Check
+            let wallet =
+                WalletRepository::find_by_user_and_currency_with_lock(conn, user_id, req.currency)?;
+
+            if wallet.balance < amount_minor {
+                return Err(ApiError::Payment("Insufficient balance".into()));
+            }
+
+            // 4. Create PENDING Transaction & Debit Wallet
             let tx = TransactionRepository::create(
                 conn,
                 NewTransaction {
@@ -77,9 +85,9 @@ impl WithdrawalService {
                     intent: TransactionIntent::Payout,
                     amount: amount_minor,
                     currency: wallet.currency,
-                    txn_state: PaymentState::Completed, // Simplified
+                    txn_state: PaymentState::Pending,
                     provider: Some(PaymentProvider::Paystack),
-                    provider_reference: Some(recipient_code),
+                    provider_reference: None,
                     idempotency_key: &req.idempotency_key,
                     reference: req.reference,
                     description: Some("Wallet withdrawal"),
@@ -90,7 +98,8 @@ impl WithdrawalService {
                 },
             )?;
 
-            // Ledger
+            WalletRepository::debit(conn, wallet.id, amount_minor)?;
+
             WalletRepository::add_ledger_entry(
                 conn,
                 NewWalletLedger {
@@ -100,8 +109,33 @@ impl WithdrawalService {
                 },
             )?;
 
-            Ok::<Uuid, ApiError>(tx.id)
+            Ok::<(Uuid, payego_primitives::models::enum_types::CurrencyCode), ApiError>((
+                tx.id,
+                wallet.currency,
+            ))
         })?;
+
+        // 5. External transfer (Safe to retry if Pending)
+        let paystack_result = state
+            .paystack
+            .initiate_transfer(recipient_code, amount_minor, &req.reference.to_string())
+            .await;
+
+        match paystack_result {
+            Ok(_) => {
+                // 6. Complete Transaction
+                TransactionRepository::update_status_and_provider_ref(
+                    &mut conn,
+                    tx_id,
+                    PaymentState::Completed,
+                    Some(recipient_code.to_string()),
+                )?;
+            }
+            Err(e) => {
+                tracing::error!(error = %e, transaction_id = %tx_id, "Paystack transfer call failed");
+                return Err(e);
+            }
+        }
 
         let _ = AuditService::log_event(
             state,
@@ -111,7 +145,7 @@ impl WithdrawalService {
             Some(&tx_id.to_string()),
             json!({
                 "amount": amount_minor,
-                "currency": wallet.currency,
+                "currency": currency,
                 "bank_account_id": bank_account_id,
             }),
             None,

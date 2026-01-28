@@ -172,7 +172,15 @@ impl TransferService {
             if let Some(existing) =
                 TransactionRepository::find_by_idempotency_key(conn, user_id, &req.idempotency_key)?
             {
-                return Ok(existing.id);
+                if existing.txn_state == PaymentState::Completed {
+                    return Ok(existing.id);
+                }
+                if existing.txn_state == PaymentState::Pending {
+                    return Ok(existing.id);
+                }
+                return Err(ApiError::Payment(
+                    "Transaction already exists with a different state".into(),
+                ));
             }
 
             let wallet =
@@ -204,6 +212,8 @@ impl TransferService {
                 },
             )?;
 
+            WalletRepository::debit(conn, wallet.id, amount_minor)?;
+
             WalletRepository::add_ledger_entry(
                 conn,
                 NewWalletLedger {
@@ -212,8 +222,6 @@ impl TransferService {
                     amount: -amount_minor,
                 },
             )?;
-
-            WalletRepository::debit(conn, wallet.id, amount_minor)?;
 
             Ok::<Uuid, ApiError>(tx.id)
         })?;
