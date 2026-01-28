@@ -7,6 +7,7 @@ import * as z from 'zod';
 import { useWallets } from '../hooks/useWallets';
 import { useUserBankAccounts } from '../hooks/useBanks';
 import { transactionApi } from '../api/transactions';
+import { getErrorMessage } from '../utils/errorHandler';
 
 const withdrawSchema = z.object({
     amount: z.number().min(1, 'Minimum 1 required'),
@@ -48,7 +49,7 @@ const WithdrawForm: React.FC = () => {
             setPendingData(data);
             setShowConfirmation(true);
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to fetch exchange rate.');
+            setError(getErrorMessage(err));
         } finally {
             setSubmitting(false);
         }
@@ -77,7 +78,7 @@ const WithdrawForm: React.FC = () => {
 
             navigate(`/success?tx=${res.transaction_id}`);
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Withdrawal failed.');
+            setError(getErrorMessage(err));
             setShowConfirmation(false);
         } finally {
             setSubmitting(false);

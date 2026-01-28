@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { getErrorMessage } from '../utils/errorHandler';
 
 interface StripePaymentProps {
     clientSecret: string;
@@ -54,7 +55,7 @@ const StripePayment: React.FC<StripePaymentProps> = ({ clientSecret, transaction
             }
         } catch (err: any) {
             console.error('Stripe confirmation error:', err);
-            setError(err.message || 'Payment failed');
+            setError(getErrorMessage(err));
         } finally {
             setLoading(false);
         }

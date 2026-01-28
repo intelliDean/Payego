@@ -9,6 +9,7 @@ import { useWallets } from "../hooks/useWallets";
 import { transactionApi } from "../api/transactions";
 import { Currency } from "@/types";
 import client from "../api/client";
+import { getErrorMessage } from '../utils/errorHandler';
 
 const convertSchema = z.object({
     amount: z.number().min(0.01).max(10000),
@@ -70,7 +71,7 @@ const ConvertForm: React.FC = () => {
             });
             setShowConfirmation(true);
         } catch (err: any) {
-            setError(err.response?.data?.message || "Failed to fetch exchange rate.");
+            setError(getErrorMessage(err));
         } finally {
             setSubmitting(false);
         }
@@ -96,7 +97,7 @@ const ConvertForm: React.FC = () => {
 
             setShowSuccess(true);
         } catch (err: any) {
-            setError(err.response?.data?.message || "Conversion failed.");
+            setError(getErrorMessage(err));
             setShowConfirmation(false);
         } finally {
             setSubmitting(false);

@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '../contexts/AuthContext';
 import { authApi } from '../api/auth';
+import { getErrorMessage } from '../utils/errorHandler';
 
 const registerSchema = z.object({
     email: z.string().email('Please enter a valid email address'),
@@ -68,7 +69,7 @@ const RegisterForm: React.FC = () => {
             login(response.data.token);
             setShowVerification(true);
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Registration failed.');
+            setError(getErrorMessage(err));
             setLoading(false);
         }
     };
