@@ -13,7 +13,7 @@ use crate::utility::server::serve;
 use crate::utility::tasks::{build_router, initialize_system, load_env};
 use eyre::Report;
 use payego_primitives::models::app_config::AppConfig;
-use payego_primitives::models::app_state::AppState;
+use payego_core::app_state::AppState;
 use tracing::info;
 
 pub async fn run() -> Result<(), Report> {

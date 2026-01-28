@@ -1,34 +1,26 @@
-use crate::client::PaystackClient;
-use dashmap::DashMap;
-
+pub use crate::app_state::AppState;
+pub use crate::security::Claims;
 use crate::repositories::bank_account_repository::BankAccountRepository;
+use crate::clients::paystack::PaystackClient;
+use dashmap::DashMap;
 use once_cell::sync::Lazy;
 pub use payego_primitives::{
-    config::security_config::Claims,
-    error::{ApiError, AuthError},
-    models::{app_state::AppState, bank::BankAccount},
+    error::ApiError,
     models::{
-        bank::NewBankAccount,
-        dtos::{
-            bank_dto::{
-                BankAccountResponse, BankAccountsResponse, BankRequest, DeleteResponse,
-                ResolveAccountRequest, ResolveAccountResponse, ResolvedAccount,
-            },
-            providers::paystack::{PaystackRecipientResponse, PaystackResolveResponse},
+        bank::{BankAccount, NewBankAccount},
+        dtos::bank_dto::{
+            BankAccountResponse, BankAccountsResponse, BankRequest, DeleteResponse,
+            ResolveAccountRequest, ResolveAccountResponse, ResolvedAccount,
         },
-        enum_types::{CurrencyCode, PaymentState},
+        enum_types::CurrencyCode,
     },
-    schema::bank_accounts,
 };
 use regex::Regex;
-use reqwest::Url;
-use secrecy::ExposeSecret;
 use std::time::{Duration, Instant};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 use uuid::Uuid;
 
 static ACCOUNT_NUMBER_RE: Lazy<Result<Regex, regex::Error>> = Lazy::new(|| Regex::new(r"^\d{10}$"));
-
 static BANK_CODE_RE: Lazy<Result<Regex, regex::Error>> = Lazy::new(|| Regex::new(r"^\d{3,10}$"));
 static ACCOUNT_CACHE: Lazy<DashMap<String, (ResolvedAccount, Instant)>> = Lazy::new(DashMap::new);
 const TTL: Duration = Duration::from_secs(60 * 10); // 10 minutes
@@ -40,21 +32,14 @@ impl BankAccountService {
         state: &AppState,
         claims: &Claims,
     ) -> Result<BankAccountsResponse, ApiError> {
-        let user_id = Uuid::parse_str(&claims.sub).map_err(|_| {
-            warn!("bank_accounts.list: invalid subject in token");
-            ApiError::Auth(AuthError::InvalidToken("Invalid token".into()))
-        })?;
+        let user_id = claims.user_id()?;
 
-        let mut conn = state.db.get().map_err(|_| {
-            error!("bank_accounts.list: failed to acquire db connection");
+        let mut conn = state.db.get().map_err(|e| {
+            error!(error = %e, "Failed to acquire db connection");
             ApiError::DatabaseConnection("Database unavailable".into())
         })?;
 
-        let accounts =
-            BankAccountRepository::find_all_by_user(&mut conn, user_id).map_err(|_| {
-                error!("bank_accounts.list: query failed");
-                ApiError::Internal("Failed to fetch bank accounts".into())
-            })?;
+        let accounts = BankAccountRepository::find_all_by_user(&mut conn, user_id)?;
 
         Ok(BankAccountsResponse {
             bank_accounts: accounts
@@ -64,42 +49,22 @@ impl BankAccountService {
         })
     }
 
-    pub async fn get_bank_accounts(
-        state: &AppState,
-        user_id_val: Uuid,
-    ) -> Result<Vec<BankAccount>, ApiError> {
-        let mut conn = state
-            .db
-            .get()
-            .map_err(|e: r2d2::Error| ApiError::DatabaseConnection(e.to_string()))?;
-
-        let accounts = BankAccountRepository::find_all_by_user(&mut conn, user_id_val)?;
-
-        Ok(accounts)
-    }
-
     pub async fn create_bank_account(
         state: &AppState,
         user_id_val: Uuid,
         req: BankRequest,
     ) -> Result<BankAccount, ApiError> {
-        let mut conn = state.db.get().map_err(|e: r2d2::Error| {
-            error!("Database error: {}", e);
+        let mut conn = state.db.get().map_err(|e| {
+            error!(error = %e, "Database error");
             ApiError::DatabaseConnection(e.to_string())
         })?;
 
-        // idempotency check using Repository
         if let Some(existing) = BankAccountRepository::find_active_by_details(
             &mut conn,
             user_id_val,
             &req.bank_code,
             &req.account_number,
         )? {
-            info!(
-                user_id = %user_id_val,
-                bank_code = %req.bank_code,
-                "Bank account already exists (idempotency check)"
-            );
             return Ok(existing);
         }
 
@@ -108,21 +73,14 @@ impl BankAccountService {
 
         let account_name = account_details.account_name;
 
-        //make call to paystack via its client
-        let paystack_client = PaystackClient::new(
-            state.http_client.clone(),
-            &state.config.paystack_details.paystack_api_url,
-            state.config.paystack_details.paystack_secret_key.clone(),
-        )?;
-
-        let payload = PaystackClient::create_recipient(
+        let payload = PaystackClient::create_recipient_payload(
             &account_name,
             &req.account_number,
             &req.bank_code,
             CurrencyCode::NGN,
         );
 
-        let recipient_code = paystack_client
+        let recipient_code = state.paystack
             .create_transfer_recipient(payload)
             .await
             .map_err(|_| ApiError::Payment("Unable to create transfer recipient".into()))?;
@@ -142,7 +100,6 @@ impl BankAccountService {
         info!(
             user_id = %user_id_val,
             account_id = %account.id,
-            bank_code = %req.bank_code,
             "Bank account created successfully"
         );
 
@@ -159,63 +116,10 @@ impl BankAccountService {
         let cache_key = format!("{bank_code}:{account_number}");
 
         if let Some(cached) = Self::get(&cache_key) {
-            info!("Bank resolve cache hit: {}", cache_key);
             return Ok(cached);
         }
 
-        let mut url = Url::parse(&state.config.paystack_details.paystack_api_url)
-            .map_err(|_| ApiError::Internal("Invalid Paystack base URL".into()))?;
-
-        url.set_path("bank/resolve");
-        url.query_pairs_mut()
-            .append_pair("account_number", account_number)
-            .append_pair("bank_code", bank_code);
-
-        let resp = state
-            .http_client
-            .get(url)
-            .bearer_auth(
-                state
-                    .config
-                    .paystack_details
-                    .paystack_secret_key
-                    .expose_secret(),
-            )
-            .header("User-Agent", "Payego/1.0")
-            .send()
-            .await
-            .map_err(|e| {
-                error!(error = %e, "Failed to reach Paystack during account resolution");
-                ApiError::Payment(format!("Paystack service unavailable: {}", e))
-            })?;
-
-        let status = resp.status();
-        let body_text = resp.text().await.map_err(|e| {
-            error!(error = %e, "Failed to read Paystack response body");
-            ApiError::Payment("Failed to read Paystack response".into())
-        })?;
-
-        if !status.is_success() {
-            error!(
-                status = %status,
-                body = %body_text,
-                "Paystack account resolution failed"
-            );
-            return Err(ApiError::Payment(format!(
-                "Paystack error {}: {}",
-                status, body_text
-            )));
-        }
-
-        let body: PaystackResolveResponse = serde_json::from_str(&body_text).map_err(|e| {
-            error!(error = %e, body = %body_text, "Failed to parse Paystack resolution response");
-            ApiError::Payment("Invalid response from Paystack".into())
-        })?;
-
-        if !body.status {
-            tracing::log::warn!("Paystack resolve failed: {}", body.message);
-            return Err(ApiError::Payment(body.message));
-        }
+        let body = state.paystack.resolve_bank_account(account_number, bank_code).await?;
 
         let data = body
             .data
@@ -238,7 +142,6 @@ impl BankAccountService {
             .map_err(|_| ApiError::Internal("Account number regex misconfigured".into()))?
             .is_match(account_number)
         {
-            warn!("bank_account.validate: invalid account number format");
             return Err(ApiError::BadRequest(
                 "Account number must be 10 digits".to_string(),
             ));
@@ -246,10 +149,9 @@ impl BankAccountService {
 
         if !BANK_CODE_RE
             .as_ref()
-            .map_err(|_| ApiError::Internal("Account number regex misconfigured".into()))?
+            .map_err(|_| ApiError::Internal("Bank code regex misconfigured".into()))?
             .is_match(bank_code)
         {
-            warn!("bank_account.validate: invalid bank code format");
             return Err(ApiError::BadRequest(
                 "Bank code must be 3–10 digits".to_string(),
             ));
@@ -264,17 +166,11 @@ impl BankAccountService {
         bank_account_id: Uuid,
     ) -> Result<DeleteResponse, ApiError> {
         let mut conn = state.db.get().map_err(|e| {
-            error!("Database error: {}", e);
+            error!(error = %e, "Database error");
             ApiError::DatabaseConnection(e.to_string())
         })?;
 
         BankAccountRepository::delete_by_id_and_user(&mut conn, bank_account_id, user_id)?;
-
-        info!(
-            user_id = %user_id,
-            account_id = %bank_account_id,
-            "Bank account deleted successfully"
-        );
 
         Ok(DeleteResponse {
             account_id: bank_account_id,

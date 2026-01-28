@@ -1,7 +1,7 @@
-use crate::{
+use payego_primitives::{
     error::{ApiError, AuthError},
-    models::AppState,
 };
+use crate::app_state::AppState;
 use axum::http::Request;
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
@@ -25,6 +25,7 @@ pub struct Claims {
     pub aud: String,
     pub jti: String,
 }
+
 impl Claims {
     pub fn user_id(&self) -> Result<Uuid, ApiError> {
         Uuid::parse_str(&self.sub).map_err(|e| {
@@ -113,7 +114,7 @@ impl SecurityConfig {
     }
 
     pub fn is_jti_blacklisted(conn: &mut PgConnection, jti_value: &str) -> Result<bool, ApiError> {
-        use crate::schema::blacklisted_tokens::dsl::*;
+        use payego_primitives::schema::blacklisted_tokens::dsl::*;
 
         blacklisted_tokens
             .filter(jti.eq(jti_value))

@@ -1,7 +1,7 @@
 mod common;
 
 use common::create_test_app_state;
-use payego_primitives::config::security_config::SecurityConfig;
+use payego_core::SecurityConfig;
 use serial_test::serial;
 
 #[tokio::test]

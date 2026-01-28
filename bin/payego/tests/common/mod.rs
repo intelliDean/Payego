@@ -8,10 +8,15 @@ use payego_primitives::models::app_state::jwt_details::JWTInfo;
 use payego_primitives::models::app_state::paypal_details::PaypalInfo;
 use payego_primitives::models::app_state::paystack_details::PaystackInfo;
 use payego_primitives::models::app_state::stripe_details::StripeInfo;
-use payego_primitives::models::app_state::AppState;
 use secrecy::SecretString;
 use std::sync::Arc;
 use uuid::Uuid;
+use payego_core::{
+    clients::{
+        exchange_rate::ExchangeRateClient, paystack::PaystackClient, stripe::StripeClient,
+    },
+    AppState,
+};
 
 pub mod fixtures;
 pub mod helpers;
@@ -76,12 +81,30 @@ pub fn create_test_app_state() -> Arc<AppState> {
         paypal_details: paypal_config,
         exchange_api_url: "http://localhost:8080/mock/exchange".to_string(),
         default_country: "Nigeria".to_string(),
+        rate_limit_rps: 100, // Higher for tests
+        rate_limit_burst: 200,
     };
+
+    let paystack_client = PaystackClient::new(
+        reqwest::Client::new(),
+        &app_config.paystack_details.paystack_api_url,
+        app_config.paystack_details.paystack_secret_key.clone(),
+    )
+    .expect("Failed to create Paystack client");
+
+    let stripe_client = StripeClient::new(&app_config.stripe_details);
+
+    let fx_client = ExchangeRateClient::new(reqwest::Client::new(), &app_config.exchange_api_url)
+        .expect("Failed to create FX client");
 
     let state_arc = Arc::new(AppState {
         db: create_test_db_pool(),
         http_client: reqwest::Client::new(),
         config: app_config,
+        paystack: paystack_client,
+        stripe: stripe_client,
+        fx: fx_client,
+        email: Default::default(),
     });
 
     INIT.call_once(|| {

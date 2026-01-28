@@ -3,14 +3,14 @@ use crate::services::auth_service::register::RegisterService;
 use argon2::{password_hash::PasswordHash, PasswordVerifier};
 use diesel::prelude::*;
 pub use payego_primitives::{
-    config::security_config::SecurityConfig,
     error::{ApiError, AuthError},
     models::{
-        app_state::AppState,
         dtos::auth_dto::{LoginRequest, LoginResponse},
         user::User,
     },
 };
+pub use crate::app_state::AppState;
+pub use crate::security::SecurityConfig;
 use tracing::{error, info, warn};
 
 pub struct LoginService;

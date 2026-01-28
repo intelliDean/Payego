@@ -8,13 +8,13 @@ use http::HeaderMap;
 pub use payego_primitives::{
     error::ApiError,
     models::{
-        app_state::AppState,
         dtos::providers::paystack::PaystackWebhook,
         entities::enum_types::{PaymentState, TransactionIntent},
         transaction::Transaction,
         wallet_ledger::NewWalletLedger,
     },
 };
+pub use crate::app_state::AppState;
 use secrecy::ExposeSecret;
 use std::sync::Arc;
 use tracing::{info, warn};

@@ -7,8 +7,9 @@ use stripe::{Event, EventObject, EventType, Webhook};
 use crate::services::transaction_service::TransactionService;
 pub use payego_primitives::{
     error::ApiError,
-    models::{app_state::AppState, dtos::providers::stripe::StripeWebhookContext},
+    models::dtos::providers::stripe::StripeWebhookContext,
 };
+pub use crate::app_state::AppState;
 
 pub enum WebhookOutcome {
     Processed,

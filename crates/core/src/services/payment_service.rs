@@ -1,26 +1,17 @@
 use crate::repositories::transaction_repository::TransactionRepository;
-use http::header::{CONTENT_TYPE, USER_AGENT};
-use payego_primitives::models::dtos::providers::paypal::PayPalOrderResp;
+pub use crate::app_state::AppState;
+pub use crate::security::Claims;
+// use diesel::prelude::*;
 pub use payego_primitives::{
-    config::security_config::Claims,
     error::ApiError,
     models::{
-        app_state::AppState,
         dtos::wallet_dto::{TopUpRequest, TopUpResponse},
         enum_types::{PaymentProvider, PaymentState, TransactionIntent},
-        transaction::{NewTransaction, Transaction},
+        transaction::NewTransaction,
     },
 };
-use reqwest::Url;
 use secrecy::ExposeSecret;
-use serde_json::json;
-use std::str::FromStr;
-use stripe::{
-    CheckoutSession, CheckoutSessionMode, Client as StripeClient, CreateCheckoutSession,
-    CreateCheckoutSessionLineItems, CreateCheckoutSessionLineItemsPriceData,
-    CreateCheckoutSessionLineItemsPriceDataProductData, Currency,
-};
-use tracing::error;
+use tracing::{error, info};
 use uuid::Uuid;
 
 pub struct PaymentService;
@@ -31,223 +22,108 @@ impl PaymentService {
         user_id: Uuid,
         req: TopUpRequest,
     ) -> Result<TopUpResponse, ApiError> {
-        let mut conn = state.db.get().map_err(|e: r2d2::Error| {
-            error!("Database error: {}", e);
-            ApiError::DatabaseConnection(e.to_string())
-        })?;
+        let mut conn = state
+            .db
+            .get()
+            .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
-        let amount_cents = req.amount;
-        let reference = Uuid::new_v4();
+        let tx_ref = Uuid::new_v4();
 
-        // ---------- DB-ENFORCED IDEMPOTENCY ----------
-        let tx = TransactionRepository::create(
+        // Create initial transaction
+        TransactionRepository::create(
             &mut conn,
             NewTransaction {
                 user_id,
                 counterparty_id: None,
                 intent: TransactionIntent::TopUp,
-                amount: amount_cents,
+                amount: req.amount,
                 currency: req.currency,
                 txn_state: PaymentState::Pending,
                 provider: Some(req.provider),
                 provider_reference: None,
                 idempotency_key: &req.idempotency_key,
-                reference,
-                description: Some("Top-up intent"),
-                metadata: serde_json::json!({}),
+                reference: tx_ref,
+                description: Some("Wallet top-up initiation"),
+                metadata: serde_json::json!({
+                    "idempotency_key": req.idempotency_key,
+                }),
             },
         )?;
 
-        let (session_url, payment_id) = match req.provider {
+        let response = match req.provider {
             PaymentProvider::Stripe => {
-                Self::initiate_stripe(state, &req, tx.reference, amount_cents).await?
+                let success_url = format!("{}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}", state.config.app_url);
+                let cancel_url = format!("{}/checkout/cancel", state.config.app_url);
+
+                let session = state.stripe.create_checkout_session(
+                    req.amount,
+                    &req.currency.to_string().to_lowercase(),
+                    &tx_ref.to_string(),
+                    &success_url,
+                    &cancel_url,
+                ).await?;
+
+                info!("Stripe session created: {}", session.id);
+                TopUpResponse {
+                    session_url: session.url,
+                    payment_id: Some(session.id.to_string()),
+                    transaction_id: tx_ref.to_string(),
+                    amount: req.amount,
+                }
             }
-            PaymentProvider::Paypal => Self::initiate_paypal(state, &req, tx.reference).await?,
-            _ => return Err(ApiError::Payment("Unsupported provider".into())),
+            PaymentProvider::Paypal => {
+                let amount_str = format!("{}.{:02}", req.amount / 100, req.amount % 100);
+                
+                let paypal_res = state
+                    .http_client
+                    .post(format!("{}/v2/checkout/orders", state.config.paypal_details.paypal_api_url))
+                    .basic_auth(
+                        state.config.paypal_details.paypal_client_id.clone(),
+                        Some(state.config.paypal_details.paypal_secret.expose_secret()),
+                    )
+                    .json(&serde_json::json!({
+                        "intent": "CAPTURE",
+                        "purchase_units": [{
+                            "reference_id": tx_ref.to_string(),
+                            "amount": {
+                                "currency_code": req.currency.to_string(),
+                                "value": amount_str
+                            }
+                        }],
+                        "application_context": {
+                            "return_url": format!("{}/success?transaction_id={}", state.config.app_url, tx_ref),
+                            "cancel_url": format!("{}/top-up", state.config.app_url)
+                        }
+                    }))
+                    .send()
+                    .await
+                    .map_err(|e| ApiError::Payment(format!("PayPal request failed: {}", e)))?;
+
+                let body: serde_json::Value = paypal_res
+                    .json()
+                    .await
+                    .map_err(|_| ApiError::Payment("Invalid PayPal response".into()))?;
+
+                let approval_url = body["links"]
+                    .as_array()
+                    .and_then(|links| {
+                        links.iter().find(|l| l["rel"] == "approve").and_then(|l| l["href"].as_str())
+                    })
+                    .ok_or_else(|| {
+                        error!("PayPal Approval link missing. Body: {:?}", body);
+                        ApiError::Payment("PayPal approval link missing".into())
+                    })?;
+
+                TopUpResponse {
+                    session_url: Some(approval_url.to_string()),
+                    payment_id: body["id"].as_str().map(|s| s.to_string()),
+                    transaction_id: tx_ref.to_string(),
+                    amount: req.amount,
+                }
+            }
+            _ => return Err(ApiError::BadRequest("Unsupported provider".into())),
         };
 
-        Ok(TopUpResponse {
-            session_url,
-            payment_id,
-            transaction_id: tx.reference.to_string(),
-            amount: req.amount,
-        })
-    }
-
-
-    async fn initiate_stripe(
-        state: &AppState,
-        req: &TopUpRequest,
-        reference: Uuid,
-        amount_cents: i64,
-    ) -> Result<(Option<String>, Option<String>), ApiError> {
-        let stripe_client = StripeClient::from_url(
-            state.config.stripe_details.stripe_api_url.as_str(),
-            state
-                .config
-                .stripe_details
-                .stripe_secret_key
-                .expose_secret(),
-        );
-
-        let currency = Currency::from_str(&req.currency.to_string().to_lowercase())
-            .map_err(|_| ApiError::Payment("Invalid currency".into()))?;
-
-        let session = CheckoutSession::create(
-            &stripe_client,
-            CreateCheckoutSession {
-                mode: Some(CheckoutSessionMode::Payment),
-                success_url: Some(&format!(
-                    "{}/success?tx={}",
-                    state.config.app_url, reference
-                )),
-                cancel_url: Some(&format!("{}/top-up", state.config.app_url)),
-                line_items: Some(vec![CreateCheckoutSessionLineItems {
-                    quantity: Some(1),
-                    price_data: Some(CreateCheckoutSessionLineItemsPriceData {
-                        currency,
-                        unit_amount: Some(amount_cents),
-                        product_data: Some(CreateCheckoutSessionLineItemsPriceDataProductData {
-                            name: "Account Top-Up".into(),
-                            ..Default::default()
-                        }),
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                }]),
-                payment_intent_data: Some(stripe::CreateCheckoutSessionPaymentIntentData {
-                    metadata: Some(
-                        [("transaction_reference".into(), reference.to_string())]
-                            .into_iter()
-                            .collect(),
-                    ),
-                    ..Default::default()
-                }),
-                metadata: Some(
-                    [("transaction_reference".into(), reference.to_string())]
-                        .into_iter()
-                        .collect(),
-                ),
-                ..Default::default()
-            },
-        )
-        .await
-        .map_err(|e| ApiError::Payment(e.to_string()))?;
-
-        Ok((session.url, None))
-    }
-
-    async fn initiate_paypal(
-        state: &AppState,
-        req: &TopUpRequest,
-        transaction_id: Uuid,
-    ) -> Result<(Option<String>, Option<String>), ApiError> {
-        let client_id = &state.config.paypal_details.paypal_client_id;
-        let secret = state.config.paypal_details.paypal_secret.expose_secret();
-        let app_url = &state.config.app_url;
-        let base_url = &state.config.paypal_details.paypal_api_url;
-
-        //even though I know this will not happen because emptiness is dealt with from onset
-        if client_id.trim().is_empty() || secret.trim().is_empty() {
-            return Err(ApiError::Internal("PayPal credentials missing".into()));
-        }
-
-        let mut url = Url::parse(base_url)
-            .map_err(|_| ApiError::Internal("Invalid PayPal base URL".into()))?;
-
-        url.set_path("/v1/oauth2/token");
-
-        let token_resp = state
-            .http_client
-            .post(url)
-            .timeout(std::time::Duration::from_secs(30)) // increased to 30secs for sandbox
-            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-            .header(USER_AGENT, "Payego/1.0 (Rust backend)")
-            .basic_auth(client_id, Some(secret))
-            .form(&[("grant_type", "client_credentials")])
-            .send()
-            .await
-            .map_err(|e| {
-                tracing::error!("PayPal OAuth request failed: {:?}", e);
-                ApiError::Payment("PayPal authentication failed".into())
-            })?;
-
-        let token_json = token_resp
-            .json::<serde_json::Value>()
-            .await
-            .map_err(|_| ApiError::Payment("PayPal token parse error".into()))?;
-        let access_token = token_json["access_token"]
-            .as_str()
-            .ok_or_else(|| ApiError::Payment("PayPal token missing".into()))?;
-
-        let mut url = Url::parse(base_url)
-            .map_err(|_| ApiError::Internal("Invalid PayPal base URL".into()))?;
-
-        url.set_path("v2/checkout/orders");
-
-        // Validate currency early (defensive)
-        let currency = req.currency.to_string();
-        if currency.len() != 3 {
-            return Err(ApiError::Internal("Invalid currency code".into()));
-        }
-
-        // Pre-format amount safely using integer math
-        let amount_cents = req.amount;
-        let amount_str = format!("{}.{:02}", amount_cents / 100, amount_cents % 100);
-        if amount_cents <= 0 {
-            return Err(ApiError::Internal(
-                "Amount must be greater than zero".into(),
-            ));
-        }
-
-        let payload = json!({
-            "intent": "CAPTURE",
-            "purchase_units": [{
-                "amount": {
-                    "currency_code": currency,
-                    "value": amount_str,
-                },
-                "description": format!("Top-up {}", transaction_id),
-                "custom_id": transaction_id.to_string(),
-            }],
-            "application_context": {
-                "payment_method_preference": "IMMEDIATE_PAYMENT_REQUIRED",
-                "return_url": format!("{}/success?transaction_id={}", app_url, transaction_id),
-                "cancel_url": format!("{}/top-up", app_url),
-                "brand_name": "Payego",
-                "user_action": "PAY_NOW"
-            }
-        });
-
-        let resp = state
-            .http_client
-            .post(url)
-            .bearer_auth(access_token)
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| {
-                error!("PayPal order request failed: {}", e);
-                ApiError::Payment("Failed to reach PayPal".into())
-            })?;
-
-        let body: PayPalOrderResp = resp
-            .json()
-            .await
-            .map_err(|_| ApiError::Payment("Invalid PayPal response".into()))?;
-
-        let approve_url = body
-            .links
-            .iter()
-            .find(|l| l.rel == "approve")
-            .ok_or_else(|| ApiError::Payment("Approval link missing".into()))?
-            .href
-            .clone();
-
-        if body.id.trim().is_empty() {
-            return Err(ApiError::Payment("Empty PayPal payment ID".into()));
-        }
-
-        Ok((Some(approve_url), Some(body.id.clone())))
+        Ok(response)
     }
 }

@@ -27,7 +27,7 @@ pub async fn resolve_user(
     let mut conn = state
         .db
         .get()
-        .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
+        .map_err(|e: r2d2::Error| ApiError::DatabaseConnection(e.to_string()))?;
 
     let user = users::table
         .filter(users::email.eq(&params.identifier))

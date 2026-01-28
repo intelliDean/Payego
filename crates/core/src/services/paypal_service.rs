@@ -8,13 +8,13 @@ use payego_primitives::models::dtos::providers::paypal::{
 pub use payego_primitives::{
     error::ApiError,
     models::{
-        app_state::AppState,
         enum_types::{CurrencyCode, PaymentProvider, PaymentState},
         transaction::Transaction,
         wallet::Wallet,
         wallet_ledger::NewWalletLedger,
     },
 };
+pub use crate::app_state::AppState;
 
 use reqwest::Url;
 use secrecy::ExposeSecret;

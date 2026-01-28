@@ -4,16 +4,16 @@ use argon2::{Argon2, Params};
 use crate::repositories::user_repository::UserRepository;
 use password_hash::PasswordHasher;
 pub use payego_primitives::{
-    config::security_config::SecurityConfig,
     error::{ApiError, AuthError},
     models::{
-        app_state::AppState,
         dtos::auth_dto::{RegisterRequest, RegisterResponse},
         user::NewUser,
         user::User,
     },
     schema::users,
 };
+pub use crate::app_state::AppState;
+pub use crate::security::SecurityConfig;
 use secrecy::{ExposeSecret, SecretString};
 use tracing::{error, info};
 

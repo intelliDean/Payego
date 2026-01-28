@@ -38,9 +38,16 @@ pub async fn resolve_account(
     State(state): State<Arc<AppState>>,
     Query(req): Query<ResolveAccountRequest>,
 ) -> Result<Json<ResolveAccountResponse>, ApiError> {
+    let account_len = req.account_number.len();
+    let display_account = if account_len >= 4 {
+        format!("****{}", &req.account_number[account_len - 4..])
+    } else {
+        req.account_number.clone()
+    };
+
     info!(
-        "Resolving account ****{} @ {}",
-        &req.account_number[6..],
+        "Resolving account {} @ {}",
+        display_account,
         req.bank_code
     );
 

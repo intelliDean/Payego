@@ -3,15 +3,15 @@ use tracing::{error, warn};
 use uuid::Uuid;
 
 pub use payego_primitives::{
-    config::security_config::Claims,
     error::{ApiError, AuthError},
     models::{
-        app_state::AppState,
         wallet::Wallet,
         wallet_dto::{WalletDto, WalletsResponse},
     },
     schema::wallets,
 };
+pub use crate::app_state::AppState;
+pub use crate::security::Claims;
 
 pub struct WalletService;
 

@@ -22,6 +22,8 @@ pub struct AppConfig {
     pub exchange_api_url: String,
 
     pub default_country: String,
+    pub rate_limit_rps: u64,
+    pub rate_limit_burst: u32,
 }
 
 impl AppConfig {
@@ -44,6 +46,14 @@ impl AppConfig {
                 .unwrap_or_else(|_| "https://api.exchangerate-api.com/v4/latest".into()),
 
             default_country: env::var("DEFAULT_COUNTRY").unwrap_or_else(|_| "Nigeria".into()),
+
+            rate_limit_rps: env::var("RATE_LIMIT_RPS")
+                .unwrap_or_else(|_| "2".into())
+                .parse()?,
+
+            rate_limit_burst: env::var("RATE_LIMIT_BURST")
+                .unwrap_or_else(|_| "10".into())
+                .parse()?,
         })
     }
 }

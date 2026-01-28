@@ -30,8 +30,8 @@ use axum::{
     Router,
 };
 use axum_prometheus::{metrics_exporter_prometheus::PrometheusHandle, PrometheusMetricLayer};
-// use payego_primitives::config::security_config::auth_middleware;
-use payego_primitives::models::app_state::AppState;
+use payego_core::app_state::AppState;
+use payego_core::security::SecurityConfig;
 use std::sync::Arc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -40,7 +40,6 @@ use crate::handlers::delete_bank::delete_bank_account;
 use crate::handlers::paypal_order::get_paypal_order;
 use crate::handlers::refresh_token::refresh_token;
 use crate::handlers::resolve_user::resolve_user;
-use payego_primitives::config::security_config::SecurityConfig;
 use tower::ServiceBuilder;
 use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tower_http::{
@@ -48,12 +47,6 @@ use tower_http::{
     trace::TraceLayer,
 };
 
-const REQUESTS_PER_SECOND: u64 = 2;
-const BURST_SIZE: u32 = 10;
-
-//this fails at compile time and not runtime
-const _: () = assert!(REQUESTS_PER_SECOND > 0);
-const _: () = assert!(BURST_SIZE > 0);
 
 pub fn create_router(
     state: Arc<AppState>,
@@ -64,8 +57,8 @@ pub fn create_router(
 
     let governor_conf = Arc::new(
         GovernorConfigBuilder::default()
-            .per_second(REQUESTS_PER_SECOND) // 2 requests per second = 120 per minute
-            .burst_size(BURST_SIZE)
+            .per_second(state.config.rate_limit_rps)
+            .burst_size(state.config.rate_limit_burst)
             .finish()
             .expect("Invalid rate limiter configuration: "),
     );

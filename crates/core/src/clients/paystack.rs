@@ -6,7 +6,7 @@ use payego_primitives::models::dtos::providers::paystack::PaystackResolveRespons
 use payego_primitives::models::enum_types::CurrencyCode;
 use reqwest::{Client, Url};
 use secrecy::{ExposeSecret, SecretString};
-use tracing::warn;
+use tracing::{error, warn};
 
 #[derive(Clone)]
 pub struct PaystackClient {
@@ -27,7 +27,7 @@ impl PaystackClient {
         })
     }
 
-    pub fn create_recipient<'a>(
+    pub fn create_recipient_payload<'a>(
         name: &'a str,
         account_number: &'a str,
         bank_code: &'a str,
@@ -58,7 +58,6 @@ impl PaystackClient {
             .map_err(|_| PaystackError::RequestFailed)?;
 
         let status = resp.status();
-
         let body: CreateTransferRecipientResponse = resp
             .json()
             .await
@@ -83,7 +82,6 @@ impl PaystackClient {
         bank_code: &str,
     ) -> Result<PaystackResolveResponse, ApiError> {
         let mut url = self.base_url.clone();
-
         url.set_path("bank/resolve");
         url.query_pairs_mut()
             .append_pair("account_number", account_number)
@@ -97,16 +95,15 @@ impl PaystackClient {
             .send()
             .await
             .map_err(|e| {
-                tracing::error!(error = %e, "Failed to reach Paystack");
+                error!(error = %e, "Failed to reach Paystack");
                 ApiError::Payment("Paystack service unavailable".into())
             })?;
 
         let status = resp.status();
-
         let body_text = resp.text().await.unwrap_or_default();
 
         if !status.is_success() {
-            tracing::warn!(
+            warn!(
                 http_status = status.as_u16(),
                 response = %body_text.chars().take(200).collect::<String>(),
                 "Paystack bank resolve failed"
@@ -115,7 +112,7 @@ impl PaystackClient {
         }
 
         let body: PaystackResolveResponse = serde_json::from_str(&body_text).map_err(|e| {
-            tracing::error!(
+            error!(
                 error = %e,
                 response = %body_text.chars().take(200).collect::<String>(),
                 "Invalid JSON from Paystack"
@@ -124,14 +121,45 @@ impl PaystackClient {
         })?;
 
         if !body.status {
-            tracing::warn!(
-                message = %body.message,
-                "Paystack rejected bank resolution"
-            );
+            warn!(message = %body.message, "Paystack rejected bank resolution");
             return Err(ApiError::Payment(body.message));
         }
 
         Ok(body)
+    }
+
+    pub async fn initiate_transfer(
+        &self,
+        recipient_code: &str,
+        amount: i64,
+        reference: &str,
+    ) -> Result<(), ApiError> {
+        let url = self.endpoint("transfer");
+
+        let resp = self
+            .http
+            .post(url)
+            .bearer_auth(self.secret_key.expose_secret())
+            .json(&serde_json::json!({
+                "source": "balance",
+                "amount": amount,
+                "recipient": recipient_code,
+                "reference": reference
+            }))
+            .send()
+            .await
+            .map_err(|e| {
+                error!(error = %e, "Paystack transfer request failed");
+                ApiError::Payment("Failed to reach Paystack".into())
+            })?;
+
+        if !resp.status().is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            error!(response = %body, "Paystack transfer failed");
+            return Err(ApiError::Payment("Paystack transfer refused".into()));
+        }
+
+        Ok(())
     }
 
     fn endpoint(&self, path: &str) -> Url {
