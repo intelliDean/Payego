@@ -16,6 +16,7 @@ import Wallets from './components/Wallets';
 import Transactions from './components/Transactions';
 import Profile from './components/Profile';
 import Sidebar from './components/Sidebar';
+import VerifyEmail from './pages/VerifyEmail';
 import { useState } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ThemeToggle from './components/ThemeToggle';
@@ -117,6 +118,7 @@ function App() {
                                     <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
                                     <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                                     <Route path="/success" element={<SuccessPage />} />
+                                    <Route path="/verify-email" element={<VerifyEmail />} />
                                 </Routes>
                             </div>
                         </div>

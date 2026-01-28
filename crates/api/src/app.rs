@@ -2,6 +2,7 @@ use crate::config::swagger_config::ApiDoc;
 use crate::handlers::{
     add_bank::add_bank_account,
     all_banks::all_banks,
+    audit_logs::get_user_audit_logs,
     current_user::current_user_details,
     exchange_rate::get_exchange_rate as get_exchange_rate_handler,
     get_transaction::get_transactions,
@@ -21,6 +22,7 @@ use crate::handlers::{
     user_bank_accounts::user_bank_accounts,
     user_transaction::get_user_transaction,
     user_wallets::get_user_wallets,
+    verify_email::{resend_verification, verify_email},
     withdraw::withdraw,
 };
 use axum::{
@@ -138,6 +140,8 @@ fn create_secured_routers(state: &Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/wallet/withdraw/{bank_account_id}",
             axum::routing::post(withdraw),
         )
+        .route("/api/user/audit-logs", get(get_user_audit_logs))
+        .route("/api/auth/resend-verification", post(resend_verification))
         .layer(middleware::from_fn_with_state(
             state.clone(),
             SecurityConfig::auth_middleware,
@@ -161,6 +165,7 @@ fn create_public_routers(metric_handle: PrometheusHandle) -> Router<Arc<AppState
         .route("/api/users/resolve", get(resolve_user))
         .route("/api/exchange-rate", get(get_exchange_rate_handler))
         .route("/api/health", axum::routing::get(health_check))
+        .route("/api/auth/verify-email", get(verify_email))
 }
 
 async fn https_redirect_middleware(

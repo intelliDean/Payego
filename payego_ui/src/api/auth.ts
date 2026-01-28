@@ -9,4 +9,6 @@ export const authApi = {
     resetPassword: (email: string, token: string, newPassword: string) => client.post('/api/auth/reset_password', { email, token, new_password: newPassword }),
     logout: () => client.post('/api/auth/logout', {}),
     getCurrentUser: () => client.get<User>('/api/user/current').then(res => res.data),
+    verifyEmail: (token: string) => client.get(`/api/auth/verify-email?token=${token}`),
+    resendVerification: () => client.post('/api/auth/resend-verification', {}),
 };

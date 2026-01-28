@@ -13,4 +13,19 @@ impl AuditLogRepository {
             .map_err(ApiError::Database)?;
         Ok(())
     }
+
+    pub fn find_by_user_paginated(
+        conn: &mut PgConnection,
+        user_id: uuid::Uuid,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<payego_primitives::models::entities::audit_log::AuditLog>, ApiError> {
+        audit_logs::table
+            .filter(audit_logs::user_id.eq(user_id))
+            .order(audit_logs::created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .load::<payego_primitives::models::entities::audit_log::AuditLog>(conn)
+            .map_err(ApiError::Database)
+    }
 }

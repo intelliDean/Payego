@@ -53,6 +53,17 @@ impl RegisterService {
                 ApiError::Internal("Authentication service error".into())
             })?;
 
+        // 📧 Trigger Email Verification
+        let _ = Box::pin(crate::services::auth_service::verification::VerificationService::send_verification_email(
+            state,
+            user.id,
+            &user.email,
+        ))
+        .await
+        .map_err(|e| {
+            error!(user_id = %user.id, "Failed to send verification email: {}", e);
+        });
+
         let _ = AuditService::log_event(
             state,
             Some(user.id),
