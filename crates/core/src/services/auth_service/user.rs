@@ -42,6 +42,7 @@ impl UserService {
             username: user_data.username,
             wallets: walletz,
             created_at: user_data.created_at,
+            email_verified_at: user_data.email_verified_at,
         })
     }
 }

@@ -22,6 +22,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
         { to: "/banks", label: "Banks", icon: "🏛️" },
         { to: "/wallets", label: "Wallets", icon: "💳" },
         { to: "/transactions", label: "Transactions", icon: "📜" },
+        { to: "/security", label: "Security", icon: "🛡️" },
         { to: "/profile", label: "Profile", icon: "👤" },
     ];
 
