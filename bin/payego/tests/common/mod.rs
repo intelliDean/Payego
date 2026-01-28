@@ -3,6 +3,10 @@ use axum_test::TestServer;
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
 use diesel::PgConnection;
+use payego_core::{
+    clients::{exchange_rate::ExchangeRateClient, paystack::PaystackClient, stripe::StripeClient},
+    AppState,
+};
 use payego_primitives::models::app_state::app_config::AppConfig;
 use payego_primitives::models::app_state::jwt_details::JWTInfo;
 use payego_primitives::models::app_state::paypal_details::PaypalInfo;
@@ -11,12 +15,6 @@ use payego_primitives::models::app_state::stripe_details::StripeInfo;
 use secrecy::SecretString;
 use std::sync::Arc;
 use uuid::Uuid;
-use payego_core::{
-    clients::{
-        exchange_rate::ExchangeRateClient, paystack::PaystackClient, stripe::StripeClient,
-    },
-    AppState,
-};
 
 pub mod fixtures;
 pub mod helpers;

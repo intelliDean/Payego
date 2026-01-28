@@ -47,7 +47,6 @@ use tower_http::{
     trace::TraceLayer,
 };
 
-
 pub fn create_router(
     state: Arc<AppState>,
     metric_layer: PrometheusMetricLayer<'static>,

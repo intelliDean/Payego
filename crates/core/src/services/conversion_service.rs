@@ -1,7 +1,8 @@
+pub use crate::app_state::AppState;
 use crate::repositories::transaction_repository::TransactionRepository;
 use crate::repositories::wallet_repository::WalletRepository;
-pub use crate::app_state::AppState;
 pub use crate::security::Claims;
+use crate::services::audit_service::AuditService;
 use diesel::prelude::*;
 pub use payego_primitives::{
     error::ApiError,
@@ -54,7 +55,10 @@ impl ConversionService {
         }
 
         // ---------- RATE ----------
-        let rate = state.fx.get_rate(req.from_currency, req.to_currency).await?;
+        let rate = state
+            .fx
+            .get_rate(req.from_currency, req.to_currency)
+            .await?;
 
         if !(0.0001..10_000.0).contains(&rate) {
             return Err(ApiError::Payment("Suspicious exchange rate".into()));
@@ -126,6 +130,23 @@ impl ConversionService {
 
             Ok(())
         })?;
+
+        let _ = AuditService::log_event(
+            state,
+            Some(user_id),
+            "conversion.internal",
+            Some("transaction"),
+            Some(&tx_ref.to_string()),
+            json!({
+                "from": req.from_currency,
+                "to": req.to_currency,
+                "amount": req.amount_cents,
+                "converted": net_cents,
+                "rate": rate,
+            }),
+            None,
+        )
+        .await;
 
         Ok(ConvertResponse {
             transaction_id: tx_ref.to_string(),

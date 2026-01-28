@@ -1,15 +1,15 @@
+pub use crate::app_state::AppState;
 use crate::repositories::user_repository::UserRepository;
 use crate::repositories::wallet_repository::WalletRepository;
+pub use crate::security::Claims;
 pub use payego_primitives::{
     error::{ApiError, AuthError},
     models::{
-        dtos::auth_dto::CurrentUserResponse,
-        dtos::wallet_dto::WalletSummaryDto, enum_types::CurrencyCode,
+        dtos::auth_dto::CurrentUserResponse, dtos::wallet_dto::WalletSummaryDto,
+        enum_types::CurrencyCode,
     },
     schema::{users, wallets},
 };
-pub use crate::app_state::AppState;
-pub use crate::security::Claims;
 use tracing::log::error;
 use uuid::Uuid;
 

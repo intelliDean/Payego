@@ -1,5 +1,7 @@
+pub use crate::app_state::AppState;
 use crate::repositories::transaction_repository::TransactionRepository;
 use crate::repositories::wallet_repository::WalletRepository;
+pub use crate::security::Claims;
 use diesel::prelude::*;
 pub use payego_primitives::{
     error::{ApiError, AuthError},
@@ -13,8 +15,6 @@ pub use payego_primitives::{
     },
     schema::{transactions, wallet_ledger, wallets},
 };
-pub use crate::app_state::AppState;
-pub use crate::security::Claims;
 use stripe::PaymentIntent;
 use tracing::{error, info, warn};
 use uuid::Uuid;

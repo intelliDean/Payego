@@ -1,8 +1,11 @@
-use payego_primitives::models::app_state::stripe_details::StripeInfo;
 use payego_primitives::error::ApiError;
+use payego_primitives::models::app_state::stripe_details::StripeInfo;
 use secrecy::ExposeSecret;
-use stripe::{Client, CheckoutSession, CheckoutSessionMode, CreateCheckoutSession, CreateCheckoutSessionLineItems, CreateCheckoutSessionPaymentIntentData, PaymentIntent};
 use std::collections::HashMap;
+use stripe::{
+    CheckoutSession, CheckoutSessionMode, Client, CreateCheckoutSession,
+    CreateCheckoutSessionLineItems, CreateCheckoutSessionPaymentIntentData, PaymentIntent,
+};
 
 #[derive(Clone)]
 pub struct StripeClient {
@@ -24,12 +27,17 @@ impl StripeClient {
         cancel_url: &str,
     ) -> Result<CheckoutSession, ApiError> {
         let mut metadata = HashMap::new();
-        metadata.insert("transaction_reference".to_string(), transaction_ref.to_string());
+        metadata.insert(
+            "transaction_reference".to_string(),
+            transaction_ref.to_string(),
+        );
 
         let line_item = CreateCheckoutSessionLineItems {
             quantity: Some(1),
             price_data: Some(stripe::CreateCheckoutSessionLineItemsPriceData {
-                currency: currency.parse().map_err(|_| ApiError::Internal("Invalid currency for Stripe".into()))?,
+                currency: currency
+                    .parse()
+                    .map_err(|_| ApiError::Internal("Invalid currency for Stripe".into()))?,
                 product_data: Some(stripe::CreateCheckoutSessionLineItemsPriceDataProductData {
                     name: "Wallet Top-up".to_string(),
                     ..Default::default()
@@ -58,7 +66,10 @@ impl StripeClient {
             .map_err(|e| ApiError::Payment(format!("Stripe error: {}", e)))
     }
 
-    pub async fn get_payment_intent(&self, id: &stripe::PaymentIntentId) -> Result<PaymentIntent, ApiError> {
+    pub async fn get_payment_intent(
+        &self,
+        id: &stripe::PaymentIntentId,
+    ) -> Result<PaymentIntent, ApiError> {
         PaymentIntent::retrieve(&self.client, id, &[])
             .await
             .map_err(|e| ApiError::Payment(format!("Stripe error: {}", e)))

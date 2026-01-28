@@ -1,6 +1,3 @@
-use payego_primitives::{
-    error::{ApiError, AuthError},
-};
 use crate::app_state::AppState;
 use axum::http::Request;
 use axum::middleware::Next;
@@ -10,6 +7,7 @@ use chrono::{Duration, Utc};
 use diesel::prelude::*;
 use http::HeaderMap;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use payego_primitives::error::{ApiError, AuthError};
 use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

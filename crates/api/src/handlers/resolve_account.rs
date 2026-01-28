@@ -45,11 +45,7 @@ pub async fn resolve_account(
         req.account_number.clone()
     };
 
-    info!(
-        "Resolving account {} @ {}",
-        display_account,
-        req.bank_code
-    );
+    info!("Resolving account {} @ {}", display_account, req.bank_code);
 
     let resolved =
         BankAccountService::resolve_account_details(&state, &req.bank_code, &req.account_number)

@@ -4,12 +4,11 @@ use secrecy::ExposeSecret;
 use std::sync::Arc;
 use stripe::{Event, EventObject, EventType, Webhook};
 
+pub use crate::app_state::AppState;
 use crate::services::transaction_service::TransactionService;
 pub use payego_primitives::{
-    error::ApiError,
-    models::dtos::providers::stripe::StripeWebhookContext,
+    error::ApiError, models::dtos::providers::stripe::StripeWebhookContext,
 };
-pub use crate::app_state::AppState;
 
 pub enum WebhookOutcome {
     Processed,

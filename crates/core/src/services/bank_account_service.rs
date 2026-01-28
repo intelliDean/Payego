@@ -1,7 +1,8 @@
 pub use crate::app_state::AppState;
-pub use crate::security::Claims;
-use crate::repositories::bank_account_repository::BankAccountRepository;
 use crate::clients::paystack::PaystackClient;
+use crate::repositories::bank_account_repository::BankAccountRepository;
+pub use crate::security::Claims;
+use crate::services::audit_service::AuditService;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
 pub use payego_primitives::{
@@ -80,7 +81,8 @@ impl BankAccountService {
             CurrencyCode::NGN,
         );
 
-        let recipient_code = state.paystack
+        let recipient_code = state
+            .paystack
             .create_transfer_recipient(payload)
             .await
             .map_err(|_| ApiError::Payment("Unable to create transfer recipient".into()))?;
@@ -96,6 +98,20 @@ impl BankAccountService {
         };
 
         let account = BankAccountRepository::create(&mut conn, new_account)?;
+
+        let _ = AuditService::log_event(
+            state,
+            Some(user_id_val),
+            "bank_account.created",
+            Some("bank_account"),
+            Some(&account.id.to_string()),
+            serde_json::json!({
+                "bank_name": account.bank_name,
+                "account_number": account.account_number,
+            }),
+            None,
+        )
+        .await;
 
         info!(
             user_id = %user_id_val,
@@ -119,7 +135,10 @@ impl BankAccountService {
             return Ok(cached);
         }
 
-        let body = state.paystack.resolve_bank_account(account_number, bank_code).await?;
+        let body = state
+            .paystack
+            .resolve_bank_account(account_number, bank_code)
+            .await?;
 
         let data = body
             .data
@@ -171,6 +190,17 @@ impl BankAccountService {
         })?;
 
         BankAccountRepository::delete_by_id_and_user(&mut conn, bank_account_id, user_id)?;
+
+        let _ = AuditService::log_event(
+            state,
+            Some(user_id),
+            "bank_account.deleted",
+            Some("bank_account"),
+            Some(&bank_account_id.to_string()),
+            serde_json::json!({}),
+            None,
+        )
+        .await;
 
         Ok(DeleteResponse {
             account_id: bank_account_id,

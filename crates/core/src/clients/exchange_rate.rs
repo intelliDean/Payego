@@ -1,6 +1,6 @@
 use payego_primitives::error::ApiError;
-use payego_primitives::models::enum_types::CurrencyCode;
 use payego_primitives::models::dtos::wallet_dto::ExchangeRateResponse;
+use payego_primitives::models::enum_types::CurrencyCode;
 use reqwest::{Client, Url};
 use std::time::Duration;
 
@@ -12,8 +12,8 @@ pub struct ExchangeRateClient {
 
 impl ExchangeRateClient {
     pub fn new(http: Client, base_url: &str) -> Result<Self, ApiError> {
-        let base_url = Url::parse(base_url)
-            .map_err(|_| ApiError::Internal("Invalid FX base URL".into()))?;
+        let base_url =
+            Url::parse(base_url).map_err(|_| ApiError::Internal("Invalid FX base URL".into()))?;
         Ok(Self { http, base_url })
     }
 
@@ -27,7 +27,8 @@ impl ExchangeRateClient {
             .map_err(|_| ApiError::Internal("Invalid FX URL path".into()))?
             .push(from.to_string().as_str());
 
-        let resp = self.http
+        let resp = self
+            .http
             .get(url)
             .timeout(Duration::from_secs(5))
             .send()

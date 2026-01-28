@@ -1,8 +1,8 @@
 pub use crate::app_state::AppState;
-use crate::services::audit_service::AuditService;
-pub use crate::security::Claims;
 use crate::repositories::transaction_repository::TransactionRepository;
 use crate::repositories::wallet_repository::WalletRepository;
+pub use crate::security::Claims;
+use crate::services::audit_service::AuditService;
 use diesel::prelude::*;
 pub use payego_primitives::{
     error::ApiError,
@@ -226,16 +226,16 @@ impl TransferService {
             CurrencyCode::NGN,
         );
 
-        let recipient_code = state.paystack
+        let recipient_code = state
+            .paystack
             .create_transfer_recipient(payload)
             .await
             .map_err(|_| ApiError::Payment("Unable to create transfer recipient".into()))?;
 
-        state.paystack.initiate_transfer(
-            &recipient_code,
-            amount_minor,
-            &req.reference.to_string(),
-        ).await?;
+        state
+            .paystack
+            .initiate_transfer(&recipient_code, amount_minor, &req.reference.to_string())
+            .await?;
 
         // Updating status to completed (simplified, usually we'd wait for webhook)
         TransactionRepository::update_status_and_provider_ref(
@@ -257,7 +257,8 @@ impl TransferService {
                 "currency": currency,
             }),
             None,
-        ).await;
+        )
+        .await;
 
         Ok(TransferResponse {
             transaction_id: tx_id,

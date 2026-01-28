@@ -6,9 +6,9 @@ use std::time::Duration;
 
 type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
-pub use payego_primitives::models::app_config::AppConfig;
-use crate::clients::{PaystackClient, StripeClient, ExchangeRateClient, EmailClient};
+use crate::clients::{EmailClient, ExchangeRateClient, PaystackClient, StripeClient};
 use eyre::Result;
+pub use payego_primitives::models::app_config::AppConfig;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -23,9 +23,7 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(db: DbPool, config: AppConfig) -> Result<Arc<Self>> {
-        let http = Client::builder()
-            .timeout(Duration::from_secs(30))
-            .build()?;
+        let http = Client::builder().timeout(Duration::from_secs(30)).build()?;
 
         let paystack = PaystackClient::new(
             http.clone(),
@@ -35,10 +33,7 @@ impl AppState {
 
         let stripe = StripeClient::new(&config.stripe_details);
 
-        let fx = ExchangeRateClient::new(
-            http.clone(),
-            &config.exchange_api_url,
-        )?;
+        let fx = ExchangeRateClient::new(http.clone(), &config.exchange_api_url)?;
 
         let email = EmailClient::new();
 

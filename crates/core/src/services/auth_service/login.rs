@@ -1,4 +1,6 @@
+pub use crate::app_state::AppState;
 use crate::repositories::user_repository::UserRepository;
+pub use crate::security::SecurityConfig;
 use crate::services::audit_service::AuditService;
 use crate::services::auth_service::register::RegisterService;
 use argon2::{password_hash::PasswordHash, PasswordVerifier};
@@ -10,8 +12,6 @@ pub use payego_primitives::{
         user::User,
     },
 };
-pub use crate::app_state::AppState;
-pub use crate::security::SecurityConfig;
 use tracing::{error, info, warn};
 
 pub struct LoginService;

@@ -1,8 +1,9 @@
+pub use crate::app_state::AppState;
 use crate::repositories::bank_account_repository::BankAccountRepository;
 use crate::repositories::transaction_repository::TransactionRepository;
 use crate::repositories::wallet_repository::WalletRepository;
-pub use crate::app_state::AppState;
 pub use crate::security::Claims;
+use crate::services::audit_service::AuditService;
 use diesel::prelude::*;
 pub use payego_primitives::{
     error::ApiError,
@@ -51,16 +52,18 @@ impl WithdrawalService {
             user_id,
         )?;
 
-        let recipient_code = bank_account.provider_recipient_id.as_deref().ok_or_else(|| {
-            ApiError::Payment("Bank account is not linked to a provider recipient".into())
-        })?;
+        let recipient_code = bank_account
+            .provider_recipient_id
+            .as_deref()
+            .ok_or_else(|| {
+                ApiError::Payment("Bank account is not linked to a provider recipient".into())
+            })?;
 
         // External transfer
-        state.paystack.initiate_transfer(
-            recipient_code,
-            amount_minor,
-            &req.reference.to_string(),
-        ).await?;
+        state
+            .paystack
+            .initiate_transfer(recipient_code, amount_minor, &req.reference.to_string())
+            .await?;
 
         // Atomic DB write
         let tx_id = conn.transaction::<_, ApiError, _>(|conn| {
@@ -99,6 +102,21 @@ impl WithdrawalService {
 
             Ok::<Uuid, ApiError>(tx.id)
         })?;
+
+        let _ = AuditService::log_event(
+            state,
+            Some(user_id),
+            "withdrawal.initiated",
+            Some("transaction"),
+            Some(&tx_id.to_string()),
+            json!({
+                "amount": amount_minor,
+                "currency": wallet.currency,
+                "bank_account_id": bank_account_id,
+            }),
+            None,
+        )
+        .await;
 
         Ok(WithdrawResponse {
             transaction_id: tx_id,

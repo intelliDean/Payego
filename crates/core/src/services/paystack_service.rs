@@ -1,6 +1,7 @@
 use axum::body::Bytes;
 use diesel::Connection;
 
+pub use crate::app_state::AppState;
 use crate::repositories::transaction_repository::TransactionRepository;
 use crate::repositories::wallet_repository::WalletRepository;
 use hmac::KeyInit;
@@ -14,7 +15,6 @@ pub use payego_primitives::{
         wallet_ledger::NewWalletLedger,
     },
 };
-pub use crate::app_state::AppState;
 use secrecy::ExposeSecret;
 use std::sync::Arc;
 use tracing::{info, warn};

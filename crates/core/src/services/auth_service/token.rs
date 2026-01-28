@@ -1,4 +1,6 @@
+pub use crate::app_state::AppState;
 use crate::repositories::token_repository::TokenRepository;
+pub use crate::security::SecurityConfig;
 use chrono::{Duration, Utc};
 use diesel::prelude::*;
 use hex;
@@ -10,8 +12,6 @@ pub use payego_primitives::{
     },
     schema::refresh_tokens::dsl::*,
 };
-pub use crate::app_state::AppState;
-pub use crate::security::SecurityConfig;
 use rand::{distributions::Alphanumeric, Rng};
 use sha2::{Digest, Sha256};
 use tracing::{error, info, warn};

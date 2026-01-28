@@ -1,3 +1,4 @@
+pub use crate::app_state::AppState;
 use crate::repositories::bank_repository::BankRepository;
 pub use payego_primitives::{
     error::ApiError,
@@ -11,7 +12,6 @@ pub use payego_primitives::{
     },
     schema::banks,
 };
-pub use crate::app_state::AppState;
 use reqwest::Url;
 use secrecy::ExposeSecret;
 use std::sync::Arc;

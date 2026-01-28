@@ -1,7 +1,7 @@
 use diesel::prelude::*;
+use payego_primitives::error::ApiError;
 use payego_primitives::models::entities::audit_log::NewAuditLog;
 use payego_primitives::schema::audit_logs;
-use payego_primitives::error::ApiError;
 
 pub struct AuditLogRepository;
 

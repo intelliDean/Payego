@@ -1,10 +1,10 @@
 mod common;
 
-use common::{create_test_app, create_test_app_state, create_test_user};
 use axum_test::TestServer;
+use common::{create_test_app, create_test_app_state, create_test_user};
 use diesel::prelude::*;
-use payego_primitives::schema::audit_logs;
 use payego_primitives::models::entities::audit_log::AuditLog;
+use payego_primitives::schema::audit_logs;
 use serial_test::serial;
 
 #[tokio::test]
@@ -15,7 +15,7 @@ async fn test_audit_log_on_registration() {
     let server = TestServer::new(app).unwrap();
 
     let email = format!("audit_test_{}@example.com", uuid::Uuid::new_v4());
-    
+
     // Perform registration
     let _ = create_test_user(&server, &email).await;
 
@@ -27,7 +27,10 @@ async fn test_audit_log_on_registration() {
         .unwrap();
 
     assert!(!logs.is_empty());
-    let log = logs.iter().find(|l| l.metadata["email"] == email).expect("Audit log for registration not found");
+    let log = logs
+        .iter()
+        .find(|l| l.metadata["email"] == email)
+        .expect("Audit log for registration not found");
     assert_eq!(log.event_type, "auth.register");
 }
 

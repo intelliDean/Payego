@@ -1,4 +1,5 @@
 // pub mod auth_service;
+pub mod audit_service;
 pub mod auth_service;
 pub mod bank_account_service;
 pub mod bank_service;
@@ -11,4 +12,3 @@ pub mod transaction_service;
 pub mod transfer_service;
 pub mod wallet_service;
 pub mod withdrawal_service;
-pub mod audit_service;

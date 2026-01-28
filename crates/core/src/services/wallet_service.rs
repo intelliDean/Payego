@@ -2,6 +2,8 @@ use crate::repositories::wallet_repository::WalletRepository;
 use tracing::{error, warn};
 use uuid::Uuid;
 
+pub use crate::app_state::AppState;
+pub use crate::security::Claims;
 pub use payego_primitives::{
     error::{ApiError, AuthError},
     models::{
@@ -10,8 +12,6 @@ pub use payego_primitives::{
     },
     schema::wallets,
 };
-pub use crate::app_state::AppState;
-pub use crate::security::Claims;
 
 pub struct WalletService;
 

@@ -1,8 +1,10 @@
-use crate::services::auth_service::token::TokenService;
 use crate::services::audit_service::AuditService;
+use crate::services::auth_service::token::TokenService;
 use argon2::{Argon2, Params};
 
+pub use crate::app_state::AppState;
 use crate::repositories::user_repository::UserRepository;
+pub use crate::security::SecurityConfig;
 use password_hash::PasswordHasher;
 pub use payego_primitives::{
     error::{ApiError, AuthError},
@@ -13,8 +15,6 @@ pub use payego_primitives::{
     },
     schema::users,
 };
-pub use crate::app_state::AppState;
-pub use crate::security::SecurityConfig;
 use secrecy::{ExposeSecret, SecretString};
 use tracing::{error, info};
 
