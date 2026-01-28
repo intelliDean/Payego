@@ -31,7 +31,7 @@ impl PaymentService {
         let tx_ref = Uuid::new_v4();
 
         // Create initial transaction
-        TransactionRepository::create(
+        let transaction = TransactionRepository::create(
             &mut conn,
             NewTransaction {
                 user_id,
@@ -50,6 +50,8 @@ impl PaymentService {
                 }),
             },
         )?;
+
+        let tx_ref = transaction.reference;
 
         let response = match req.provider {
             PaymentProvider::Stripe => {
