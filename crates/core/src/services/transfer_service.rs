@@ -22,6 +22,7 @@ use reqwest::{Client, Url};
 use secrecy::ExposeSecret;
 use serde_json::json;
 use std::sync::Arc;
+use tracing::{info, warn};
 use uuid::Uuid;
 
 pub struct TransferService;
@@ -51,6 +52,11 @@ impl TransferService {
                 &req.idempotency_key,
             )? {
                 if existing.txn_state == PaymentState::Completed {
+                    info!(
+                        transaction_id = %existing.id,
+                        idempotency_key = %req.idempotency_key,
+                        "Internal transfer already completed (idempotency check)"
+                    );
                     return Ok(existing.id);
                 }
             }
@@ -65,6 +71,13 @@ impl TransferService {
                 WalletRepository::create_if_not_exists(conn, req.recipient, req.currency)?;
 
             if sender_wallet.balance < amount_cents {
+                warn!(
+                    user_id = %sender_id,
+                    available_balance = sender_wallet.balance,
+                    requested_amount = amount_cents,
+                    currency = %req.currency,
+                    "Insufficient balance for internal transfer"
+                );
                 return Err(ApiError::Payment("Insufficient balance".into()));
             }
 
@@ -135,6 +148,15 @@ impl TransferService {
             WalletRepository::debit(conn, sender_wallet.id, amount_cents)?;
             WalletRepository::credit(conn, recipient_wallet.id, amount_cents)?;
 
+            info!(
+                transaction_id = %sender_tx.id,
+                sender_id = %sender_id,
+                recipient_id = %req.recipient,
+                amount = amount_cents,
+                currency = %req.currency,
+                "Internal transfer completed successfully"
+            );
+
             Ok(sender_tx.id)
         })
     }
@@ -164,6 +186,11 @@ impl TransferService {
             if let Some(existing) =
                 TransactionRepository::find_by_idempotency_key(conn, user_id, &req.idempotency_key)?
             {
+                info!(
+                    transaction_id = %existing.id,
+                    idempotency_key = %req.idempotency_key,
+                    "External transfer already initiated (idempotency check)"
+                );
                 return Ok(existing.id);
             }
 
@@ -172,6 +199,13 @@ impl TransferService {
                 WalletRepository::find_by_user_and_currency_with_lock(conn, user_id, currency)?;
 
             if wallet.balance < amount_minor {
+                warn!(
+                    user_id = %user_id,
+                    available_balance = wallet.balance,
+                    requested_amount = amount_minor,
+                    currency = %currency,
+                    "Insufficient balance for external transfer"
+                );
                 return Err(ApiError::Payment("Insufficient balance".into()));
             }
 
@@ -228,6 +262,15 @@ impl TransferService {
             },
             Some(provider_data.transfer_code.to_string()),
         )?;
+
+        info!(
+            transaction_id = %tx_id,
+            user_id = %user_id,
+            amount = amount_minor,
+            currency = %currency,
+            provider_status = ?provider_data.status,
+            "External transfer initiated successfully"
+        );
 
         Ok(TransferResponse {
             transaction_id: tx_id,

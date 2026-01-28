@@ -95,6 +95,11 @@ impl BankAccountService {
             &req.bank_code,
             &req.account_number,
         )? {
+            info!(
+                user_id = %user_id_val,
+                bank_code = %req.bank_code,
+                "Bank account already exists (idempotency check)"
+            );
             return Ok(existing);
         }
 
@@ -132,7 +137,16 @@ impl BankAccountService {
             is_verified: true,
         };
 
-        BankAccountRepository::create(&mut conn, new_account)
+        let account = BankAccountRepository::create(&mut conn, new_account)?;
+
+        info!(
+            user_id = %user_id_val,
+            account_id = %account.id,
+            bank_code = %req.bank_code,
+            "Bank account created successfully"
+        );
+
+        Ok(account)
     }
 
     pub async fn resolve_account_details(
@@ -224,7 +238,7 @@ impl BankAccountService {
             .map_err(|_| ApiError::Internal("Account number regex misconfigured".into()))?
             .is_match(account_number)
         {
-            error!("Account number must be 10 digits");
+            warn!("bank_account.validate: invalid account number format");
             return Err(ApiError::BadRequest(
                 "Account number must be 10 digits".to_string(),
             ));
@@ -235,7 +249,7 @@ impl BankAccountService {
             .map_err(|_| ApiError::Internal("Account number regex misconfigured".into()))?
             .is_match(bank_code)
         {
-            error!("Bank code must be 3–10 digits");
+            warn!("bank_account.validate: invalid bank code format");
             return Err(ApiError::BadRequest(
                 "Bank code must be 3–10 digits".to_string(),
             ));
@@ -255,6 +269,12 @@ impl BankAccountService {
         })?;
 
         BankAccountRepository::delete_by_id_and_user(&mut conn, bank_account_id, user_id)?;
+
+        info!(
+            user_id = %user_id,
+            account_id = %bank_account_id,
+            "Bank account deleted successfully"
+        );
 
         Ok(DeleteResponse {
             account_id: bank_account_id,

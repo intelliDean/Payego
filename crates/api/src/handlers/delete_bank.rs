@@ -18,10 +18,10 @@ use uuid::Uuid;
         ("bank_account_id" = Uuid, Path, description = "Bank account ID to delete")
     ),
     responses(
-        (status = 204, description = "Bank account deleted successfully"),
+        (status = 200, description = "Bank account deleted successfully", body = DeleteResponse),
         (status = 401, description = "Unauthorized – missing or invalid token", body = ApiErrorResponse),
-        (status = 404, description = "Bank account not found", body = ApiErrorResponse),
-        (status = 409, description = "Bank account cannot be deleted", body = ApiErrorResponse),
+        (status = 404, description = "Bank account not found or does not belong to user", body = ApiErrorResponse),
+        (status = 409, description = "Conflict – bank account cannot be deleted (e.g., pending transactions)", body = ApiErrorResponse),
         (status = 500, description = "Internal server error", body = ApiErrorResponse),
     ),
     security(("bearerAuth" = [])),

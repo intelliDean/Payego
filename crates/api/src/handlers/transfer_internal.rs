@@ -4,7 +4,7 @@ use payego_core::services::transfer_service::{
 };
 use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
-use tracing::error;
+use tracing::warn;
 use validator::Validate;
 
 #[utoipa::path(
@@ -45,14 +45,14 @@ pub async fn transfer_internal(
     payload: Result<Json<WalletTransferRequest>, axum::extract::rejection::JsonRejection>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let Json(req) = payload
-        .map_err(|rejection| {
-            error!("JSON rejection: {}", rejection);
+        .map_err(|_rejection| {
+            warn!("transfer_internal: invalid JSON payload");
             ApiError::Validation(validator::ValidationErrors::new())
         })
         .map_err(|_| ApiError::Internal("Invalid JSON payload".into()))?;
 
     req.validate().map_err(|e| {
-        error!("Validation error: {}", e);
+        warn!("transfer_internal: validation error");
         ApiError::Validation(e)
     })?;
 
@@ -63,22 +63,11 @@ pub async fn transfer_internal(
         return Err(ApiError::Internal("Cannot transfer to yourself".into()));
     }
 
-    let recipient_id = req.recipient;
+    // let recipient_id = req.recipient;
 
-    match TransferService::transfer_internal(&state, sender_id, req).await {
-        Ok(transaction_id) => {
-            tracing::info!(
-                "Internal transfer successful from {} to {}",
-                sender_id,
-                recipient_id
-            );
-            Ok(Json(
-                serde_json::json!({ "id": transaction_id.to_string() }),
-            ))
-        }
-        Err(e) => {
-            tracing::error!("Transfer failed: {}", e);
-            Err(e)
-        }
-    }
+    let transaction_id = TransferService::transfer_internal(&state, sender_id, req).await?;
+
+    Ok(Json(
+        serde_json::json!({ "id": transaction_id.to_string() }),
+    ))
 }

@@ -5,7 +5,7 @@ use payego_core::services::withdrawal_service::{
 };
 use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
-use tracing::log::error;
+use tracing::warn;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -23,6 +23,9 @@ use validator::Validate;
                    Most withdrawals are asynchronous: status starts as `pending` and updates via webhooks (`transfer.success`, `transfer.failed`, etc.). \
                    Always rely on final webhook confirmation — do **not** assume success from the 200 response alone.",
     operation_id = "initiateWalletWithdrawal",
+    params(
+        ("bank_account_id" = Uuid, Path, description = "ID of the verified bank account to withdraw funds to (must belong to the authenticated user)")
+    ),
     request_body(
         content = WithdrawRequest,
         description = "Withdrawal details: amount, currency (must match wallet), optional narration/description, \
@@ -53,7 +56,7 @@ pub async fn withdraw(
     Json(req): Json<WithdrawRequest>,
 ) -> Result<Json<WithdrawResponse>, ApiError> {
     req.validate().map_err(|e| {
-        error!("Validation error: {}", e);
+        warn!("withdraw: validation error");
         ApiError::Validation(e)
     })?;
 

@@ -7,7 +7,7 @@ use payego_core::services::auth_service::register::{
 };
 use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
-use tracing::log::error;
+use tracing::warn;
 use validator::Validate;
 
 #[utoipa::path(
@@ -43,7 +43,7 @@ pub async fn register(
     let payload = payload.normalize();
 
     payload.validate().map_err(|e| {
-        error!("Validation error: {}", e);
+        warn!("register: validation error");
         ApiError::Validation(e)
     })?;
 

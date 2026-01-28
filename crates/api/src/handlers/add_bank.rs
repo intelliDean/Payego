@@ -7,7 +7,7 @@ use payego_core::services::bank_account_service::{
 };
 use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
-use tracing::error;
+use tracing::warn;
 use validator::Validate;
 
 #[utoipa::path(
@@ -34,7 +34,7 @@ pub async fn add_bank_account(
     Json(req): Json<BankRequest>,
 ) -> Result<(StatusCode, Json<BankAccountResponse>), ApiError> {
     req.validate().map_err(|e| {
-        error!("Validation error: {}", e);
+        warn!("add_bank: validation error");
         ApiError::Validation(e)
     })?;
 

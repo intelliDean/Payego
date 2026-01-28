@@ -21,6 +21,9 @@ use uuid::Uuid;
                    Only transactions belonging to the authenticated user are accessible. \
                    Use this endpoint for transaction receipts, status polling, or detailed history views.",
     operation_id = "getTransactionById",
+    params(
+        ("transaction_id" = Uuid, Path, description = "Unique transaction ID (UUID) to retrieve")
+    ),
     responses(
         ( status = 200, description = "Transaction details retrieved successfully", body = TransactionResponse),
         ( status = 400, description = "Bad request – invalid transaction ID format (not a valid UUID)", body = ApiErrorResponse),

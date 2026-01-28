@@ -19,6 +19,10 @@ use tracing::info;
                    Requires valid Nigerian bank code (from Paystack supported banks list) and 10-digit account number. \
                    The endpoint is rate-limited and depends on Paystack availability — cache results when possible for repeated lookups.",
     operation_id = "resolveAccountName",
+    params(
+        ("account_number" = String, Query, description = "10-digit bank account number to verify"),
+        ("bank_code" = String, Query, description = "Bank code from Paystack supported banks list (e.g., '058' for GTBank)")
+    ),
     responses(
         ( status = 200, description = "Account successfully resolved — returns account name and other verification details", body = ResolveAccountResponse),
         ( status = 400, description = "Bad request — invalid bank code, account number format, or missing required parameters", body = ApiErrorResponse),

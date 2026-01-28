@@ -8,7 +8,7 @@ pub use payego_primitives::{
         entities::authentication::NewBlacklistedToken,
     },
 };
-use tracing::log::{error, info};
+use tracing::{error, info};
 
 pub struct LogoutService;
 

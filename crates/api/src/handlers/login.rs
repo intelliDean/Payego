@@ -10,7 +10,7 @@ use std::sync::Arc;
     path = "/api/auth/login",
     tag = "Authentication",
     summary = "Authenticate user and obtain JWT token",
-    description = "Authenticates a user using email and password\
+    description = "Authenticates a user using email and password. \
                    On success, returns a JWT access token, email and a refresh token that can be used \
                    for subsequent authenticated requests via the `Authorization: Bearer <token>` header. \
                    This is a public endpoint — no prior authentication is required.",
