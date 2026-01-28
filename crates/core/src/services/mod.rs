@@ -11,3 +11,4 @@ pub mod transaction_service;
 pub mod transfer_service;
 pub mod wallet_service;
 pub mod withdrawal_service;
+pub mod audit_service;

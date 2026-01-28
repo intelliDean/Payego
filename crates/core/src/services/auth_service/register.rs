@@ -1,4 +1,5 @@
 use crate::services::auth_service::token::TokenService;
+use crate::services::audit_service::AuditService;
 use argon2::{Argon2, Params};
 
 use crate::repositories::user_repository::UserRepository;
@@ -51,6 +52,17 @@ impl RegisterService {
                 error!("auth.register: refresh token generation failed");
                 ApiError::Internal("Authentication service error".into())
             })?;
+
+        let _ = AuditService::log_event(
+            state,
+            Some(user.id),
+            "auth.register",
+            Some("user"),
+            Some(&user.id.to_string()),
+            serde_json::json!({ "email": user.email }),
+            None,
+        )
+        .await;
 
         info!(
             user_id = %user.id,

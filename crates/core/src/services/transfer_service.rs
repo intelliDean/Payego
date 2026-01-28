@@ -1,4 +1,5 @@
 pub use crate::app_state::AppState;
+use crate::services::audit_service::AuditService;
 pub use crate::security::Claims;
 use crate::repositories::transaction_repository::TransactionRepository;
 use crate::repositories::wallet_repository::WalletRepository;
@@ -35,7 +36,7 @@ impl TransferService {
             return Err(ApiError::Internal("Amount must be positive".into()));
         }
 
-        conn.transaction::<_, ApiError, _>(|conn| {
+        let tx_id = conn.transaction::<_, ApiError, _>(|conn| {
             if let Some(existing) = TransactionRepository::find_by_idempotency_key(
                 conn,
                 sender_id,
@@ -127,7 +128,24 @@ impl TransferService {
             WalletRepository::credit(conn, recipient_wallet.id, amount_cents)?;
 
             Ok::<Uuid, ApiError>(sender_tx.id)
-        })
+        })?;
+
+        let _ = AuditService::log_event(
+            state,
+            Some(sender_id),
+            "transfer.internal",
+            Some("transaction"),
+            Some(&tx_id.to_string()),
+            json!({
+                "recipient": req.recipient,
+                "amount": amount_cents,
+                "currency": req.currency,
+            }),
+            None,
+        )
+        .await;
+
+        Ok(tx_id)
     }
 
     pub async fn transfer_external(
@@ -226,6 +244,20 @@ impl TransferService {
             PaymentState::Completed,
             Some(recipient_code), // Using recipient_code as provider ref for now
         )?;
+
+        let _ = AuditService::log_event(
+            state,
+            Some(user_id),
+            "transfer.external",
+            Some("transaction"),
+            Some(&tx_id.to_string()),
+            json!({
+                "bank_code": req.bank_code,
+                "amount": amount_minor,
+                "currency": currency,
+            }),
+            None,
+        ).await;
 
         Ok(TransferResponse {
             transaction_id: tx_id,
