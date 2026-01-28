@@ -104,6 +104,7 @@ pub struct CurrentUserResponse {
     pub username: Option<String>,
     pub wallets: Vec<WalletSummaryDto>,
     pub created_at: chrono::DateTime<chrono::Utc>,
+    pub email_verified_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 // --- Health ---

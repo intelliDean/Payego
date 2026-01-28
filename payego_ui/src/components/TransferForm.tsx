@@ -11,6 +11,8 @@ import { usersApi } from '../api/users';
 import client from '../api/client';
 import { ResolvedUser } from '@/types';
 import { getErrorMessage } from '../utils/errorHandler';
+import { useAuth } from '../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 
 const transferSchema = z.discriminatedUnion('transferType', [
     z.object({
@@ -34,6 +36,7 @@ type TransferFormValues = z.infer<typeof transferSchema>;
 const TransferForm: React.FC = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const { user } = useAuth();
     const { data: wallets } = useWallets();
     const { data: banks } = useBanks();
     const [resolving, setResolving] = useState(false);
@@ -177,6 +180,24 @@ const TransferForm: React.FC = () => {
                 <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Transfer Funds</h2>
             </div>
 
+            {!user?.email_verified_at && (
+                <div className="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-xl">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <span className="text-yellow-400">⚠️</span>
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm text-yellow-700 font-bold">
+                                Email Verification Required
+                            </p>
+                            <p className="text-xs text-yellow-600 mt-1">
+                                Please verify your email to unlock transfers. <Link to="/security" className="underline font-black">Go to Security</Link>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div>
                     <label className="input-label">Type</label>
@@ -227,7 +248,11 @@ const TransferForm: React.FC = () => {
                     </>
                 )}
 
-                <button type="submit" disabled={submitting || resolving} className="w-full btn-primary p-3 rounded-lg font-bold">
+                <button
+                    type="submit"
+                    disabled={submitting || resolving || !user?.email_verified_at}
+                    className={`w-full btn-primary p-3 rounded-lg font-bold ${!user?.email_verified_at ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
+                >
                     {submitting || resolving ? 'Processing...' : 'Send Money'}
                 </button>
                 {error && <p className="text-red-500 text-sm text-center">{error}</p>}

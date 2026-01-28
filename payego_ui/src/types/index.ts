@@ -3,6 +3,7 @@ export interface User {
     username: string | null;
     email: string;
     created_at: string;
+    email_verified_at: string | null;
 }
 
 export type Currency =

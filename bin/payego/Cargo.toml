@@ -32,3 +32,5 @@ fake = { version = "2.9", features = ["derive"] }
 validator.workspace = true
 argon2.workspace = true
 reqwest = { version = "0.12", features = ["json", "blocking"] }
+sha2 = { workspace = true }
+hex = { workspace = true }

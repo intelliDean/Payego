@@ -110,6 +110,28 @@ const Dashboard: React.FC = () => {
                             </div>
                         )}
 
+                        {user && !user.email_verified_at && !isLoading && (
+                            <div className="mb-8 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-2xl shadow-sm animate-pulse-subtle">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-4">
+                                        <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+                                            <span className="text-2xl">📧</span>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-black text-yellow-900 leading-tight">Action Required</h4>
+                                            <p className="text-sm text-yellow-700">Please verify your email to unlock full account features.</p>
+                                        </div>
+                                    </div>
+                                    <Link
+                                        to="/security"
+                                        className="px-6 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-black rounded-xl transition-all shadow-lg hover:shadow-yellow-600/20"
+                                    >
+                                        Verify Now
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
+
                         {user && !isLoading && (
                             <div className="space-y-4">
                                 {/* Stats */}

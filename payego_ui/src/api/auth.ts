@@ -11,4 +11,5 @@ export const authApi = {
     getCurrentUser: () => client.get<User>('/api/user/current').then(res => res.data),
     verifyEmail: (token: string) => client.get(`/api/auth/verify-email?token=${token}`),
     resendVerification: () => client.post('/api/auth/resend-verification', {}),
+    getAuditLogs: (page: number = 1, size: number = 20) => client.get(`/api/user/audit-logs?page=${page}&size=${size}`),
 };

@@ -17,6 +17,7 @@ import Transactions from './components/Transactions';
 import Profile from './components/Profile';
 import Sidebar from './components/Sidebar';
 import VerifyEmail from './pages/VerifyEmail';
+import Security from './pages/Security';
 import { useState } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ThemeToggle from './components/ThemeToggle';
@@ -117,6 +118,7 @@ function App() {
                                     <Route path="/wallets" element={<ProtectedRoute><Wallets /></ProtectedRoute>} />
                                     <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
                                     <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                                    <Route path="/security" element={<ProtectedRoute><Security /></ProtectedRoute>} />
                                     <Route path="/success" element={<SuccessPage />} />
                                     <Route path="/verify-email" element={<VerifyEmail />} />
                                 </Routes>

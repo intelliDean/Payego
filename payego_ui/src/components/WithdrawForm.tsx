@@ -8,6 +8,8 @@ import { useWallets } from '../hooks/useWallets';
 import { useUserBankAccounts } from '../hooks/useBanks';
 import { transactionApi } from '../api/transactions';
 import { getErrorMessage } from '../utils/errorHandler';
+import { useAuth } from '../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 
 const withdrawSchema = z.object({
     amount: z.number().min(1, 'Minimum 1 required'),
@@ -20,6 +22,7 @@ type WithdrawFormValues = z.infer<typeof withdrawSchema>;
 const WithdrawForm: React.FC = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const { user } = useAuth();
     const { data: wallets } = useWallets();
     const { data: bankAccounts } = useUserBankAccounts();
     const [error, setError] = useState<string | null>(null);
@@ -96,6 +99,24 @@ const WithdrawForm: React.FC = () => {
                 <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Withdraw Funds</h2>
             </div>
 
+            {!user?.email_verified_at && (
+                <div className="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-xl">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <span className="text-yellow-400">⚠️</span>
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm text-yellow-700 font-bold">
+                                Email Verification Required
+                            </p>
+                            <p className="text-xs text-yellow-600 mt-1">
+                                Please verify your email to unlock withdrawals. <Link to="/security" className="underline font-black">Go to Security</Link>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div>
                     <label className="input-label">Currency</label>
@@ -125,7 +146,11 @@ const WithdrawForm: React.FC = () => {
                     {errors.bankAccountId && <p className="text-red-500 text-xs mt-1">{errors.bankAccountId.message}</p>}
                 </div>
 
-                <button type="submit" disabled={submitting} className="w-full btn-primary p-3 rounded-lg font-bold">
+                <button
+                    type="submit"
+                    disabled={submitting || !user?.email_verified_at}
+                    className={`w-full btn-primary p-3 rounded-lg font-bold ${!user?.email_verified_at ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
+                >
                     {submitting ? 'Processing...' : 'Withdraw'}
                 </button>
                 {error && <p className="text-red-500 text-sm text-center">{error}</p>}
