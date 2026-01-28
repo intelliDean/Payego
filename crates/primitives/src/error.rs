@@ -155,6 +155,7 @@ impl From<ApiError> for (StatusCode, String) {
                 AuthError::DuplicateEmail => {
                     (StatusCode::BAD_REQUEST, "Email already exist".to_string())
                 }
+                AuthError::VerificationError(msg) => (StatusCode::BAD_REQUEST, msg),
             },
             ApiError::Payment(msg) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -254,6 +255,15 @@ impl IntoResponse for ApiError {
                 ApiErrorResponse {
                     code: "EMAIL_ALREADY_EXISTS".to_string(),
                     message: "Email already exists".to_string(),
+                    details: None,
+                },
+            ),
+
+            ApiError::Auth(AuthError::VerificationError(msg)) => (
+                StatusCode::BAD_REQUEST,
+                ApiErrorResponse {
+                    code: "VERIFICATION_ERROR".to_string(),
+                    message: msg,
                     details: None,
                 },
             ),
@@ -401,6 +411,7 @@ pub enum AuthError {
     BlacklistedToken,
     InternalError(String),
     DuplicateEmail,
+    VerificationError(String),
 }
 
 impl fmt::Display for AuthError {
@@ -413,6 +424,7 @@ impl fmt::Display for AuthError {
             AuthError::BlacklistedToken => write!(f, "Token has been invalidated"),
             AuthError::InternalError(msg) => write!(f, "Internal error: {}", msg),
             AuthError::DuplicateEmail => write!(f, "Email already exist"),
+            AuthError::VerificationError(msg) => write!(f, "Verification error: {}", msg),
         }
     }
 }

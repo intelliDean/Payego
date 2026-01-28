@@ -12,6 +12,7 @@ pub struct User {
     pub username: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub email_verified_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Insertable, Deserialize)]

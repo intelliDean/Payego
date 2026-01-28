@@ -5,5 +5,6 @@ pub mod bank;
 pub mod enum_types;
 pub mod transaction;
 pub mod user;
+pub mod verification_token;
 pub mod wallet;
 pub mod wallet_ledger;

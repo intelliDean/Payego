@@ -113,6 +113,17 @@ diesel::table! {
         username -> Nullable<Text>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
+        email_verified_at -> Nullable<Timestamptz>,
+    }
+}
+
+diesel::table! {
+    verification_tokens (id) {
+        id -> Uuid,
+        user_id -> Uuid,
+        token_hash -> Text,
+        expires_at -> Timestamptz,
+        created_at -> Timestamptz,
     }
 }
 
@@ -143,6 +154,7 @@ diesel::table! {
 diesel::joinable!(audit_logs -> users (user_id));
 diesel::joinable!(bank_accounts -> users (user_id));
 diesel::joinable!(refresh_tokens -> users (user_id));
+diesel::joinable!(verification_tokens -> users (user_id));
 diesel::joinable!(wallet_ledger -> transactions (transaction_id));
 diesel::joinable!(wallet_ledger -> wallets (wallet_id));
 diesel::joinable!(wallets -> users (user_id));
@@ -155,6 +167,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     refresh_tokens,
     transactions,
     users,
+    verification_tokens,
     wallet_ledger,
     wallets,
 );

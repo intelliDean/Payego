@@ -55,4 +55,12 @@ impl UserRepository {
                 }
             })
     }
+
+    pub fn mark_email_verified(conn: &mut PgConnection, user_id: Uuid) -> Result<(), ApiError> {
+        diesel::update(users::table.find(user_id))
+            .set(users::email_verified_at.eq(chrono::Utc::now()))
+            .execute(conn)
+            .map(|_| ())
+            .map_err(ApiError::Database)
+    }
 }

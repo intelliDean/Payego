@@ -23,6 +23,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 const RegisterForm: React.FC = () => {
     const { login } = useAuth();
     const [error, setError] = useState<string | null>(null);
+    const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -74,15 +75,40 @@ const RegisterForm: React.FC = () => {
         }
     };
 
+    const handleResend = async () => {
+        try {
+            await authApi.resendVerification();
+            setSuccessMsg("Verification email resent!");
+        } catch (err: any) {
+            setError(getErrorMessage(err));
+        }
+    };
+
     if (showVerification) {
         return (
             <div className="max-w-md mx-auto mt-8 sm:mt-16 animate-fade-in">
                 <div className="card-glass p-8 sm:p-10 text-center">
-                    <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-6">Verify <span className="gradient-text">Email</span></h2>
-                    <p className="text-gray-600 dark:text-slate-400 mb-8">Verification is placeholder for now, you are already logged in.</p>
-                    <button onClick={() => navigate('/dashboard')} className="w-full btn-primary-glow btn-lg">
-                        Go to Dashboard
-                    </button>
+                    <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-glow-green">
+                        <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-4">Check Your <span className="gradient-text">Email</span></h2>
+                    <p className="text-gray-600 dark:text-slate-400 mb-8">
+                        We've sent a verification link to your email address. Please click the link to secure your account.
+                    </p>
+
+                    {successMsg && <div className="mb-4 text-green-500 text-sm font-bold">{successMsg}</div>}
+                    {error && <div className="mb-4 text-red-500 text-sm font-bold">{error}</div>}
+
+                    <div className="space-y-4">
+                        <button onClick={() => navigate('/dashboard')} className="w-full btn-primary-glow btn-lg">
+                            Go to Dashboard
+                        </button>
+                        <button onClick={handleResend} className="w-full text-slate-500 hover:text-white transition-colors text-sm font-medium">
+                            Didn't receive an email? Resend
+                        </button>
+                    </div>
                 </div>
             </div>
         );
@@ -147,7 +173,7 @@ const RegisterForm: React.FC = () => {
                         {password && (
                             <div className="mt-2 text-xs">
                                 <div className="w-full bg-gray-200 h-1 rounded-full overflow-hidden">
-                                    <div className={`h-full transition-all ${strength.color}`} style={{ width: '100%' }}></div>
+                                    <div className={`h-full transition-all ${strength.color}`} style={{ width: strength ? '100%' : '0%' }}></div>
                                 </div>
                                 <span className="mt-1 inline-block">Strength: {strength.label}</span>
                             </div>
