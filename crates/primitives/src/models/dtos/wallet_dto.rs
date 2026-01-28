@@ -42,8 +42,8 @@ pub struct WalletSummaryDto {
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]
 pub struct TransferRequest {
-    #[validate(range(min = 1.0, max = 10000.0))]
-    pub amount: f64,
+    #[validate(range(min = 100, max = 1000000))]
+    pub amount: i64, // cents
     pub currency: String,
     pub bank_code: String,
     pub account_number: String,
@@ -55,8 +55,8 @@ pub struct TransferRequest {
 #[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]
 pub struct WalletTransferRequest {
     pub recipient: Uuid,
-    #[validate(range(min = 1.0, max = 10000.0))]
-    pub amount: f64,
+    #[validate(range(min = 100, max = 1000000))]
+    pub amount: i64, // cents
     pub currency: CurrencyCode,
     pub description: Option<String>,
     pub reference: Uuid,
@@ -84,8 +84,8 @@ pub struct TransferResponse {
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]
 pub struct WithdrawRequest {
-    #[validate(range(min = 0.01))]
-    pub amount: f64,
+    #[validate(range(min = 1))]
+    pub amount: i64, // cents
     pub currency: CurrencyCode,
     pub reference: Uuid,
     #[validate(length(min = 10, max = 128))]
@@ -101,8 +101,8 @@ pub struct WithdrawResponse {
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, Validate)]
 pub struct TopUpRequest {
-    #[validate(range(min = 1.0, max = 10_000.0))]
-    pub amount: f64,
+    #[validate(range(min = 100, max = 1000000))]
+    pub amount: i64, // cents
     pub provider: PaymentProvider,
     #[schema(example = "NGN")]
     pub currency: CurrencyCode,
@@ -115,7 +115,7 @@ pub struct TopUpResponse {
     pub session_url: Option<String>,
     pub payment_id: Option<String>,
     pub transaction_id: String,
-    pub amount: f64,
+    pub amount: i64, // cents
 }
 
 // --- Conversion DTOs ---
@@ -153,8 +153,8 @@ pub struct ConvertQuoteRequest {
 pub struct ConvertQuoteResponse {
     pub quote_id: Uuid,
     pub exchange_rate: f64,
-    pub fee: f64,
-    pub net_amount: f64,
+    pub fee: i64,        // cents
+    pub net_amount: i64, // cents
     pub expires_at: DateTime<Utc>,
 }
 

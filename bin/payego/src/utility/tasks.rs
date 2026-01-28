@@ -6,7 +6,7 @@ use axum_prometheus::{metrics_exporter_prometheus::PrometheusHandle, PrometheusM
 use eyre::Report;
 use http::HeaderValue;
 use payego_api::handlers::initialize_banks::initialize_banks;
-use payego_primitives::models::app_state::AppState;
+use payego_core::app_state::AppState;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::info;

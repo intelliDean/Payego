@@ -1,3 +1,4 @@
+pub use crate::app_state::AppState;
 use crate::repositories::transaction_repository::TransactionRepository;
 use crate::repositories::wallet_repository::WalletRepository;
 use diesel::Connection;
@@ -8,7 +9,6 @@ use payego_primitives::models::dtos::providers::paypal::{
 pub use payego_primitives::{
     error::ApiError,
     models::{
-        app_state::AppState,
         enum_types::{CurrencyCode, PaymentProvider, PaymentState},
         transaction::Transaction,
         wallet::Wallet,

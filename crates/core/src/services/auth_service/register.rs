@@ -1,13 +1,14 @@
+use crate::services::audit_service::AuditService;
 use crate::services::auth_service::token::TokenService;
 use argon2::{Argon2, Params};
 
+pub use crate::app_state::AppState;
 use crate::repositories::user_repository::UserRepository;
+pub use crate::security::SecurityConfig;
 use password_hash::PasswordHasher;
 pub use payego_primitives::{
-    config::security_config::SecurityConfig,
     error::{ApiError, AuthError},
     models::{
-        app_state::AppState,
         dtos::auth_dto::{RegisterRequest, RegisterResponse},
         user::NewUser,
         user::User,
@@ -51,6 +52,17 @@ impl RegisterService {
                 error!("auth.register: refresh token generation failed");
                 ApiError::Internal("Authentication service error".into())
             })?;
+
+        let _ = AuditService::log_event(
+            state,
+            Some(user.id),
+            "auth.register",
+            Some("user"),
+            Some(&user.id.to_string()),
+            serde_json::json!({ "email": user.email }),
+            None,
+        )
+        .await;
 
         info!(
             user_id = %user.id,

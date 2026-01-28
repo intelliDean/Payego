@@ -4,6 +4,7 @@ use payego_core::services::auth_service::login::{
 };
 use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
+use tracing::info;
 
 #[utoipa::path(
     post,
@@ -34,6 +35,7 @@ pub async fn login(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, ApiError> {
+    info!("email: {}, password: {}", payload.email, payload.password);
     let response = LoginService::login(&state, payload.normalize()).await?;
     Ok(Json(response))
 }

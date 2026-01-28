@@ -55,7 +55,7 @@ pub async fn top_up(
 
     let user_id = claims.user_id()?;
 
-    Ok(Json(
-        PaymentService::initiate_top_up(&state, user_id, req).await?,
-    ))
+    let response = PaymentService::initiate_top_up(&state, user_id, req).await?;
+
+    Ok(Json(response))
 }

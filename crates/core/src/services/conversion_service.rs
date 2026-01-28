@@ -1,22 +1,19 @@
+pub use crate::app_state::AppState;
 use crate::repositories::transaction_repository::TransactionRepository;
 use crate::repositories::wallet_repository::WalletRepository;
+pub use crate::security::Claims;
+use crate::services::audit_service::AuditService;
 use diesel::prelude::*;
 pub use payego_primitives::{
-    config::security_config::Claims,
     error::ApiError,
     models::{
-        app_state::AppState,
-        dtos::wallet_dto::{ConvertRequest, ConvertResponse, ExchangeRateResponse},
+        dtos::wallet_dto::{ConvertRequest, ConvertResponse},
         enum_types::{CurrencyCode, PaymentProvider, PaymentState, TransactionIntent},
-        transaction::{NewTransaction, Transaction},
-        wallet::Wallet,
-        wallet_ledger::NewWalletLedger,
+        transaction::NewTransaction,
     },
     schema::{transactions, wallet_ledger, wallets},
 };
-use reqwest::Url;
 use serde_json::json;
-use std::time::Duration;
 use uuid::Uuid;
 
 pub struct ConversionService;
@@ -42,7 +39,6 @@ impl ConversionService {
             user_id,
             &req.idempotency_key,
         )? {
-            //closure to help me convert this
             let get_i64 = |key: &str| {
                 tx.metadata
                     .get(key)
@@ -59,7 +55,10 @@ impl ConversionService {
         }
 
         // ---------- RATE ----------
-        let rate = Self::get_exchange_rate(state, req.from_currency, req.to_currency).await?;
+        let rate = state
+            .fx
+            .get_rate(req.from_currency, req.to_currency)
+            .await?;
 
         if !(0.0001..10_000.0).contains(&rate) {
             return Err(ApiError::Payment("Suspicious exchange rate".into()));
@@ -67,14 +66,13 @@ impl ConversionService {
 
         let rate_scaled = (rate * 1_000_000.0).round() as i64;
         let converted_cents = req.amount_cents * rate_scaled / 1_000_000;
-        let fee_bps = state.config.conversion_fee_bps; // 1%
+        let fee_bps = state.config.conversion_fee_bps;
         let fee_cents = (converted_cents as i128 * fee_bps / 10_000) as i64;
         let net_cents = converted_cents - fee_cents;
 
         let tx_ref = Uuid::new_v4();
 
         conn.transaction::<_, ApiError, _>(|conn| {
-            // ---------- LOCK WALLETS ----------
             let from_wallet = WalletRepository::find_by_user_and_currency_with_lock(
                 conn,
                 user_id,
@@ -82,13 +80,10 @@ impl ConversionService {
             )?;
             let to_wallet = WalletRepository::create_if_not_exists(conn, user_id, req.to_currency)?;
 
-            // ---------- BALANCE CHECK (CACHED) ----------
-            debug_assert!(from_wallet.balance >= 0);
             if from_wallet.balance < req.amount_cents {
                 return Err(ApiError::Payment("Insufficient balance".into()));
             }
 
-            // ---------- TRANSACTION ----------
             let tx = TransactionRepository::create(
                 conn,
                 NewTransaction {
@@ -112,10 +107,9 @@ impl ConversionService {
                 },
             )?;
 
-            // ---------- LEDGER ----------
             WalletRepository::add_ledger_entry(
                 conn,
-                NewWalletLedger {
+                payego_primitives::models::wallet_ledger::NewWalletLedger {
                     wallet_id: from_wallet.id,
                     transaction_id: tx.id,
                     amount: -req.amount_cents,
@@ -124,19 +118,35 @@ impl ConversionService {
 
             WalletRepository::add_ledger_entry(
                 conn,
-                NewWalletLedger {
+                payego_primitives::models::wallet_ledger::NewWalletLedger {
                     wallet_id: to_wallet.id,
                     transaction_id: tx.id,
                     amount: net_cents,
                 },
             )?;
 
-            // ---------- UPDATE CACHED BALANCE ----------
             WalletRepository::debit(conn, from_wallet.id, req.amount_cents)?;
             WalletRepository::credit(conn, to_wallet.id, net_cents)?;
 
             Ok(())
         })?;
+
+        let _ = AuditService::log_event(
+            state,
+            Some(user_id),
+            "conversion.internal",
+            Some("transaction"),
+            Some(&tx_ref.to_string()),
+            json!({
+                "from": req.from_currency,
+                "to": req.to_currency,
+                "amount": req.amount_cents,
+                "converted": net_cents,
+                "rate": rate,
+            }),
+            None,
+        )
+        .await;
 
         Ok(ConvertResponse {
             transaction_id: tx_ref.to_string(),
@@ -151,42 +161,6 @@ impl ConversionService {
         from: CurrencyCode,
         to: CurrencyCode,
     ) -> Result<f64, ApiError> {
-        if from == to {
-            //this should not be allowed
-            return Ok(1.0);
-        }
-
-        let mut url = Url::parse(&state.config.exchange_api_url)
-            .map_err(|_| ApiError::Internal("Invalid FX base URL".into()))?;
-
-        url.path_segments_mut()
-            .map_err(|_| ApiError::Internal("Invalid FX URL path".into()))?
-            .push(from.to_string().as_str());
-
-        let resp = state
-            .http_client
-            .get(url)
-            .timeout(Duration::from_secs(5))
-            .send()
-            .await
-            .map_err(|e| ApiError::Payment(format!("FX API unreachable: {}", e)))?;
-
-        let status = resp.status();
-        let body = resp
-            .json::<ExchangeRateResponse>()
-            .await
-            .map_err(|_| ApiError::Payment("Invalid FX response".into()))?;
-
-        if !status.is_success() {
-            return Err(ApiError::Payment(
-                body.error.unwrap_or_else(|| "FX API error".into()),
-            ));
-        }
-
-        body.rates
-            .get(&format!("{}", to))
-            .copied()
-            .filter(|r| *r > 0.0)
-            .ok_or_else(|| ApiError::Payment("Exchange rate not found".into()))
+        state.fx.get_rate(from, to).await
     }
 }

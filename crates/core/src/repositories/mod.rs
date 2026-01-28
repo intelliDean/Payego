@@ -1,3 +1,4 @@
+pub mod audit_repository;
 pub mod bank_account_repository;
 pub mod bank_repository;
 pub mod token_repository;

@@ -1,6 +1,6 @@
 use axum::{extract::State, http::StatusCode, Json};
 use diesel::prelude::*;
-use payego_primitives::models::app_state::AppState;
+use payego_core::AppState;
 use payego_primitives::models::dtos::auth_dto::HealthStatus;
 use std::sync::Arc;
 use tracing::error;

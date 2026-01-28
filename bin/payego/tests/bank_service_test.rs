@@ -6,7 +6,6 @@ use payego_primitives::models::BankRequest;
 use payego_primitives::schema::{bank_accounts, banks, users};
 use serde_json::json;
 use serial_test::serial;
-use std::sync::Arc;
 use uuid::Uuid;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -51,9 +50,11 @@ async fn test_add_bank_account_success() {
         .await;
 
     // 3. Setup AppState
-    let mut base_state = (*common::create_test_app_state()).clone();
-    base_state.config.paystack_details.paystack_api_url = base_url.clone();
-    let state = Arc::new(base_state);
+    let base_state = common::create_test_app_state();
+    let mut config = base_state.config.clone();
+    config.paystack_details.paystack_api_url = base_url.clone();
+    let state = payego_core::AppState::new(base_state.db.clone(), config)
+        .expect("Failed to create AppState");
 
     let pool = &state.db;
     let conn = &mut pool.get().unwrap();
@@ -107,6 +108,10 @@ async fn test_add_bank_account_success() {
     // Removed assertion for paystack_recipient_code if it doesn't exist on BankAccount struct
 
     // 6. Cleanup
+    use payego_primitives::schema::audit_logs;
+    diesel::delete(audit_logs::table.filter(audit_logs::user_id.eq(user_id)))
+        .execute(conn)
+        .unwrap();
     diesel::delete(bank_accounts::table.filter(bank_accounts::user_id.eq(user_id)))
         .execute(conn)
         .unwrap();

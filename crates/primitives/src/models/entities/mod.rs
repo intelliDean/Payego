@@ -1,4 +1,5 @@
 // pub mod entities;
+pub mod audit_log;
 pub mod authentication;
 pub mod bank;
 pub mod enum_types;

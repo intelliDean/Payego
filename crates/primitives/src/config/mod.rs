@@ -1,1 +1,1 @@
-pub mod security_config;
+// This module no longer contains security config (moved to core)

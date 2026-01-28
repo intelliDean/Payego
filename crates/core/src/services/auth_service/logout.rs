@@ -1,12 +1,10 @@
+pub use crate::app_state::AppState;
+pub use crate::security::Claims;
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 pub use payego_primitives::{
-    config::security_config::Claims,
     error::ApiError,
-    models::{
-        app_state::AppState, dtos::auth_dto::LogoutResponse,
-        entities::authentication::NewBlacklistedToken,
-    },
+    models::{dtos::auth_dto::LogoutResponse, entities::authentication::NewBlacklistedToken},
 };
 use tracing::{error, info};
 

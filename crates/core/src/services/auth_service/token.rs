@@ -1,12 +1,12 @@
+pub use crate::app_state::AppState;
 use crate::repositories::token_repository::TokenRepository;
+pub use crate::security::SecurityConfig;
 use chrono::{Duration, Utc};
 use diesel::prelude::*;
 use hex;
 pub use payego_primitives::{
-    config::security_config::SecurityConfig,
     error::{ApiError, AuthError},
     models::{
-        app_state::AppState,
         authentication::{NewRefreshToken, RefreshToken},
         dtos::auth_dto::{LoginResponse, RefreshRequest, RefreshResponse, RefreshResult},
     },

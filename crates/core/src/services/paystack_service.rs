@@ -1,6 +1,7 @@
 use axum::body::Bytes;
 use diesel::Connection;
 
+pub use crate::app_state::AppState;
 use crate::repositories::transaction_repository::TransactionRepository;
 use crate::repositories::wallet_repository::WalletRepository;
 use hmac::KeyInit;
@@ -8,7 +9,6 @@ use http::HeaderMap;
 pub use payego_primitives::{
     error::ApiError,
     models::{
-        app_state::AppState,
         dtos::providers::paystack::PaystackWebhook,
         entities::enum_types::{PaymentState, TransactionIntent},
         transaction::Transaction,

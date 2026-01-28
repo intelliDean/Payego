@@ -19,6 +19,19 @@ pub mod sql_types {
 }
 
 diesel::table! {
+    audit_logs (id) {
+        id -> Uuid,
+        user_id -> Nullable<Uuid>,
+        event_type -> Text,
+        target_type -> Nullable<Text>,
+        target_id -> Nullable<Text>,
+        metadata -> Jsonb,
+        ip_address -> Nullable<Text>,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     bank_accounts (id) {
         id -> Uuid,
         user_id -> Uuid,
@@ -127,6 +140,7 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(audit_logs -> users (user_id));
 diesel::joinable!(bank_accounts -> users (user_id));
 diesel::joinable!(refresh_tokens -> users (user_id));
 diesel::joinable!(wallet_ledger -> transactions (transaction_id));
@@ -134,6 +148,7 @@ diesel::joinable!(wallet_ledger -> wallets (wallet_id));
 diesel::joinable!(wallets -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    audit_logs,
     bank_accounts,
     banks,
     blacklisted_tokens,

@@ -71,7 +71,7 @@ async fn test_top_up_idempotency() {
 
     let _reference = Uuid::new_v4();
     let top_up_data = json!({
-        "amount": 100.0,
+        "amount": 10000,
         "provider": "Paypal",
         "currency": "USD",
         "idempotency_key": "topup_idemp_1"
@@ -187,7 +187,7 @@ async fn test_internal_transfer_idempotency() {
 
     let reference = Uuid::new_v4();
     let transfer_data = json!({
-        "amount": 10.0,
+        "amount": 1000,
         "recipient": recipient_id,
         "currency": "USD",
         "description": "Internal transfer test",

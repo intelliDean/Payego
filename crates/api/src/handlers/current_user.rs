@@ -2,9 +2,8 @@ use axum::{
     extract::{Extension, State},
     Json,
 };
-use payego_core::services::auth_service::user::{
-    ApiError, AppState, Claims, CurrentUserResponse, UserService,
-};
+use payego_core::services::auth_service::user::{ApiError, CurrentUserResponse, UserService};
+use payego_core::{AppState, Claims};
 use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
 

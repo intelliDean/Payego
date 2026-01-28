@@ -1,12 +1,13 @@
+pub use crate::app_state::AppState;
 use crate::repositories::user_repository::UserRepository;
+pub use crate::security::SecurityConfig;
+use crate::services::audit_service::AuditService;
 use crate::services::auth_service::register::RegisterService;
 use argon2::{password_hash::PasswordHash, PasswordVerifier};
 use diesel::prelude::*;
 pub use payego_primitives::{
-    config::security_config::SecurityConfig,
     error::{ApiError, AuthError},
     models::{
-        app_state::AppState,
         dtos::auth_dto::{LoginRequest, LoginResponse},
         user::User,
     },
@@ -22,10 +23,25 @@ impl LoginService {
             ApiError::DatabaseConnection("Database unavailable".into())
         })?;
 
-        let user = UserRepository::find_by_email(&mut conn, &payload.email)?;
-        Self::verify_password(&payload.password, user.as_ref())?;
+        let user_opt = UserRepository::find_by_email(&mut conn, &payload.email)?;
+        let user = user_opt.ok_or_else(|| {
+            warn!("auth.login: user not found for email {}", payload.email);
+            ApiError::Auth(AuthError::InvalidCredentials)
+        })?;
 
-        let user = user.ok_or(ApiError::Auth(AuthError::InvalidCredentials))?;
+        if let Err(e) = Self::verify_password(&payload.password, &user) {
+            let _ = AuditService::log_event(
+                state,
+                Some(user.id),
+                "auth.login.failure",
+                None,
+                None,
+                serde_json::json!({ "reason": "invalid_password" }),
+                None,
+            )
+            .await;
+            return Err(e);
+        }
 
         let token = SecurityConfig::create_token(state, &user.id.to_string()).map_err(|_| {
             error!("auth.login: jwt creation failed");
@@ -33,6 +49,17 @@ impl LoginService {
         })?;
 
         let refresh_token = Self::create_refresh_token(&mut conn, user.id)?;
+
+        let _ = AuditService::log_event(
+            state,
+            Some(user.id),
+            "auth.login.success",
+            None,
+            None,
+            serde_json::json!({}),
+            None,
+        )
+        .await;
 
         info!(
             user_id = %user.id,
@@ -46,11 +73,8 @@ impl LoginService {
         })
     }
 
-    fn verify_password(password: &str, user: Option<&User>) -> Result<(), ApiError> {
-        // verifying *something* to prevent timing attacks
-        let hash = user //either get the user password hash or generate a dummy one
-            .map(|u| u.password_hash.as_str())
-            .unwrap_or(Self::dummy_hash());
+    fn verify_password(password: &str, user: &User) -> Result<(), ApiError> {
+        let hash = &user.password_hash;
 
         let parsed = PasswordHash::new(hash).map_err(|_| {
             error!("auth.login: invalid password hash");
@@ -80,9 +104,9 @@ impl LoginService {
         })
     }
 
-    fn dummy_hash() -> &'static str {
-        "$argon2id$v=19$m=65536,t=3,p=1$\
-         c29tZXNhbHQ$\
-         c29tZWZha2VoYXNo"
-    }
+    // fn dummy_hash() -> &'static str {
+    //     "$argon2id$v=19$m=65536,t=3,p=1$\
+    //      c29tZXNhbHQ$\
+    //      c29tZWZha2VoYXNo"
+    // }
 }
