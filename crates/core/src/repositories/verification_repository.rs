@@ -1,7 +1,9 @@
-use crate::repositories::UserRepository;
+use crate::repositories::user_repository::UserRepository;
 use diesel::prelude::*;
-use payego_primitives::error::ApiError;
-use payego_primitives::models::entities::verification_token::{NewVerificationToken, VerificationToken};
+use payego_primitives::error::{ApiError, AuthError};
+use payego_primitives::models::entities::verification_token::{
+    NewVerificationToken, VerificationToken,
+};
 use payego_primitives::schema::verification_tokens;
 use uuid::Uuid;
 
@@ -15,7 +17,7 @@ impl VerificationRepository {
         diesel::insert_into(verification_tokens::table)
             .values(&new_token)
             .get_result(conn)
-            .map_err(|e| ApiError::Database(e.to_string()))
+            .map_err(ApiError::Database)
     }
 
     pub fn find_by_token(
@@ -26,25 +28,30 @@ impl VerificationRepository {
             .filter(verification_tokens::token_hash.eq(token_hash))
             .first::<VerificationToken>(conn)
             .optional()
-            .map_err(|e| ApiError::Database(e.to_string()))
+            .map_err(ApiError::Database)
     }
 
     pub fn delete_for_user(conn: &mut PgConnection, user_id: Uuid) -> Result<(), ApiError> {
         diesel::delete(verification_tokens::table.filter(verification_tokens::user_id.eq(user_id)))
             .execute(conn)
             .map(|_| ())
-            .map_err(|e| ApiError::Database(e.to_string()))
+            .map_err(ApiError::Database)
     }
 
     pub fn consume_token(
         conn: &mut PgConnection,
         token_hash: &str,
     ) -> Result<VerificationToken, ApiError> {
-        let token = Self::find_by_token(conn, token_hash)?
-            .ok_or_else(|| ApiError::Auth("Invalid or expired verification token".into()))?;
+        let token = Self::find_by_token(conn, token_hash)?.ok_or_else(|| {
+            ApiError::Auth(AuthError::VerificationError(
+                "Invalid or expired verification token".into(),
+            ))
+        })?;
 
         if token.expires_at < chrono::Utc::now().naive_utc() {
-            return Err(ApiError::Auth("Verification token has expired".into()));
+            return Err(ApiError::Auth(AuthError::VerificationError(
+                "Verification token has expired".into(),
+            )));
         }
 
         // Verify user and delete token

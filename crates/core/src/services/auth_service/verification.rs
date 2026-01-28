@@ -19,7 +19,7 @@ impl VerificationService {
         let mut conn = state
             .db
             .get()
-            .map_err(|e| ApiError::Database(e.to_string()))?;
+            .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
         // 24 hour expiry
         let expires_at = chrono::Utc::now().naive_utc() + chrono::Duration::hours(24);
@@ -50,7 +50,7 @@ impl VerificationService {
         let mut conn = state
             .db
             .get()
-            .map_err(|e| ApiError::Database(e.to_string()))?;
+            .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
         VerificationRepository::consume_token(&mut conn, &token_hash)?;
 

@@ -24,7 +24,7 @@ pub async fn get_user_audit_logs(
     let mut conn = state
         .db
         .get()
-        .map_err(|e| ApiError::Database(e.to_string()))?;
+        .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
 
     let logs = AuditLogRepository::find_by_user_paginated(&mut conn, user_id, limit, offset)?;
 

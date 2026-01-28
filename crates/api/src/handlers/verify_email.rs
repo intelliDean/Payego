@@ -2,7 +2,7 @@ use axum::{extract::Query, extract::State, Extension, Json};
 use payego_core::app_state::AppState;
 use payego_core::security::Claims;
 use payego_core::services::auth_service::verification::VerificationService;
-use payego_primitives::error::ApiError;
+use payego_primitives::error::{ApiError, AuthError};
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -32,10 +32,10 @@ pub async fn resend_verification(
     let mut conn = state
         .db
         .get()
-        .map_err(|e| ApiError::Database(e.to_string()))?;
+        .map_err(|e| ApiError::DatabaseConnection(e.to_string()))?;
     let user =
         payego_core::repositories::user_repository::UserRepository::find_by_id(&mut conn, user_id)?
-            .ok_or_else(|| ApiError::Auth("User not found".into()))?;
+            .ok_or_else(|| ApiError::Auth(AuthError::InternalError("User not found".into())))?;
 
     VerificationService::send_verification_email(&state, user_id, &user.email).await?;
 

@@ -61,6 +61,6 @@ impl UserRepository {
             .set(users::email_verified_at.eq(chrono::Utc::now()))
             .execute(conn)
             .map(|_| ())
-            .map_err(|e| ApiError::Database(e.to_string()))
+            .map_err(ApiError::Database)
     }
 }

@@ -10,9 +10,9 @@ pub struct User {
     pub email: String,
     pub password_hash: String,
     pub username: Option<String>,
-    pub email_verified_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub email_verified_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Insertable, Deserialize)]
