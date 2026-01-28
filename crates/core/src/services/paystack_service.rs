@@ -17,7 +17,7 @@ pub use payego_primitives::{
 };
 use secrecy::ExposeSecret;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{info, warn};
 use uuid::Uuid;
 
 pub struct PaystackService;
@@ -66,17 +66,35 @@ impl PaystackService {
 
             // 🔒 Idempotency guard
             if !matches!(tx.txn_state, PaymentState::Pending) {
-                info!("Ignoring duplicate webhook for {}", reference);
+                info!(
+                    transaction_id = %tx.id,
+                    reference = %reference,
+                    current_state = ?tx.txn_state,
+                    "Ignoring duplicate Paystack webhook (idempotency check)"
+                );
                 return Ok(());
             }
 
             match event {
                 "transfer.success" => {
                     TransactionRepository::update_state(conn, tx.id, PaymentState::Completed)?;
+
+                    info!(
+                        transaction_id = %tx.id,
+                        reference = %reference,
+                        "Paystack transfer completed successfully"
+                    );
                 }
 
                 "transfer.failed" => {
                     TransactionRepository::update_state(conn, tx.id, PaymentState::Failed)?;
+
+                    warn!(
+                        transaction_id = %tx.id,
+                        reference = %reference,
+                        intent = ?tx.intent,
+                        "Paystack transfer failed"
+                    );
 
                     // 💰 Refund ONLY for payout intents
                     if matches!(tx.intent, TransactionIntent::Payout) {
@@ -107,6 +125,14 @@ impl PaystackService {
                                 amount: amount_to_refund,
                             },
                         )?;
+
+                        info!(
+                            transaction_id = %tx.id,
+                            user_id = %tx.user_id,
+                            amount = amount_to_refund,
+                            currency = %tx.currency,
+                            "Refund processed for failed payout"
+                        );
                     }
                 }
 

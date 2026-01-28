@@ -8,6 +8,7 @@ use std::sync::Arc;
 #[utoipa::path(
     get,
     path = "/api/user/transactions",
+    tag = "Transactions",
     summary = "Get list of user transactions",
     description = "Retrieves a paginated list of the authenticated user's transaction history. \
                    Includes deposits, withdrawals, internal transfers, external transfers, \
@@ -15,7 +16,6 @@ use std::sync::Arc;
                    Results are ordered by creation date (newest first). \
                    Supports filtering and pagination via query parameters.",
     operation_id = "getUserTransactions",
-    tags = ["Transactions"],
 
     responses(
         (status = 200,description = "Successfully retrieved paginated list of transactions",body = TransactionsResponse),

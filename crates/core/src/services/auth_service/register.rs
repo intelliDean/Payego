@@ -15,7 +15,7 @@ pub use payego_primitives::{
     schema::users,
 };
 use secrecy::{ExposeSecret, SecretString};
-use tracing::error;
+use tracing::{error, info};
 
 pub struct RegisterService;
 
@@ -51,6 +51,12 @@ impl RegisterService {
                 error!("auth.register: refresh token generation failed");
                 ApiError::Internal("Authentication service error".into())
             })?;
+
+        info!(
+            user_id = %user.id,
+            email = %user.email,
+            "User registered successfully"
+        );
 
         Ok(RegisterResponse {
             token,

@@ -14,6 +14,7 @@ pub use payego_primitives::{
 };
 use rand::{distributions::Alphanumeric, Rng};
 use sha2::{Digest, Sha256};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 pub struct TokenService;
@@ -47,7 +48,7 @@ impl TokenService {
         raw_token: &str,
     ) -> Result<RefreshResult, ApiError> {
         let mut conn = state.db.get().map_err(|e| {
-            tracing::error!("DB connection error: {}", e);
+            error!("token.refresh: failed to acquire db connection");
             ApiError::DatabaseConnection(e.to_string())
         })?;
 
@@ -58,11 +59,17 @@ impl TokenService {
         if let Some(token_record) = token_record {
             let new_token = Self::generate_refresh_token(&mut conn, token_record.user_id)?;
 
+            info!(
+                user_id = %token_record.user_id,
+                "Refresh token rotated successfully"
+            );
+
             Ok(RefreshResult {
                 user_id: token_record.user_id,
                 new_refresh_token: new_token,
             })
         } else {
+            warn!("token.refresh: invalid or expired refresh token");
             Err(ApiError::Auth(AuthError::InvalidToken(
                 "Invalid or expired refresh token".into(),
             )))

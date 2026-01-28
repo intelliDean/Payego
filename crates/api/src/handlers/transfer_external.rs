@@ -4,7 +4,7 @@ use payego_core::services::transfer_service::{
 };
 use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
-use tracing::log::error;
+use tracing::warn;
 use validator::Validate;
 
 #[utoipa::path(
@@ -45,7 +45,7 @@ pub async fn transfer_external(
     Json(req): Json<TransferRequest>,
 ) -> Result<Json<TransferResponse>, ApiError> {
     req.validate().map_err(|e| {
-        error!("Validation error: {}", e);
+        warn!("transfer_external: validation error");
         ApiError::Validation(e)
     })?;
 

@@ -11,7 +11,7 @@ pub use payego_primitives::{
         user::User,
     },
 };
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 
 pub struct LoginService;
 
@@ -33,6 +33,11 @@ impl LoginService {
         })?;
 
         let refresh_token = Self::create_refresh_token(&mut conn, user.id)?;
+
+        info!(
+            user_id = %user.id,
+            "User logged in successfully"
+        );
 
         Ok(LoginResponse {
             token,

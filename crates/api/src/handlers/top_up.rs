@@ -4,7 +4,7 @@ use payego_core::services::payment_service::{
 };
 use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
-use tracing::log::error;
+use tracing::warn;
 use validator::Validate;
 
 #[utoipa::path(
@@ -49,7 +49,7 @@ pub async fn top_up(
     // })?;
 
     req.validate().map_err(|e| {
-        error!("Validation error: {}", e);
+        warn!("top_up: validation error");
         ApiError::Validation(e)
     })?;
 

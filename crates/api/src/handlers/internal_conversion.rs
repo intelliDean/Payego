@@ -4,7 +4,7 @@ use payego_core::services::conversion_service::{
 };
 use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
-use tracing::error;
+use tracing::warn;
 use validator::Validate;
 
 #[utoipa::path(
@@ -35,7 +35,7 @@ pub async fn convert_currency(
     Json(req): Json<ConvertRequest>,
 ) -> Result<Json<ConvertResponse>, ApiError> {
     req.validate().map_err(|e| {
-        error!("Validation error: {}", e);
+        warn!("convert_currency: validation error");
         ApiError::Validation(e)
     })?;
 

@@ -51,12 +51,22 @@ impl TransactionService {
 
             // 🔒 Idempotency
             if tx.txn_state == PaymentState::Completed {
-                info!("Transaction already completed: {}", tx.reference);
+                info!(
+                    transaction_id = %tx.id,
+                    reference = %tx.reference,
+                    "Transaction already completed (idempotency check)"
+                );
                 return Ok(());
             }
 
             // 🧪 Currency check
             if tx.currency.to_string() != currency {
+                warn!(
+                    transaction_id = %tx.id,
+                    expected_currency = %tx.currency,
+                    received_currency = %currency,
+                    "Payment intent currency mismatch"
+                );
                 return Err(ApiError::Payment("Currency mismatch".into()));
             }
 
@@ -82,6 +92,14 @@ impl TransactionService {
                 },
             )?;
 
+            info!(
+                transaction_id = %tx.id,
+                user_id = %tx.user_id,
+                amount = amount,
+                currency = %currency,
+                "Payment intent succeeded - transaction completed"
+            );
+
             Ok(())
         })
     }
@@ -106,6 +124,11 @@ impl TransactionService {
                 tx_ref,
                 PaymentState::Failed,
             )?;
+
+            warn!(
+                transaction_reference = %tx_ref,
+                "Payment intent failed"
+            );
         }
 
         Ok(())
@@ -132,6 +155,11 @@ impl TransactionService {
                 tx_ref,
                 PaymentState::Cancelled,
             )?;
+
+            info!(
+                transaction_reference = %tx_ref,
+                "Payment intent cancelled"
+            );
         }
 
         Ok(())

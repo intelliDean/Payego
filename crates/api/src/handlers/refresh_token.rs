@@ -4,7 +4,7 @@ use payego_core::services::auth_service::token::{
 };
 use payego_primitives::error::ApiErrorResponse;
 use std::sync::Arc;
-use tracing::log::error;
+use tracing::warn;
 use validator::Validate;
 
 #[utoipa::path(
@@ -38,7 +38,7 @@ pub async fn refresh_token(
     Json(payload): Json<RefreshRequest>,
 ) -> Result<Json<RefreshResponse>, ApiError> {
     payload.validate().map_err(|e| {
-        error!("Validation error: {}", e);
+        warn!("refresh_token: validation error");
         ApiError::Validation(e)
     })?;
 
