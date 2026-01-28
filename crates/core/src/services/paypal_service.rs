@@ -18,6 +18,7 @@ pub use payego_primitives::{
 
 use reqwest::Url;
 use secrecy::ExposeSecret;
+use serde_json;
 use std::str::FromStr;
 use std::time::Duration;
 use tracing::log::error;
@@ -66,10 +67,12 @@ impl PayPalService {
             return Err(ApiError::Payment("PayPal authentication failed".into()));
         }
 
-        let token = resp
-            .json::<PayPalTokenResponse>()
-            .await
-            .map_err(|_| ApiError::Payment("Invalid PayPal token response".into()))?;
+        let token = resp.json::<PayPalTokenResponse>().await.map_err(|e| {
+            tracing::error!("Failed to parse PayPal token response: {}", e);
+            ApiError::Payment("Invalid PayPal token response".into())
+        })?;
+
+        tracing::info!("Successfully retrieved PayPal access token");
 
         Ok(token.access_token)
     }
@@ -118,6 +121,12 @@ impl PayPalService {
         order_id: String,
         transaction_ref: Uuid,
     ) -> Result<CaptureResponse, ApiError> {
+        tracing::info!(
+            "Starting capture_order: order_id={}, transaction_ref={}",
+            order_id,
+            transaction_ref
+        );
+
         let mut conn = state.db.get().map_err(|e| {
             error!("Database error: {}", e);
             ApiError::DatabaseConnection(e.to_string())
@@ -125,10 +134,20 @@ impl PayPalService {
 
         let transaction =
             TransactionRepository::find_by_id_or_reference(&mut conn, transaction_ref)?
-                .ok_or_else(|| ApiError::Payment("Transaction not found".into()))?;
+                .ok_or_else(|| {
+                    tracing::error!("Transaction not found: {}", transaction_ref);
+                    ApiError::Payment("Transaction not found".into())
+                })?;
+
+        tracing::info!(
+            "Found transaction: id={}, state={:?}",
+            transaction.id,
+            transaction.txn_state
+        );
 
         // ── Idempotency
         if transaction.txn_state == PaymentState::Completed {
+            tracing::info!("Transaction already completed, returning idempotent response");
             return Ok(CaptureResponse {
                 status: PaymentState::Completed,
                 transaction_id: transaction_ref,
@@ -137,16 +156,27 @@ impl PayPalService {
         }
 
         if transaction.txn_state != PaymentState::Pending {
+            tracing::error!(
+                "Invalid transaction state for capture: {:?}",
+                transaction.txn_state
+            );
             return Err(ApiError::Payment("Invalid transaction state".into()));
         }
 
         let capture = Self::paypal_capture_api(state, &order_id).await?;
 
         if capture.currency != transaction.currency {
+            tracing::error!(
+                "Currency mismatch: expected {:?}, got {:?}",
+                transaction.currency,
+                capture.currency
+            );
             return Err(ApiError::Payment("Currency mismatch".into()));
         }
 
         conn.transaction::<_, ApiError, _>(|conn| {
+            tracing::info!("Starting database transaction for capture");
+
             // ── Update transaction
             TransactionRepository::update_status_and_provider_ref(
                 conn,
@@ -154,13 +184,16 @@ impl PayPalService {
                 PaymentState::Completed,
                 Some(capture.capture_id.clone()),
             )?;
+            tracing::info!("Transaction updated to Completed");
 
-            // ── Lock wallet
-            let wallet = WalletRepository::find_by_user_and_currency_with_lock(
+            // ── Lock wallet or create if needed
+            // Use create_if_not_exists to avoid "Wallet not found" error
+            let wallet = WalletRepository::create_if_not_exists(
                 conn,
                 transaction.user_id,
                 transaction.currency,
             )?;
+            tracing::info!("Wallet retrieved/created: {}", wallet.id);
 
             // ── Ledger entry
             WalletRepository::add_ledger_entry(
@@ -171,9 +204,11 @@ impl PayPalService {
                     amount: transaction.amount,
                 },
             )?;
+            tracing::info!("Ledger entry added");
 
             // ── Update balance
             WalletRepository::credit(conn, wallet.id, transaction.amount)?;
+            tracing::info!("Wallet credited");
 
             Ok(())
         })?;
@@ -189,7 +224,7 @@ impl PayPalService {
         state: &AppState,
         order_id: &str,
     ) -> Result<PaypalCapture, ApiError> {
-        let client = state.http_client.clone();
+        tracing::info!("Retrieving PayPal access token...");
         let token = Self::get_access_token(state).await?;
 
         let base = Url::parse(&state.config.paypal_details.paypal_api_url)
@@ -199,35 +234,65 @@ impl PayPalService {
             .join(&format!("v2/checkout/orders/{}/capture", order_id))
             .map_err(|_| ApiError::Internal("Invalid PayPal capture URL".into()))?;
 
-        let resp = client
+        let request = state
+            .http_client
             .post(url)
             .bearer_auth(token)
             .header("Content-Type", "application/json")
-            .send()
-            .await
-            .map_err(|e| {
-                tracing::error!(error = %e, "PayPal capture request failed");
-                ApiError::Payment("Failed to reach PayPal".into())
-            })?
-            .error_for_status()
-            .map_err(|e| {
-                tracing::warn!(error = %e, "PayPal capture rejected");
-                ApiError::Payment("PayPal capture rejected".into())
-            })?;
+            .header("PayPal-Request-Id", Uuid::new_v4().to_string());
 
-        let body: PayPalCaptureResponse = resp.json().await.map_err(|e| {
-            tracing::error!(error = %e, "Invalid PayPal capture response");
-            ApiError::Payment("Invalid PayPal capture response".into())
+        let resp = request.send().await.map_err(|e| {
+            tracing::error!(error = %e, "PayPal capture request failed");
+            ApiError::Payment("Failed to reach PayPal".into())
         })?;
+
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp
+                .text()
+                .await
+                .unwrap_or_else(|_| "Failed to read response body".to_string());
+            tracing::error!(status = %status, body = %body, "PayPal capture rejected");
+            return Err(ApiError::Payment(format!(
+                "PayPal capture rejected: {}",
+                body
+            )));
+        }
+
+        // Read raw body first to debug schema mismatches
+        let body_text = resp.text().await.map_err(|e| {
+            tracing::error!(error = %e, "Failed to read response text");
+            ApiError::Payment("Failed to read PayPal response".into())
+        })?;
+
+        let body: PayPalCaptureResponse = serde_json::from_str(&body_text).map_err(|e| {
+            tracing::error!(error = %e, "Invalid PayPal capture response schema");
+            ApiError::Payment(format!("Invalid PayPal capture response: {}", e))
+        })?;
+
+        tracing::info!("Deserialization successful: {:?}", body);
 
         let capture = body
             .purchase_units
             .first()
             .and_then(|pu| pu.payments.captures.first())
-            .ok_or_else(|| ApiError::Payment("Missing PayPal capture data".into()))?;
+            .ok_or_else(|| {
+                tracing::error!("Missing capture data in PayPal response: {:?}", body);
+                ApiError::Payment("Missing PayPal capture data".into())
+            })?;
 
-        let currency = CurrencyCode::from_str(&capture.amount.currency_code)
-            .map_err(|_| ApiError::Payment("Unsupported currency".into()))?;
+        tracing::info!("Capture extracted: {:?}", capture);
+
+        let currency = CurrencyCode::from_str(&capture.amount.currency_code).map_err(|e| {
+            tracing::error!(
+                "Unsupported currency code '{}': {}",
+                capture.amount.currency_code,
+                e
+            );
+            ApiError::Payment("Unsupported currency".into())
+        })?;
+
+        tracing::info!("Currency parsed: {:?}", currency);
 
         Ok(PaypalCapture {
             capture_id: capture.id.clone(),

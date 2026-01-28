@@ -7,7 +7,7 @@ interface AuthContextType {
     user: User | null;
     isAuthenticated: boolean;
     isLoading: boolean;
-    login: (token: string) => void;
+    login: (token: string, rememberMe?: boolean) => void;
     logout: () => void;
     refreshUser: () => Promise<void>;
 }
@@ -17,11 +17,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const queryClient = useQueryClient();
     const [user, setUser] = useState<User | null>(null);
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('jwt_token'));
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!(localStorage.getItem('jwt_token') || sessionStorage.getItem('jwt_token')));
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
     const refreshUser = async () => {
-        const token = localStorage.getItem('jwt_token');
+        const token = localStorage.getItem('jwt_token') || sessionStorage.getItem('jwt_token');
         if (!token) {
             setUser(null);
             setIsAuthenticated(false);
@@ -36,6 +36,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } catch (error) {
             console.error('Failed to fetch user:', error);
             localStorage.removeItem('jwt_token');
+            sessionStorage.removeItem('jwt_token');
             setUser(null);
             setIsAuthenticated(false);
         } finally {
@@ -47,14 +48,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         refreshUser();
     }, []);
 
-    const login = (token: string) => {
-        localStorage.setItem('jwt_token', token);
+    const login = (token: string, rememberMe: boolean = false) => {
+        if (rememberMe) {
+            localStorage.setItem('jwt_token', token);
+            sessionStorage.removeItem('jwt_token');
+        } else {
+            sessionStorage.setItem('jwt_token', token);
+            localStorage.removeItem('jwt_token');
+        }
         setIsAuthenticated(true);
         refreshUser();
     };
 
     const logout = () => {
         localStorage.removeItem('jwt_token');
+        sessionStorage.removeItem('jwt_token');
         setUser(null);
         setIsAuthenticated(false);
         queryClient.clear();

@@ -47,7 +47,7 @@ pub async fn register(
         ApiError::Validation(e)
     })?;
 
-    let response = RegisterService::register(&state, payload).await?;
+    let response = RegisterService::register(&state, payload.normalize()).await?;
 
     Ok((StatusCode::CREATED, Json(response)))
 }

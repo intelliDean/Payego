@@ -10,7 +10,7 @@ use std::sync::Arc;
 #[utoipa::path(
     get,
     path = "/api/user/current",
-    tag = "User",
+    tag = "Authentication",
     summary = "Get current authenticated user details",
     description = "Retrieves profile information for the currently authenticated user based on the JWT bearer token. \
                    Returns user data including ID, email, name, phone, and account status. \

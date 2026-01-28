@@ -10,7 +10,7 @@ use std::sync::Arc;
 #[utoipa::path(
     get,
     path = "/api/users/resolve",
-    tag = "Users",
+    tag = "Authentication",
     params(
         ("identifier" = String, Query, description = "Username or email")
     ),

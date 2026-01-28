@@ -38,7 +38,7 @@ const LoginForm: React.FC = () => {
         setError(null);
         try {
             const response = await authApi.login(data.email, data.password);
-            login(response.data.token);
+            login(response.data.token, rememberMe);
             navigate('/dashboard');
         } catch (err: any) {
             setError(getErrorMessage(err));

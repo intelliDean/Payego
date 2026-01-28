@@ -1,5 +1,3 @@
-// Library entry point for Payego
-// This exposes modules for testing while keeping main.rs as the binary entry point
 mod observability;
 
 pub mod utility;
@@ -17,36 +15,36 @@ use payego_primitives::models::app_config::AppConfig;
 use tracing::info;
 
 pub async fn run() -> Result<(), Report> {
-    // 1. Load environment variables
+    // 1. load environment variables
     load_env();
 
-    // 2. Initialize logging first (so we can log everything else)
+    // 2. initialize logging first (so we can log everything else)
     setup_logging();
 
     info!("Starting Payego application...");
 
-    // 3. Load configuration
+    // 3. load configuration
     let config = AppConfig::from_env()?;
 
-    // 4. Create database connection pool
+    // 4. create database connection pool
     let pool = create_db_pool()?;
 
-    // 5. Build application state
+    // 5. build application state
     let state = AppState::new(pool, config)?;
 
-    // 6. Perform one-time system initialization
+    // 6. perform one-time system initialization
     initialize_system(&state).await;
 
-    // 7. Start background maintenance tasks
+    // 7. start background maintenance tasks
     spawn_background_tasks(state.clone());
 
-    // 8. Initialize metrics
-    let (metric_layer, metric_handle) = crate::observability::metrics::setup_metrics();
+    // 8. initialize metrics
+    let (metric_layer, metric_handle) = observability::metrics::setup_metrics();
 
-    // 9. Build Axum router
+    // 9. build axum router
     let app = build_router(state.clone(), metric_layer, metric_handle)?;
 
-    // 10. Start HTTP server
+    // 10. start HTTP server
     serve(app).await?;
 
     info!("Payego application shut down gracefully");

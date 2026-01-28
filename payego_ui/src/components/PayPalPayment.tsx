@@ -25,7 +25,7 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({ paymentId, transactionId,
                     <span className="text-white font-bold text-sm">PP</span>
                 </div>
                 <h3 className="text-xl font-bold text-gray-800 mb-1">Pay with PayPal</h3>
-                <p className="text-gray-600 text-sm">Amount: {amount} {currency}</p>
+                <p className="text-gray-600 text-sm">Amount: {amount/100} {currency}</p>
             </div>
 
             <PayPalButtons
