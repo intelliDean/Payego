@@ -360,9 +360,7 @@ All sensitive operations (login, registration, transfers) are logged to the `aud
 
 ---
 
-##  Built for #RustAfricaHackathon By
-
-**Michael Dean Oyewole**
+##  Built for #RustAfricaHackathon By **Michael Dean Oyewole**
 
 ---
 

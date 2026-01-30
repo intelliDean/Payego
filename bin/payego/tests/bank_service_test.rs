@@ -15,10 +15,8 @@ mod common;
 #[tokio::test]
 #[serial]
 async fn test_add_bank_account_success() {
-
     let mock_server = MockServer::start().await;
     let base_url = mock_server.uri();
-
 
     Mock::given(method("GET"))
         .and(path("/bank/resolve"))
