@@ -5,12 +5,7 @@ use payego_core::security::Claims;
 use payego_primitives::error::ApiError;
 use serde::Deserialize;
 use std::sync::Arc;
-
-#[derive(Deserialize)]
-pub struct AuditLogQuery {
-    pub page: Option<i64>,
-    pub size: Option<i64>,
-}
+use payego_primitives::models::AuditLogQuery;
 
 pub async fn get_user_audit_logs(
     State(state): State<Arc<AppState>>,

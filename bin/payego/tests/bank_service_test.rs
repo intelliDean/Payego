@@ -15,11 +15,11 @@ mod common;
 #[tokio::test]
 #[serial]
 async fn test_add_bank_account_success() {
-    // 1. Setup WireMock
+
     let mock_server = MockServer::start().await;
     let base_url = mock_server.uri();
 
-    // Mock Paystack Resolve Account
+
     Mock::given(method("GET"))
         .and(path("/bank/resolve"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({

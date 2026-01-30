@@ -5,22 +5,9 @@ use axum::{
 use payego_core::services::conversion_service::{ApiError, AppState, ConversionService};
 use payego_primitives::error::ApiErrorResponse;
 use payego_primitives::models::enum_types::CurrencyCode;
-use serde::{Deserialize, Serialize};
+use payego_primitives::models::{ExchangeRateQuery, ExchangeRateResponse};
 use std::sync::Arc;
 use utoipa::ToSchema;
-
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct ExchangeRateQuery {
-    pub from: CurrencyCode,
-    pub to: CurrencyCode,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct ExchangeRateResponse {
-    pub from: String,
-    pub to: String,
-    pub rate: f64,
-}
 
 #[utoipa::path(
     get,
