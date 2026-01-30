@@ -29,13 +29,17 @@ impl EmailClient {
         let transport =
             if let (Some(host), Some(user), Some(pass)) = (smtp_host, smtp_user, smtp_pass) {
                 let creds = Credentials::new(user, pass);
-                Some(
-                    SmtpTransport::relay(&host)
-                        .unwrap()
-                        .credentials(creds)
-                        .port(smtp_port)
-                        .build(),
-                )
+                match SmtpTransport::starttls_relay(&host) {
+                    Ok(builder) => Some(builder.credentials(creds).port(smtp_port).build()),
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to initialize STARTTLS relay for host {}: {}",
+                            host,
+                            e
+                        );
+                        None
+                    }
+                }
             } else {
                 tracing::warn!("SMTP configuration missing, email client running in mock mode");
                 None
@@ -59,6 +63,7 @@ impl EmailClient {
                     .parse()
                     .map_err(|e| ApiError::Internal(format!("Invalid recipient email: {}", e)))?)
                 .subject(subject)
+                .header(lettre::message::header::ContentType::TEXT_HTML)
                 .body(body.to_string())
                 .map_err(|e| ApiError::Internal(format!("Failed to build email: {}", e)))?;
 

@@ -45,28 +45,28 @@ pub struct PayPalOrderResp {
     pub links: Vec<PayPalLink>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct CaptureAmount {
     pub currency_code: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Capture {
     pub id: String,
     pub amount: CaptureAmount,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Payments {
     pub captures: Vec<Capture>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct PurchaseUnit {
     pub payments: Payments,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct PayPalCaptureResponse {
     pub purchase_units: Vec<PurchaseUnit>,
 }

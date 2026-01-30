@@ -2,7 +2,7 @@ use crate::models::enum_types::{CurrencyCode, PaymentState, TransactionIntent};
 use crate::models::transaction::Transaction;
 use chrono::{DateTime, Utc};
 use diesel::Queryable;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -45,4 +45,17 @@ impl From<Transaction> for TransactionResponse {
             description: tx.description,
         }
     }
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ExchangeQuery {
+    pub from: CurrencyCode,
+    pub to: CurrencyCode,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ExchangeResponse {
+    pub from: String,
+    pub to: String,
+    pub rate: f64,
 }

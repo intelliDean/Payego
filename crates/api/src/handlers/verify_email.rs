@@ -22,6 +22,10 @@ pub async fn verify_email(
         "message": "Email verified successfully"
     })))
 }
+// pub struct VerifyEmailResponse {
+//     pub status: String,
+//     pub message: String
+// }
 
 pub async fn resend_verification(
     State(state): State<Arc<AppState>>,

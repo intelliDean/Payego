@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { getErrorMessage } from '../utils/errorHandler';
@@ -9,14 +9,15 @@ const VerifyEmail: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
     const token = searchParams.get('token');
+    const hasStartedVerification = useRef(false);
 
     useEffect(() => {
         const verify = async () => {
-            if (!token) {
-                setStatus('error');
-                setError('Missing verification token');
+            if (!token || hasStartedVerification.current) {
                 return;
             }
+
+            hasStartedVerification.current = true;
 
             try {
                 await authApi.verifyEmail(token);

@@ -114,3 +114,9 @@ pub struct HealthStatus {
     pub status: String,
     pub message: String,
 }
+
+#[derive(Deserialize)]
+pub struct AuditLogQuery {
+    pub page: Option<i64>,
+    pub size: Option<i64>,
+}

@@ -3,14 +3,8 @@ use payego_core::app_state::AppState;
 use payego_core::repositories::audit_repository::AuditLogRepository;
 use payego_core::security::Claims;
 use payego_primitives::error::ApiError;
-use serde::Deserialize;
+use payego_primitives::models::AuditLogQuery;
 use std::sync::Arc;
-
-#[derive(Deserialize)]
-pub struct AuditLogQuery {
-    pub page: Option<i64>,
-    pub size: Option<i64>,
-}
 
 pub async fn get_user_audit_logs(
     State(state): State<Arc<AppState>>,

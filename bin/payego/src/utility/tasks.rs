@@ -1,5 +1,3 @@
-use std::env;
-// Background utility for Payego
 use axum::extract::State;
 use axum::Router;
 use axum_prometheus::{metrics_exporter_prometheus::PrometheusHandle, PrometheusMetricLayer};
@@ -7,6 +5,7 @@ use eyre::Report;
 use http::HeaderValue;
 use payego_api::handlers::initialize_banks::initialize_banks;
 use payego_core::app_state::AppState;
+use std::env;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::info;

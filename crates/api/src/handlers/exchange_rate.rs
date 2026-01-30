@@ -5,22 +5,8 @@ use axum::{
 use payego_core::services::conversion_service::{ApiError, AppState, ConversionService};
 use payego_primitives::error::ApiErrorResponse;
 use payego_primitives::models::enum_types::CurrencyCode;
-use serde::{Deserialize, Serialize};
+use payego_primitives::models::{ExchangeQuery, ExchangeResponse};
 use std::sync::Arc;
-use utoipa::ToSchema;
-
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct ExchangeRateQuery {
-    pub from: CurrencyCode,
-    pub to: CurrencyCode,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct ExchangeRateResponse {
-    pub from: String,
-    pub to: String,
-    pub rate: f64,
-}
 
 #[utoipa::path(
     get,
@@ -34,18 +20,18 @@ pub struct ExchangeRateResponse {
         ("to" = CurrencyCode, Query, description = "Target currency code"),
     ),
     responses(
-        (status = 200, description = "Exchange rate retrieved successfully", body = ExchangeRateResponse),
+        (status = 200, description = "Exchange rate retrieved successfully", body = ExchangeResponse),
         (status = 400, description = "Bad request - invalid currency codes", body = ApiErrorResponse),
         (status = 500, description = "Internal server error - failed to fetch exchange rate", body = ApiErrorResponse),
     ),
 )]
 pub async fn get_exchange_rate(
     State(state): State<Arc<AppState>>,
-    Query(params): Query<ExchangeRateQuery>,
-) -> Result<Json<ExchangeRateResponse>, ApiError> {
+    Query(params): Query<ExchangeQuery>,
+) -> Result<Json<ExchangeResponse>, ApiError> {
     let rate = ConversionService::get_exchange_rate(&state, params.from, params.to).await?;
 
-    Ok(Json(ExchangeRateResponse {
+    Ok(Json(ExchangeResponse {
         from: params.from.to_string(),
         to: params.to.to_string(),
         rate,

@@ -55,11 +55,9 @@ impl PaymentService {
 
         let response = match req.provider {
             PaymentProvider::Stripe => {
-                let success_url = format!(
-                    "{}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}",
-                    state.config.app_url
-                );
-                let cancel_url = format!("{}/checkout/cancel", state.config.app_url);
+                let success_url =
+                    format!("{}/success?transaction_id={}", state.config.app_url, tx_ref);
+                let cancel_url = format!("{}/top-up", state.config.app_url);
 
                 let session = state
                     .stripe
