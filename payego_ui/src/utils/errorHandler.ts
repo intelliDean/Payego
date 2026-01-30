@@ -14,6 +14,11 @@ export interface ApiErrorResponse {
  * @returns A user-friendly error message
  */
 export function getErrorMessage(error: any): string {
+    // Handle null/undefined errors
+    if (!error) {
+        return 'An unexpected error occurred. Please try again.';
+    }
+
     // Handle Axios errors with response
     if (error.response) {
         const data: ApiErrorResponse = error.response.data;
@@ -81,7 +86,7 @@ export function getErrorMessage(error: any): string {
  * Checks if an error is a network error
  */
 export function isNetworkError(error: any): boolean {
-    return error.request && !error.response;
+    return !!error && !!error.request && !error.response;
 }
 
 /**

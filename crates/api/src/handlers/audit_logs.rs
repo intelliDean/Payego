@@ -4,7 +4,6 @@ use payego_core::repositories::audit_repository::AuditLogRepository;
 use payego_core::security::Claims;
 use payego_primitives::error::ApiError;
 use payego_primitives::models::AuditLogQuery;
-use serde::Deserialize;
 use std::sync::Arc;
 
 pub async fn get_user_audit_logs(

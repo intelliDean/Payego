@@ -48,13 +48,13 @@ impl From<Transaction> for TransactionResponse {
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
-pub struct ExchangeRateQuery {
+pub struct ExchangeQuery {
     pub from: CurrencyCode,
     pub to: CurrencyCode,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct ExchangeRateResponse {
+pub struct ExchangeResponse {
     pub from: String,
     pub to: String,
     pub rate: f64,
